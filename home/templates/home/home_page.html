@@ -1,21 +1,152 @@
 {% extends "base.html" %}
-{% load static %}
+{% load static wagtailcore_tags wagtailimages_tags %}
 
 {% block body_class %}template-homepage{% endblock %}
 
-{% block extra_css %}
-
-{% comment %}
-Delete the line below if you're just getting started and want to remove the welcome screen!
-{% endcomment %}
-<link rel="stylesheet" href="{% static 'css/welcome_page.css' %}">
-{% endblock extra_css %}
-
 {% block content %}
 
-{% comment %}
-Delete the line below if you're just getting started and want to remove the welcome screen!
-{% endcomment %}
-{% include 'home/welcome_page.html' %}
+<!-- Hero Section -->
+<section class="hero-gradient text-white section-padding overflow-hidden relative">
+    <div class="max-w-7xl mx-auto container-padding relative z-10">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+            <div class="text-center lg:text-left">
+                <h1 class="text-4xl lg:text-6xl font-heading font-bold mb-6 leading-tight">
+                    {{ page.hero_title }}
+                </h1>
+                {% if page.hero_subtitle %}
+                <p class="text-xl lg:text-2xl mb-8 text-primary-100 leading-relaxed">
+                    {{ page.hero_subtitle }}
+                </p>
+                {% endif %}
+                <div class="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
+                    {% if page.hero_cta_link %}
+                    <a href="{% pageurl page.hero_cta_link %}" class="btn bg-white text-primary-600 hover:bg-gray-100 shadow-lg">
+                        {{ page.hero_cta_text }}
+                        <i class="fas fa-arrow-right ml-2"></i>
+                    </a>
+                    {% endif %}
+                    <a href="/about/" class="btn border-white text-white hover:bg-white hover:text-primary-600">
+                        Learn More
+                        <i class="fas fa-info-circle ml-2"></i>
+                    </a>
+                </div>
+            </div>
+            {% if page.hero_image %}
+            <div class="relative">
+                {% image page.hero_image fill-600x400 class="responsive-image shadow-2xl" %}
+                <div class="absolute inset-0 bg-gradient-to-t from-primary-900/20 to-transparent rounded-lg"></div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    <!-- Background decoration -->
+    <div class="absolute top-0 right-0 w-1/2 h-full opacity-10">
+        <svg class="w-full h-full" viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="200" cy="200" r="150" fill="currentColor" opacity="0.1"/>
+            <circle cx="300" cy="100" r="80" fill="currentColor" opacity="0.05"/>
+            <circle cx="100" cy="300" r="60" fill="currentColor" opacity="0.08"/>
+        </svg>
+    </div>
+</section>
+
+<!-- Features Section -->
+{% if page.features %}
+<section class="section-padding bg-white">
+    <div class="max-w-7xl mx-auto container-padding">
+        <div class="text-center mb-16">
+            <h2 class="text-3xl lg:text-4xl font-heading font-bold text-gray-900 mb-4">
+                {{ page.features_title }}
+            </h2>
+            <p class="text-xl text-gray-600 max-w-3xl mx-auto">
+                Discover what makes THINK eLearn the perfect partner for your educational technology needs.
+            </p>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {% for feature in page.features %}
+                <div class="card-hover text-center">
+                    <div class="p-8">
+                        {% if feature.value.icon %}
+                        <div class="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                            <i class="{{ feature.value.icon }} text-primary-600 text-2xl"></i>
+                        </div>
+                        {% endif %}
+                        <h3 class="text-xl font-semibold mb-4 text-gray-900">{{ feature.value.title }}</h3>
+                        <p class="text-gray-600 leading-relaxed">{{ feature.value.description }}</p>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- Testimonials Section -->
+{% if page.testimonials %}
+<section class="section-padding bg-gray-50">
+    <div class="max-w-7xl mx-auto container-padding">
+        <div class="text-center mb-16">
+            <h2 class="text-3xl lg:text-4xl font-heading font-bold text-gray-900 mb-4">
+                {{ page.testimonials_title }}
+            </h2>
+            <p class="text-xl text-gray-600 max-w-3xl mx-auto">
+                See what our clients have to say about their experience working with us.
+            </p>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {% for testimonial in page.testimonials %}
+                <div class="card-hover">
+                    <div class="p-8">
+                        <div class="mb-6">
+                            <i class="fas fa-quote-left text-primary-600 text-2xl"></i>
+                        </div>
+                        <blockquote class="text-gray-700 mb-6 leading-relaxed">
+                            "{{ testimonial.value.quote }}"
+                        </blockquote>
+                        <div class="flex items-center">
+                            {% if testimonial.value.avatar %}
+                                {% image testimonial.value.avatar fill-50x50 class="w-12 h-12 rounded-full mr-4" %}
+                            {% else %}
+                                <div class="w-12 h-12 bg-primary-100 rounded-full flex items-center justify-center mr-4">
+                                    <i class="fas fa-user text-primary-600"></i>
+                                </div>
+                            {% endif %}
+                            <div>
+                                <div class="font-semibold text-gray-900">{{ testimonial.value.author }}</div>
+                                {% if testimonial.value.company %}
+                                <div class="text-sm text-gray-600">{{ testimonial.value.company }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- Call to Action Section -->
+<section class="section-padding bg-primary-600 text-white">
+    <div class="max-w-4xl mx-auto container-padding text-center">
+        <h2 class="text-3xl lg:text-4xl font-heading font-bold mb-6">
+            Ready to Transform Your Learning Experience?
+        </h2>
+        <p class="text-xl mb-8 text-primary-100">
+            Let's discuss how we can help you achieve your educational technology goals.
+        </p>
+        <div class="flex flex-col sm:flex-row gap-4 justify-center">
+            <a href="/contact/" class="btn bg-white text-primary-600 hover:bg-gray-100 shadow-lg">
+                Get Started Today
+                <i class="fas fa-rocket ml-2"></i>
+            </a>
+            <a href="/portfolio/" class="btn border-white text-white hover:bg-white hover:text-primary-600">
+                View Our Work
+                <i class="fas fa-eye ml-2"></i>
+            </a>
+        </div>
+    </div>
+</section>
 
 {% endblock content %}
