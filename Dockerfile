@@ -40,23 +40,27 @@ RUN pip install -r /requirements.txt
 # Use /app folder as a directory where the source code is stored.
 WORKDIR /app
 
-# Set this directory to be owned by the "wagtail" user. This Wagtail project
-# uses SQLite, the folder needs to be owned by the user that
-# will be writing to the database file.
-RUN chown wagtail:wagtail /app
-
 # Copy package.json and tailwind config first for better caching
-COPY --chown=wagtail:wagtail package.json tailwind.config.js ./
+COPY package.json tailwind.config.js ./
 
-# Install Node.js dependencies as wagtail user
-USER wagtail
+# Install Node.js dependencies as root (Node.js was installed as root)
 RUN npm install
 
 # Copy the rest of the source code
-COPY --chown=wagtail:wagtail . .
+COPY . .
 
-# Build CSS and collect static files
+# Build CSS (as root since node_modules is owned by root)
 RUN npm run build-css-prod
+
+# Set this directory to be owned by the "wagtail" user. This Wagtail project
+# uses SQLite, the folder needs to be owned by the user that
+# will be writing to the database file.
+RUN chown -R wagtail:wagtail /app
+
+# Switch to wagtail user for Django operations
+USER wagtail
+
+# Collect static files
 RUN python manage.py collectstatic --noinput --clear
 
 # Runtime command that executes when "docker run" is called, it does the
