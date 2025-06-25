@@ -1,39 +1,57 @@
+# Git and version control
+.git/
+.gitignore
+
 # Django project
 /media/
-/static/
 *.sqlite3
+db.sqlite3
 
-# Python and others
-__pycache__
+# Python cache and bytecode
+__pycache__/
+*.py[oc]
 *.pyc
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Node.js (install fresh in Docker)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+
+# Development files
 .DS_Store
 *.swp
-/venv/
-/tmp/
+*.swo
 /.vagrant/
 /Vagrantfile.local
-node_modules/
-/npm-debug.log
 /.idea/
-.vscode
-coverage
+.vscode/
+coverage/
 .python-version
 
-# Distribution / packaging
-.Python
-env/
+# Environment files (Docker will handle these)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Build artifacts
+/tmp/
 build/
-develop-eggs/
 dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
+
+# Documentation
+README.md
+/docs/
+
+# Test files
+tests/
+test_*.py
+*_test.py

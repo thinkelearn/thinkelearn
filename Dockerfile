@@ -22,7 +22,12 @@ RUN apt-get update --yes --quiet && apt-get install --yes --quiet --no-install-r
     libjpeg62-turbo-dev \
     zlib1g-dev \
     libwebp-dev \
+    curl \
  && rm -rf /var/lib/apt/lists/*
+
+# Install Node.js
+RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
+    && apt-get install -y nodejs
 
 # Install the application server.
 RUN pip install "gunicorn==20.0.4"
@@ -39,13 +44,18 @@ WORKDIR /app
 # will be writing to the database file.
 RUN chown wagtail:wagtail /app
 
-# Copy the source code of the project into the container.
+# Copy package.json and tailwind config first for better caching
+COPY --chown=wagtail:wagtail package.json tailwind.config.js ./
+
+# Install Node.js dependencies as wagtail user
+USER wagtail
+RUN npm install
+
+# Copy the rest of the source code
 COPY --chown=wagtail:wagtail . .
 
-# Use user "wagtail" to run the build commands below and the server itself.
-USER wagtail
-
-# Collect static files.
+# Build CSS and collect static files
+RUN npm run build-css-prod
 RUN python manage.py collectstatic --noinput --clear
 
 # Runtime command that executes when "docker run" is called, it does the
