@@ -5,6 +5,8 @@ description = "THINK eLearn"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "gunicorn>=23.0.0",
     "psycopg>=3.2.9",
     "wagtail>=7.0.1",
+    "whitenoise>=6.9.0",
 ]

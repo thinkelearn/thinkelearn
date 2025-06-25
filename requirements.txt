@@ -18,9 +18,11 @@ djangorestframework==3.16.0
 draftjs-exporter==5.1.0
 et-xmlfile==2.0.0
 filetype==1.2.0
+gunicorn==23.0.0
 idna==3.10
 laces==0.1.2
 openpyxl==3.1.5
+packaging==25.0
 pillow==11.2.1
 pillow-heif==0.21.0
 psycopg==3.2.9
@@ -32,4 +34,5 @@ typing-extensions==4.14.0
 tzdata==2025.2 ; sys_platform == 'win32'
 urllib3==2.5.0
 wagtail==7.0.1
+whitenoise==6.9.0
 willow==1.10.0
