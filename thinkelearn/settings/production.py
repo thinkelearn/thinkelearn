@@ -8,24 +8,34 @@ SECRET_KEY = os.environ.get('SECRET_KEY')
 if not SECRET_KEY:
     raise ValueError("SECRET_KEY environment variable must be set in production")
 
-# Railway deployment settings
-ALLOWED_HOSTS = [
-    '.railway.app',
-    '.thinkelearn.com',
-    'thinkelearn.com',
-    'www.thinkelearn.com',
-    'localhost',
-    '127.0.0.1',
-]
+# Railway deployment settings - allow all hosts for Railway
+ALLOWED_HOSTS = ["*"]
 
-# Database configuration using Railway's DATABASE_URL
-DATABASES = {
-    'default': dj_database_url.config(
-        default=os.environ.get('DATABASE_URL'),
-        conn_max_age=600,
-        conn_health_checks=True,
-    )
-}
+# Database configuration - Railway provides both DATABASE_URL and individual vars
+if os.environ.get('DATABASE_URL'):
+    # Use DATABASE_URL if provided (Railway standard)
+    DATABASES = {
+        'default': dj_database_url.config(
+            default=os.environ.get('DATABASE_URL'),
+            conn_max_age=600,
+            conn_health_checks=True,
+        )
+    }
+else:
+    # Fallback to individual PostgreSQL environment variables
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.environ.get('PGDATABASE'),
+            'USER': os.environ.get('PGUSER'),
+            'PASSWORD': os.environ.get('PGPASSWORD'),
+            'HOST': os.environ.get('PGHOST'),
+            'PORT': os.environ.get('PGPORT', '5432'),
+            'OPTIONS': {
+                'sslmode': 'require',
+            },
+        }
+    }
 
 # Static files configuration for Railway
 STATIC_URL = '/static/'
