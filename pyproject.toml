@@ -1,0 +1,9 @@
+[project]
+name = "thinkelearn"
+version = "0.1.0"
+description = "THINK eLearn"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "wagtail>=7.0.1",
+]
