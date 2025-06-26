@@ -4,6 +4,7 @@ module.exports = {
     './thinkelearn/templates/**/*.html',
     './home/templates/**/*.html',
     './search/templates/**/*.html',
+    './blog/templates/**/*.html',
     './thinkelearn/static/js/**/*.js',
   ],
   theme: {
