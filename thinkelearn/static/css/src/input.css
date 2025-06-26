@@ -72,4 +72,9 @@
   .responsive-image {
     @apply w-full h-auto rounded-lg;
   }
+  
+  /* Fix prose text color in hero sections */
+  .hero-gradient .prose p {
+    @apply text-white !important;
+  }
 }
