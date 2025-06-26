@@ -6,7 +6,11 @@ from .base import *
 DEBUG = False
 SECRET_KEY = os.environ.get('SECRET_KEY')
 if not SECRET_KEY:
-    raise ValueError("SECRET_KEY environment variable must be set in production")
+    # During Docker build, use a temporary key for collectstatic
+    # This will be overridden at runtime with the real SECRET_KEY
+    SECRET_KEY = 'django-insecure-build-time-key-will-be-overridden-at-runtime'
+    import warnings
+    warnings.warn("Using temporary SECRET_KEY during build. Ensure SECRET_KEY is set at runtime.")
 
 # Railway deployment settings - allow all hosts for Railway
 ALLOWED_HOSTS = ["*"]
@@ -21,7 +25,7 @@ if os.environ.get('DATABASE_URL'):
             conn_health_checks=True,
         )
     }
-else:
+elif os.environ.get('PGHOST'):
     # Fallback to individual PostgreSQL environment variables
     DATABASES = {
         'default': {
@@ -34,6 +38,14 @@ else:
             'OPTIONS': {
                 'sslmode': 'require',
             },
+        }
+    }
+else:
+    # During Docker build, use SQLite for collectstatic (no DB operations needed)
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': ':memory:',
         }
     }
 
