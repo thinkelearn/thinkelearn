@@ -1,0 +1,209 @@
+{% extends "base.html" %}
+{% load static wagtailcore_tags wagtailimages_tags %}
+
+{% block body_class %}template-aboutpage{% endblock %}
+
+{% block content %}
+
+<!-- Hero Section -->
+<section class="hero-gradient text-white section-padding overflow-hidden relative">
+    <div class="max-w-7xl mx-auto container-padding relative z-10">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+            <div class="text-center lg:text-left">
+                <h1 class="text-4xl lg:text-6xl font-heading font-bold mb-6 leading-tight">
+                    {{ page.hero_title }}
+                </h1>
+                {% if page.hero_subtitle %}
+                <p class="text-xl lg:text-2xl mb-8 text-primary-100 leading-relaxed">
+                    {{ page.hero_subtitle }}
+                </p>
+                {% endif %}
+            </div>
+            {% if page.hero_image %}
+            <div class="relative">
+                {% image page.hero_image fill-600x400 class="responsive-image shadow-2xl" %}
+                <div class="absolute inset-0 bg-gradient-to-t from-primary-900/20 to-transparent rounded-lg"></div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</section>
+
+<!-- Company Story Section -->
+{% if page.story_content %}
+<section class="section-padding bg-white">
+    <div class="max-w-4xl mx-auto container-padding">
+        <div class="text-center mb-12">
+            <h2 class="text-3xl lg:text-4xl font-heading font-bold text-gray-900 mb-6">
+                {{ page.story_title }}
+            </h2>
+        </div>
+        <div class="prose prose-lg mx-auto text-gray-700">
+            {{ page.story_content|richtext }}
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- Mission Section -->
+{% if page.mission_content %}
+<section class="section-padding bg-gray-50">
+    <div class="max-w-4xl mx-auto container-padding">
+        <div class="text-center mb-12">
+            <h2 class="text-3xl lg:text-4xl font-heading font-bold text-gray-900 mb-6">
+                {{ page.mission_title }}
+            </h2>
+        </div>
+        <div class="prose prose-lg mx-auto text-gray-700">
+            {{ page.mission_content|richtext }}
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- Values Section -->
+{% if page.values %}
+<section class="section-padding bg-white">
+    <div class="max-w-7xl mx-auto container-padding">
+        <div class="text-center mb-16">
+            <h2 class="text-3xl lg:text-4xl font-heading font-bold text-gray-900 mb-4">
+                {{ page.values_title }}
+            </h2>
+            <p class="text-xl text-gray-600 max-w-3xl mx-auto">
+                The principles that guide everything we do at THINK eLearn.
+            </p>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {% for value in page.values %}
+                <div class="card-hover text-center">
+                    <div class="p-8">
+                        {% if value.value.icon %}
+                        <div class="w-16 h-16 bg-secondary-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                            <i class="{{ value.value.icon }} text-secondary-600 text-2xl"></i>
+                        </div>
+                        {% endif %}
+                        <h3 class="text-xl font-semibold mb-4 text-gray-900">{{ value.value.title }}</h3>
+                        <p class="text-gray-600 leading-relaxed">{{ value.value.description }}</p>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- Team Section -->
+{% if page.team_members %}
+<section class="section-padding bg-gray-50">
+    <div class="max-w-7xl mx-auto container-padding">
+        <div class="text-center mb-16">
+            <h2 class="text-3xl lg:text-4xl font-heading font-bold text-gray-900 mb-4">
+                {{ page.team_title }}
+            </h2>
+            <p class="text-xl text-gray-600 max-w-3xl mx-auto">
+                Get to know the passionate individuals behind THINK eLearn.
+            </p>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {% for member in page.team_members %}
+                <div class="card-hover text-center">
+                    <div class="p-8">
+                        {% if member.value.photo %}
+                            {% image member.value.photo fill-150x150 class="w-24 h-24 rounded-full mx-auto mb-6 object-cover" %}
+                        {% else %}
+                            <div class="w-24 h-24 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-6">
+                                <i class="fas fa-user text-gray-500 text-2xl"></i>
+                            </div>
+                        {% endif %}
+                        <h3 class="text-xl font-semibold mb-2 text-gray-900">{{ member.value.name }}</h3>
+                        <p class="text-primary-600 font-medium mb-4">{{ member.value.role }}</p>
+                        <p class="text-gray-600 leading-relaxed mb-6">{{ member.value.bio }}</p>
+                        
+                        <!-- Social Links -->
+                        <div class="flex justify-center space-x-4">
+                            {% if member.value.linkedin %}
+                            <a href="{{ member.value.linkedin }}" target="_blank" class="text-gray-400 hover:text-blue-600 transition-colors">
+                                <i class="fab fa-linkedin text-lg"></i>
+                            </a>
+                            {% endif %}
+                            {% if member.value.twitter %}
+                            <a href="{{ member.value.twitter }}" target="_blank" class="text-gray-400 hover:text-blue-400 transition-colors">
+                                <i class="fab fa-twitter text-lg"></i>
+                            </a>
+                            {% endif %}
+                            {% if member.value.email %}
+                            <a href="mailto:{{ member.value.email }}" class="text-gray-400 hover:text-gray-600 transition-colors">
+                                <i class="fas fa-envelope text-lg"></i>
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- Timeline Section -->
+{% if page.milestones %}
+<section class="section-padding bg-white">
+    <div class="max-w-4xl mx-auto container-padding">
+        <div class="text-center mb-16">
+            <h2 class="text-3xl lg:text-4xl font-heading font-bold text-gray-900 mb-4">
+                {{ page.timeline_title }}
+            </h2>
+            <p class="text-xl text-gray-600 max-w-3xl mx-auto">
+                Key milestones in our company's growth and evolution.
+            </p>
+        </div>
+        
+        <div class="relative">
+            <!-- Timeline line -->
+            <div class="absolute left-8 md:left-1/2 transform md:-translate-x-px top-0 bottom-0 w-0.5 bg-primary-200"></div>
+            
+            {% for milestone in page.milestones %}
+                <div class="relative flex items-center mb-8 {% cycle 'md:flex-row' 'md:flex-row-reverse' %}">
+                    <!-- Timeline dot -->
+                    <div class="absolute left-8 md:left-1/2 transform -translate-x-1/2 w-4 h-4 bg-primary-600 rounded-full border-4 border-white shadow-lg z-10"></div>
+                    
+                    <!-- Content -->
+                    <div class="ml-20 md:ml-0 md:w-1/2 {% if forloop.counter0|divisibleby:2 %}md:pr-8 md:text-right{% else %}md:pl-8{% endif %}">
+                        <div class="card-hover p-6">
+                            <div class="text-2xl font-bold text-primary-600 mb-2">{{ milestone.value.year }}</div>
+                            <h3 class="text-xl font-semibold mb-3 text-gray-900">{{ milestone.value.title }}</h3>
+                            <p class="text-gray-600 leading-relaxed">{{ milestone.value.description }}</p>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- Call to Action Section -->
+<section class="section-padding bg-primary-600 text-white">
+    <div class="max-w-4xl mx-auto container-padding text-center">
+        <h2 class="text-3xl lg:text-4xl font-heading font-bold mb-6">
+            Ready to Work With Us?
+        </h2>
+        <p class="text-xl mb-8 text-primary-100">
+            Let's discuss how we can help you achieve your educational technology goals.
+        </p>
+        <div class="flex flex-col sm:flex-row gap-4 justify-center">
+            <a href="/contact/" class="btn bg-white text-primary-600 hover:bg-gray-100 shadow-lg">
+                Get In Touch
+                <i class="fas fa-arrow-right ml-2"></i>
+            </a>
+            <a href="/portfolio/" class="btn border-white text-white hover:bg-white hover:text-primary-600">
+                View Our Work
+                <i class="fas fa-eye ml-2"></i>
+            </a>
+        </div>
+    </div>
+</section>
+
+{% endblock content %}
