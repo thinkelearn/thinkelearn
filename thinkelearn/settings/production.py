@@ -72,8 +72,10 @@ if os.environ.get('AWS_STORAGE_BUCKET_NAME'):
         'CacheControl': 'max-age=86400',
     }
     
-    # Use S3 for media files
-    DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+    # Override STORAGES setting for S3
+    STORAGES["default"] = {
+        "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+    }
     MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/'
 else:
     # Fallback to local storage (development)
