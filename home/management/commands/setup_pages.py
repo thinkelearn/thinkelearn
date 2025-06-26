@@ -45,7 +45,7 @@ class Command(BaseCommand):
                 hero_title='Contact Us',
                 hero_subtitle='Ready to transform your educational technology? Get in touch.',
                 to_address='hello@thinkelearn.com',
-                from_address='f.villegas@thinkelearn.com',
+                from_address='noreply@thinkelearn.com',
                 subject='New Contact Form Submission',
                 phone='+1 (289) 816-3749',
                 email='hello@thinkelearn.com',
