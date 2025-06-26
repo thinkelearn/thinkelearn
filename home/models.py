@@ -361,6 +361,12 @@ class ContactPage(AbstractEmailForm):
         
         FieldPanel('thank_you_text'),
         
+        MultiFieldPanel([
+            FieldPanel('to_address'),
+            FieldPanel('from_address'),
+            FieldPanel('subject'),
+        ], heading="Email Settings"),
+        
         FormSubmissionsPanel(),
     ]
 
