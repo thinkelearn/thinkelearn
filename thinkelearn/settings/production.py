@@ -73,14 +73,23 @@ if os.environ.get('AWS_STORAGE_BUCKET_NAME'):
     }
     
     # Override STORAGES setting for S3
-    STORAGES["default"] = {
-        "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+    STORAGES = {
+        "default": {
+            "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+        },
+        "staticfiles": {
+            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        },
     }
     MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/'
+    
+    # Debug logging
+    print(f"✅ S3 STORAGE ACTIVATED: Bucket={AWS_STORAGE_BUCKET_NAME}, Region={AWS_S3_REGION_NAME}")
 else:
     # Fallback to local storage (development)
     MEDIA_URL = '/media/'
     MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+    print("⚠️  S3 STORAGE NOT ACTIVATED: Using local storage")
 
 # Security headers
 SECURE_BROWSER_XSS_FILTER = True
