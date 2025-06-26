@@ -82,14 +82,11 @@ if os.environ.get('AWS_STORAGE_BUCKET_NAME'):
         },
     }
     MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/'
-    
-    # Debug logging
-    print(f"✅ S3 STORAGE ACTIVATED: Bucket={AWS_STORAGE_BUCKET_NAME}, Region={AWS_S3_REGION_NAME}")
 else:
-    # Fallback to local storage (development)
+    # Fallback to local storage (development or during Docker build)
+    # Note: During Docker build, AWS vars aren't available yet - this is expected
     MEDIA_URL = '/media/'
     MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
-    print("⚠️  S3 STORAGE NOT ACTIVATED: Using local storage")
 
 # Security headers
 SECURE_BROWSER_XSS_FILTER = True
