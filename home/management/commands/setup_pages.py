@@ -44,11 +44,11 @@ class Command(BaseCommand):
                 slug='contact',
                 hero_title='Contact Us',
                 hero_subtitle='Ready to transform your educational technology? Get in touch.',
-                to_address='info@thinkelearn.com',
+                to_address='hello@thinkelearn.com',
                 from_address='noreply@thinkelearn.com',
                 subject='New Contact Form Submission',
-                phone='+1 (555) 123-4567',
-                email='info@thinkelearn.com',
+                phone='+1 (289) 816-3749',
+                email='hello@thinkelearn.com',
             )
             home_page.add_child(instance=contact_page)
             contact_page.save_revision().publish()
