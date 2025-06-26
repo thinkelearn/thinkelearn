@@ -5,6 +5,7 @@
 Set these environment variables in your Railway project dashboard:
 
 ### Required Variables
+
 ```bash
 SECRET_KEY=your-secret-key-here-make-it-long-and-random
 DATABASE_URL=postgresql://... (Railway will provide this automatically)
@@ -12,6 +13,7 @@ DJANGO_SETTINGS_MODULE=thinkelearn.settings.production
 ```
 
 ### Optional Variables (for email functionality)
+
 ```bash
 EMAIL_HOST=smtp.gmail.com
 EMAIL_PORT=587
@@ -24,6 +26,7 @@ WAGTAILADMIN_BASE_URL=https://your-app.railway.app
 ## Deployment Steps
 
 1. **Push your code to GitHub**:
+
    ```bash
    git push origin main
    ```
@@ -43,6 +46,7 @@ WAGTAILADMIN_BASE_URL=https://your-app.railway.app
    - Or trigger manual deployment from the Railway dashboard
 
 5. **Run Initial Setup** (after first deployment):
+
    ```bash
    # Create superuser via Railway CLI or web terminal
    python manage.py createsuperuser
