@@ -5,6 +5,13 @@ import os
 class Command(BaseCommand):
     help = 'Create a superuser with environment variables'
 
+    def add_arguments(self, parser):
+        parser.add_argument(
+            '--reset',
+            action='store_true',
+            help='Delete existing user and create a new one',
+        )
+
     def handle(self, *args, **options):
         User = get_user_model()
         
@@ -15,18 +22,24 @@ class Command(BaseCommand):
         
         # Check if user already exists
         if User.objects.filter(username=username).exists():
-            self.stdout.write(
-                self.style.WARNING(f'User "{username}" already exists.')
-            )
-            return
+            if options['reset']:
+                User.objects.filter(username=username).delete()
+                self.stdout.write(
+                    self.style.WARNING(f'Deleted existing user "{username}".')
+                )
+            else:
+                self.stdout.write(
+                    self.style.WARNING(f'User "{username}" already exists. Use --reset to recreate.')
+                )
+                return
         
         # Create superuser
-        User.objects.create_superuser(
+        user = User.objects.create_superuser(
             username=username,
             email=email,
             password=password
         )
         
         self.stdout.write(
-            self.style.SUCCESS(f'Superuser "{username}" created successfully.')
+            self.style.SUCCESS(f'Superuser "{username}" created successfully with email {email}.')
         )
