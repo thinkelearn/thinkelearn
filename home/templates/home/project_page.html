@@ -1,0 +1,243 @@
+{% extends "base.html" %}
+{% load static wagtailcore_tags wagtailimages_tags %}
+
+{% block body_class %}template-projectpage{% endblock %}
+
+{% block content %}
+
+<!-- Hero Section -->
+<section class="bg-white section-padding border-b">
+    <div class="max-w-7xl mx-auto container-padding">
+        <!-- Breadcrumb -->
+        <nav class="mb-8">
+            <ol class="flex items-center space-x-2 text-sm text-gray-500">
+                <li><a href="/" class="hover:text-primary-600 transition-colors">Home</a></li>
+                <li><i class="fas fa-chevron-right text-xs"></i></li>
+                <li><a href="{% pageurl page.get_parent %}" class="hover:text-primary-600 transition-colors">Portfolio</a></li>
+                <li><i class="fas fa-chevron-right text-xs"></i></li>
+                <li class="text-gray-900">{{ page.title }}</li>
+            </ol>
+        </nav>
+        
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
+            <!-- Project Info -->
+            <div>
+                <h1 class="text-3xl lg:text-5xl font-heading font-bold mb-6 text-gray-900 leading-tight">
+                    {{ page.title }}
+                </h1>
+                
+                {% if page.intro %}
+                <p class="text-xl text-gray-600 mb-8 leading-relaxed">{{ page.intro }}</p>
+                {% endif %}
+                
+                <!-- Project Meta -->
+                <div class="grid grid-cols-2 gap-6 mb-8">
+                    {% if page.client_name %}
+                    <div>
+                        <h3 class="font-semibold text-gray-900 mb-2">Client</h3>
+                        <p class="text-gray-600">{{ page.client_name }}</p>
+                    </div>
+                    {% endif %}
+                    
+                    <div>
+                        <h3 class="font-semibold text-gray-900 mb-2">Completed</h3>
+                        <p class="text-gray-600">{{ page.project_date|date:"F Y" }}</p>
+                    </div>
+                    
+                    {% if page.categories.all %}
+                    <div>
+                        <h3 class="font-semibold text-gray-900 mb-2">Category</h3>
+                        <div class="flex flex-wrap gap-2">
+                            {% for category in page.categories.all %}
+                                <span class="inline-block bg-primary-100 text-primary-700 text-sm px-3 py-1 rounded-full">
+                                    {{ category.name }}
+                                </span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if page.get_technologies_list %}
+                    <div>
+                        <h3 class="font-semibold text-gray-900 mb-2">Technologies</h3>
+                        <div class="flex flex-wrap gap-2">
+                            {% for tech in page.get_technologies_list %}
+                                <span class="inline-block bg-gray-100 text-gray-700 text-sm px-3 py-1 rounded-full">
+                                    {{ tech }}
+                                </span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <!-- Action Buttons -->
+                <div class="flex flex-col sm:flex-row gap-4">
+                    {% if page.project_url %}
+                    <a href="{{ page.project_url }}" target="_blank" class="btn bg-primary-600 text-white hover:bg-primary-700 shadow-lg">
+                        View Live Project
+                        <i class="fas fa-external-link-alt ml-2"></i>
+                    </a>
+                    {% endif %}
+                    <a href="/contact/" class="btn border-primary-600 text-primary-600 hover:bg-primary-600 hover:text-white">
+                        Start Your Project
+                        <i class="fas fa-rocket ml-2"></i>
+                    </a>
+                </div>
+            </div>
+            
+            <!-- Featured Image -->
+            {% if page.featured_image %}
+            <div class="lg:order-first">
+                {% image page.featured_image fill-600x400 class="w-full h-64 lg:h-96 object-cover rounded-lg shadow-2xl" %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</section>
+
+<!-- Project Description -->
+{% if page.description %}
+<section class="section-padding bg-white">
+    <div class="max-w-4xl mx-auto container-padding">
+        <div class="prose prose-lg max-w-none">
+            {{ page.description|richtext }}
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- Challenge Section -->
+{% if page.challenge_content %}
+<section class="section-padding bg-gray-50">
+    <div class="max-w-4xl mx-auto container-padding">
+        <h2 class="text-3xl font-heading font-bold mb-8 text-gray-900">{{ page.challenge_title }}</h2>
+        <div class="prose prose-lg max-w-none">
+            {{ page.challenge_content|richtext }}
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- Solution Section -->
+{% if page.solution_content %}
+<section class="section-padding bg-white">
+    <div class="max-w-4xl mx-auto container-padding">
+        <h2 class="text-3xl font-heading font-bold mb-8 text-gray-900">{{ page.solution_title }}</h2>
+        <div class="prose prose-lg max-w-none">
+            {{ page.solution_content|richtext }}
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- Results Section -->
+{% if page.results %}
+<section class="section-padding bg-primary-50">
+    <div class="max-w-7xl mx-auto container-padding">
+        <h2 class="text-3xl font-heading font-bold mb-12 text-gray-900 text-center">{{ page.results_title }}</h2>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {% for result in page.results %}
+                <div class="bg-white rounded-lg p-8 text-center shadow-sm">
+                    <div class="text-3xl font-bold text-primary-600 mb-2">{{ result.value.value }}</div>
+                    <h3 class="font-semibold text-gray-900 mb-2">{{ result.value.label }}</h3>
+                    {% if result.value.description %}
+                    <p class="text-gray-600 text-sm">{{ result.value.description }}</p>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- Testimonial Section -->
+{% if page.testimonial_quote %}
+<section class="section-padding bg-white">
+    <div class="max-w-4xl mx-auto container-padding">
+        <div class="bg-gray-50 rounded-lg p-8 lg:p-12 text-center">
+            <div class="mb-6">
+                <i class="fas fa-quote-left text-primary-600 text-3xl"></i>
+            </div>
+            <blockquote class="text-xl lg:text-2xl text-gray-700 mb-8 leading-relaxed">
+                "{{ page.testimonial_quote }}"
+            </blockquote>
+            <div class="flex items-center justify-center">
+                {% if page.testimonial_avatar %}
+                    {% image page.testimonial_avatar fill-60x60 class="w-15 h-15 rounded-full mr-4" %}
+                {% else %}
+                    <div class="w-15 h-15 bg-primary-100 rounded-full flex items-center justify-center mr-4">
+                        <i class="fas fa-user text-primary-600"></i>
+                    </div>
+                {% endif %}
+                <div class="text-left">
+                    <div class="font-semibold text-gray-900">{{ page.testimonial_author }}</div>
+                    {% if page.testimonial_company %}
+                    <div class="text-sm text-gray-600">{{ page.testimonial_company }}</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- Related Projects -->
+{% if related_projects %}
+<section class="section-padding bg-gray-50">
+    <div class="max-w-7xl mx-auto container-padding">
+        <h3 class="text-2xl font-heading font-bold mb-8 text-gray-900 text-center">Related Projects</h3>
+        
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {% for project in related_projects %}
+                <article class="card-hover group bg-white">
+                    {% if project.featured_image %}
+                    <div class="aspect-w-16 aspect-h-9 mb-4 overflow-hidden rounded-t-lg">
+                        <a href="{% pageurl project %}">
+                            {% image project.featured_image fill-300x200 class="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300" %}
+                        </a>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="p-6">
+                        <h4 class="text-lg font-semibold mb-2 text-gray-900 group-hover:text-primary-600 transition-colors">
+                            <a href="{% pageurl project %}">{{ project.title }}</a>
+                        </h4>
+                        
+                        {% if project.intro %}
+                        <p class="text-gray-600 text-sm mb-3">{{ project.intro|truncatewords:15 }}</p>
+                        {% endif %}
+                        
+                        <div class="text-xs text-gray-500">{{ project.project_date|date:"M Y" }}</div>
+                    </div>
+                </article>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- Call to Action -->
+<section class="section-padding bg-primary-600 text-white">
+    <div class="max-w-4xl mx-auto container-padding text-center">
+        <h2 class="text-2xl lg:text-3xl font-heading font-bold mb-4">
+            Inspired by This Project?
+        </h2>
+        <p class="text-xl mb-6 text-primary-100">
+            Let's create something amazing together for your educational technology needs.
+        </p>
+        <div class="flex flex-col sm:flex-row gap-4 justify-center">
+            <a href="/contact/" class="btn bg-white text-primary-600 hover:bg-gray-100 shadow-lg">
+                Start a Conversation
+                <i class="fas fa-arrow-right ml-2"></i>
+            </a>
+            <a href="{% pageurl page.get_parent %}" class="btn border-white text-white hover:bg-white hover:text-primary-600">
+                View More Projects
+                <i class="fas fa-eye ml-2"></i>
+            </a>
+        </div>
+    </div>
+</section>
+
+{% endblock content %}
