@@ -19,7 +19,7 @@ EMAIL_HOST=smtp.gmail.com
 EMAIL_PORT=587
 EMAIL_HOST_USER=your-email@gmail.com
 EMAIL_HOST_PASSWORD=your-app-password
-DEFAULT_FROM_EMAIL=hello@thinkelearn.com
+DEFAULT_FROM_EMAIL=noreply@thinkelearn.com
 WAGTAILADMIN_BASE_URL=https://your-app.railway.app
 ```
 
