@@ -1,12 +1,15 @@
-{% load wagtailcore_tags %}
+{% load wagtailcore_tags static %}
 
 <header class="bg-white shadow-sm sticky top-0 z-50">
     <nav class="max-w-7xl mx-auto container-padding">
         <div class="flex justify-between items-center h-16">
             <!-- Logo -->
             <div class="flex items-center">
-                <a href="/" class="text-2xl font-heading font-bold text-primary-600 hover:text-primary-700 transition-colors">
-                    THINK eLearn
+                <a href="/" class="flex items-center space-x-3 hover:opacity-90 transition-opacity">
+                    <img src="{% static 'images/logo.png' %}" alt="THINK eLearn" class="h-8 w-auto"
+                         onload="this.nextElementSibling.style.display='none';"
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';">
+                    <span class="text-2xl font-heading font-bold text-primary-600" style="display: none;">THINK eLearn</span>
                 </a>
             </div>
 
