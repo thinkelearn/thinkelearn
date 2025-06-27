@@ -13,3 +13,8 @@ dependencies = [
     "wagtail>=7.0.1",
     "whitenoise>=6.9.0",
 ]
+
+[dependency-groups]
+dev = [
+    "pre-commit>=4.2.0",
+]
