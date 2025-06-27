@@ -66,7 +66,7 @@ thinkelearn/
 1. **Clone the repository**
 
    ```bash
-   git clone <repository-url>
+   git clone <https://github.com/think-elearn/thinkelearn>
    cd thinkelearn
    ```
 
@@ -104,7 +104,7 @@ thinkelearn/
 1. **Clone and setup environment**
 
    ```bash
-   git clone <repository-url>
+   git clone <https://github.com/think-elearn/thinkelearn>
    cd thinkelearn
 
    # Install Python dependencies
