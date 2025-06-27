@@ -19,6 +19,9 @@ class BlogIndexPage(Page):
 
     content_panels = Page.content_panels + [FieldPanel("intro")]
 
+    parent_page_types = ["home.HomePage"]
+    subpage_types = ["blog.BlogPage"]
+
     def get_context(self, request):
         # Update context to include only published posts, ordered by reverse-chron
         context = super().get_context(request)
@@ -116,6 +119,9 @@ class BlogPage(Page):
             heading="Author information",
         ),
     ]
+
+    parent_page_types = ["blog.BlogIndexPage"]
+    subpage_types = []
 
     def main_image(self):
         if self.featured_image:

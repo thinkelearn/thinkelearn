@@ -156,6 +156,14 @@ class HomePage(Page):
             : self.recent_posts_count
         ]
 
+    parent_page_types = ["wagtailcore.Page"]
+    subpage_types = [
+        "home.AboutPage",
+        "home.ContactPage",
+        "home.PortfolioIndexPage",
+        "blog.BlogIndexPage",
+    ]
+
     class Meta:
         verbose_name = "Home Page"
 
@@ -331,6 +339,8 @@ class AboutPage(Page):
         ),
     ]
 
+    subpage_types = []
+
     class Meta:
         verbose_name = "About Page"
 
@@ -448,6 +458,8 @@ class ContactPage(AbstractEmailForm):
         FormSubmissionsPanel(),
     ]
 
+    subpage_types = []
+
     class Meta:
         verbose_name = "Contact Page"
 
@@ -456,6 +468,9 @@ class PortfolioIndexPage(Page):
     intro = RichTextField(blank=True)
 
     content_panels = Page.content_panels + [FieldPanel("intro")]
+
+    parent_page_types = ["home.HomePage"]
+    subpage_types = ["home.ProjectPage"]
 
     def get_context(self, request):
         # Update context to include only published projects, ordered by reverse-chron
@@ -615,6 +630,9 @@ class ProjectPage(Page):
             heading="Client Testimonial",
         ),
     ]
+
+    parent_page_types = ["home.PortfolioIndexPage"]
+    subpage_types = []
 
     def get_technologies_list(self):
         """Return technologies as a list"""
