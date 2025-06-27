@@ -26,12 +26,12 @@
 <section class="section-padding bg-gray-50 border-b">
     <div class="max-w-7xl mx-auto container-padding">
         <div class="flex flex-wrap justify-center gap-4">
-            <a href="{% pageurl page %}" 
+            <a href="{% pageurl page %}"
                class="px-6 py-2 rounded-full border transition-colors {% if not request.GET.category %}bg-primary-600 text-white border-primary-600{% else %}bg-white text-gray-700 border-gray-300 hover:border-primary-600 hover:text-primary-600{% endif %}">
                 All Projects
             </a>
             {% for category in categories %}
-                <a href="?category={{ category.slug }}" 
+                <a href="?category={{ category.slug }}"
                    class="px-6 py-2 rounded-full border transition-colors {% if request.GET.category == category.slug %}bg-primary-600 text-white border-primary-600{% else %}bg-white text-gray-700 border-gray-300 hover:border-primary-600 hover:text-primary-600{% endif %}">
                     {{ category.name }}
                 </a>
@@ -44,7 +44,7 @@
 <!-- Projects Grid -->
 <section class="section-padding bg-white">
     <div class="max-w-7xl mx-auto container-padding">
-        
+
         {% if projects %}
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {% for project in projects %}
@@ -56,7 +56,7 @@
                         </a>
                     </div>
                     {% endif %}
-                    
+
                     <div class="p-6">
                         <!-- Meta info -->
                         <div class="flex items-center justify-between text-sm text-gray-500 mb-3">
@@ -65,16 +65,16 @@
                                 <span class="text-primary-600 font-medium">{{ project.client_name }}</span>
                             {% endif %}
                         </div>
-                        
+
                         <!-- Title and intro -->
                         <h2 class="text-xl font-semibold mb-3 text-gray-900 group-hover:text-primary-600 transition-colors">
                             <a href="{% pageurl project %}">{{ project.title }}</a>
                         </h2>
-                        
+
                         {% if project.intro %}
                         <p class="text-gray-600 mb-4 leading-relaxed">{{ project.intro }}</p>
                         {% endif %}
-                        
+
                         <!-- Categories -->
                         {% if project.categories.all %}
                         <div class="flex flex-wrap gap-2 mb-4">
@@ -85,14 +85,14 @@
                             {% endfor %}
                         </div>
                         {% endif %}
-                        
+
                         <!-- View project link -->
                         <div class="flex items-center justify-between">
                             <a href="{% pageurl project %}" class="inline-flex items-center text-primary-600 hover:text-primary-700 font-medium transition-colors">
                                 View Case Study
                                 <i class="fas fa-arrow-right ml-2 text-sm"></i>
                             </a>
-                            
+
                             {% if project.project_url %}
                             <a href="{{ project.project_url }}" target="_blank" class="text-gray-400 hover:text-primary-600 transition-colors" title="Visit Live Site">
                                 <i class="fas fa-external-link-alt"></i>
@@ -103,7 +103,7 @@
                 </article>
             {% endfor %}
         </div>
-        
+
         {% else %}
         <!-- No projects message -->
         <div class="text-center py-16">

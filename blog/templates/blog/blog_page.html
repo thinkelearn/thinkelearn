@@ -18,24 +18,24 @@
                 <li class="text-gray-900">{{ page.title }}</li>
             </ol>
         </nav>
-        
+
         <!-- Article header -->
         <header class="mb-8">
             <h1 class="text-3xl lg:text-5xl font-heading font-bold mb-6 text-gray-900 leading-tight">
                 {{ page.title }}
             </h1>
-            
+
             {% if page.intro %}
             <p class="text-xl text-gray-600 mb-6 leading-relaxed">{{ page.intro }}</p>
             {% endif %}
-            
+
             <!-- Meta information -->
             <div class="flex flex-wrap items-center gap-6 text-sm text-gray-500 mb-6">
                 <div class="flex items-center">
                     <i class="fas fa-calendar mr-2"></i>
                     <span>{{ page.date|date:"F d, Y" }}</span>
                 </div>
-                
+
                 {% if page.author_name %}
                 <div class="flex items-center">
                     {% if page.author_image %}
@@ -48,7 +48,7 @@
                     <span>by {{ page.author_name }}</span>
                 </div>
                 {% endif %}
-                
+
                 {% if page.categories.all %}
                 <div class="flex items-center">
                     <i class="fas fa-folder mr-2"></i>
@@ -58,7 +58,7 @@
                 </div>
                 {% endif %}
             </div>
-            
+
             <!-- Tags -->
             {% if page.tags.all %}
             <div class="flex flex-wrap gap-2">
@@ -70,7 +70,7 @@
             </div>
             {% endif %}
         </header>
-        
+
         <!-- Featured image -->
         {% if page.featured_image %}
         <div class="mb-8">
@@ -118,7 +118,7 @@
 <section class="section-padding bg-white">
     <div class="max-w-7xl mx-auto container-padding">
         <h3 class="text-2xl font-heading font-bold mb-8 text-gray-900 text-center">Related Posts</h3>
-        
+
         <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
             {% for post in related_posts %}
                 <article class="card-hover group">
@@ -129,16 +129,16 @@
                         </a>
                     </div>
                     {% endif %}
-                    
+
                     <div class="p-4">
                         <h4 class="text-lg font-semibold mb-2 text-gray-900 group-hover:text-primary-600 transition-colors">
                             <a href="{% pageurl post %}">{{ post.title }}</a>
                         </h4>
-                        
+
                         {% if post.intro %}
                         <p class="text-gray-600 text-sm mb-3">{{ post.intro|truncatewords:15 }}</p>
                         {% endif %}
-                        
+
                         <div class="text-xs text-gray-500">{{ post.date|date:"M d, Y" }}</div>
                     </div>
                 </article>

@@ -33,14 +33,14 @@
 
 <body class="h-full bg-gray-50 {% block body_class %}{% endblock %}">
     {% wagtailuserbar %}
-    
+
     <div class="min-h-full">
         {% include 'includes/header.html' %}
-        
+
         <main>
             {% block content %}{% endblock %}
         </main>
-        
+
         {% include 'includes/footer.html' %}
     </div>
 
@@ -48,13 +48,13 @@
     <script type="text/javascript" src="{% static 'js/thinkelearn.js' %}"></script>
 
     {% block extra_js %}{% endblock %}
-    
+
     <!-- Mobile menu toggle script -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const mobileMenuButton = document.getElementById('mobile-menu-button');
             const mobileMenu = document.getElementById('mobile-menu');
-            
+
             if (mobileMenuButton && mobileMenu) {
                 mobileMenuButton.addEventListener('click', function() {
                     mobileMenu.classList.toggle('hidden');

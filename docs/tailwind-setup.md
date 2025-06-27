@@ -88,11 +88,11 @@ Create `thinkelearn/static/css/src/input.css`:
   body {
     @apply font-sans text-gray-900 leading-relaxed;
   }
-  
+
   h1, h2, h3, h4, h5, h6 {
     @apply font-heading font-semibold;
   }
-  
+
   h1 { @apply text-4xl lg:text-5xl; }
   h2 { @apply text-3xl lg:text-4xl; }
   h3 { @apply text-2xl lg:text-3xl; }
@@ -106,39 +106,39 @@ Create `thinkelearn/static/css/src/input.css`:
   .btn {
     @apply inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-md transition-colors duration-200;
   }
-  
+
   .btn-primary {
     @apply btn bg-primary-600 text-white hover:bg-primary-700 focus:ring-2 focus:ring-primary-500 focus:ring-offset-2;
   }
-  
+
   .btn-secondary {
     @apply btn bg-white text-primary-600 border-primary-600 hover:bg-primary-50;
   }
-  
+
   .btn-outline {
     @apply btn border-gray-300 text-gray-700 hover:bg-gray-50;
   }
-  
+
   .card {
     @apply bg-white rounded-lg shadow-md overflow-hidden;
   }
-  
+
   .card-hover {
     @apply card transition-shadow duration-300 hover:shadow-lg;
   }
-  
+
   .section-padding {
     @apply py-16 lg:py-24;
   }
-  
+
   .container-padding {
     @apply px-4 sm:px-6 lg:px-8;
   }
-  
+
   .rich-text {
     @apply prose prose-lg max-w-none;
   }
-  
+
   .hero-gradient {
     @apply bg-gradient-to-br from-primary-600 via-primary-700 to-primary-800;
   }
@@ -149,7 +149,7 @@ Create `thinkelearn/static/css/src/input.css`:
   .wagtail-rich-text {
     @apply rich-text;
   }
-  
+
   .responsive-image {
     @apply w-full h-auto rounded-lg;
   }
@@ -200,26 +200,26 @@ if DEBUG:
     <title>{% block title %}{% if page.seo_title %}{{ page.seo_title }}{% else %}{{ page.title }}{% endif %} | THINK eLearn{% endblock %}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="{% block description %}{{ page.search_description|default:'Empowering Learning Through Innovation' }}{% endblock %}">
-    
+
     {% load static %}
     <link rel="stylesheet" href="{% static 'css/thinkelearn.css' %}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-    
+
     {% block extra_css %}{% endblock %}
 </head>
 <body class="h-full bg-gray-50">
     <div class="min-h-full">
         {% include 'includes/header.html' %}
-        
+
         <main>
             {% block content %}{% endblock %}
         </main>
-        
+
         {% include 'includes/footer.html' %}
     </div>
-    
+
     {% block extra_js %}{% endblock %}
 </body>
 </html>
@@ -239,7 +239,7 @@ if DEBUG:
                     THINK eLearn
                 </a>
             </div>
-            
+
             <div class="hidden md:block">
                 <div class="ml-10 flex items-center space-x-8">
                     <a href="/about/" class="text-gray-700 hover:text-primary-600 transition-colors">About</a>
@@ -248,7 +248,7 @@ if DEBUG:
                     <a href="/contact/" class="btn-primary">Contact Us</a>
                 </div>
             </div>
-            
+
             <!-- Mobile menu button -->
             <div class="md:hidden">
                 <button type="button" class="text-gray-700 hover:text-primary-600" id="mobile-menu-button">

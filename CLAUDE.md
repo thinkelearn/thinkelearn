@@ -114,7 +114,7 @@ Key dependencies:
 ### Design System
 
 - **Primary colors**: Blue theme (#3b82f6 variants)
-- **Secondary colors**: Green theme (#22c55e variants)  
+- **Secondary colors**: Green theme (#22c55e variants)
 - **Typography**: Inter (body), Poppins (headings)
 - **Components**: Buttons, cards, forms with consistent styling
 - **Responsive**: Mobile-first approach with Tailwind breakpoints

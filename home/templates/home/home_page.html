@@ -61,7 +61,7 @@
                 Discover what makes THINK eLearn the perfect partner for your educational technology needs.
             </p>
         </div>
-        
+
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {% for feature in page.features %}
                 <div class="card-hover text-center">
@@ -93,7 +93,7 @@
                 See what our clients have to say about their experience working with us.
             </p>
         </div>
-        
+
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {% for testimonial in page.testimonials %}
                 <div class="card-hover">
@@ -141,7 +141,7 @@
                 Stay informed with our latest articles on educational technology, learning methodologies, and industry insights.
             </p>
         </div>
-        
+
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {% for post in recent_posts %}
                 <article class="card-hover group">
@@ -152,7 +152,7 @@
                         </a>
                     </div>
                     {% endif %}
-                    
+
                     <div class="p-6">
                         <!-- Meta info -->
                         <div class="flex items-center text-sm text-gray-500 mb-3">
@@ -162,16 +162,16 @@
                                 <span>by {{ post.author_name }}</span>
                             {% endif %}
                         </div>
-                        
+
                         <!-- Title and intro -->
                         <h3 class="text-xl font-semibold mb-3 text-gray-900 group-hover:text-primary-600 transition-colors">
                             <a href="{% pageurl post %}">{{ post.title }}</a>
                         </h3>
-                        
+
                         {% if post.intro %}
                         <p class="text-gray-600 mb-4 leading-relaxed">{{ post.intro|truncatewords:20 }}</p>
                         {% endif %}
-                        
+
                         <!-- Read more link -->
                         <a href="{% pageurl post %}" class="inline-flex items-center text-primary-600 hover:text-primary-700 font-medium transition-colors">
                             Read More
@@ -181,7 +181,7 @@
                 </article>
             {% endfor %}
         </div>
-        
+
         <div class="text-center mt-12">
             <a href="/blog/" class="btn border-primary-600 text-primary-600 hover:bg-primary-600 hover:text-white">
                 View All Posts

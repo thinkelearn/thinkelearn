@@ -24,7 +24,7 @@
 <!-- Blog Posts Section -->
 <section class="section-padding bg-white">
     <div class="max-w-7xl mx-auto container-padding">
-        
+
         {% if posts %}
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {% for post in posts %}
@@ -36,7 +36,7 @@
                         </a>
                     </div>
                     {% endif %}
-                    
+
                     <div class="p-6">
                         <!-- Meta info -->
                         <div class="flex items-center text-sm text-gray-500 mb-3">
@@ -46,16 +46,16 @@
                                 <span>by {{ post.author_name }}</span>
                             {% endif %}
                         </div>
-                        
+
                         <!-- Title and intro -->
                         <h2 class="text-xl font-semibold mb-3 text-gray-900 group-hover:text-primary-600 transition-colors">
                             <a href="{% pageurl post %}">{{ post.title }}</a>
                         </h2>
-                        
+
                         {% if post.intro %}
                         <p class="text-gray-600 mb-4 leading-relaxed">{{ post.intro }}</p>
                         {% endif %}
-                        
+
                         <!-- Tags -->
                         {% if post.tags.all %}
                         <div class="flex flex-wrap gap-2 mb-4">
@@ -66,7 +66,7 @@
                             {% endfor %}
                         </div>
                         {% endif %}
-                        
+
                         <!-- Read more link -->
                         <a href="{% pageurl post %}" class="inline-flex items-center text-primary-600 hover:text-primary-700 font-medium transition-colors">
                             Read More
@@ -76,7 +76,7 @@
                 </article>
             {% endfor %}
         </div>
-        
+
         <!-- Pagination -->
         {% if posts.has_other_pages %}
         <div class="flex justify-center mt-12">
@@ -86,7 +86,7 @@
                         <i class="fas fa-chevron-left"></i>
                     </a>
                 {% endif %}
-                
+
                 {% for page_num in posts.paginator.page_range %}
                     {% if page_num == posts.number %}
                         <span class="px-3 py-2 bg-primary-600 text-white rounded">{{ page_num }}</span>
@@ -94,7 +94,7 @@
                         <a href="?page={{ page_num }}" class="px-3 py-2 text-gray-500 hover:text-primary-600 transition-colors">{{ page_num }}</a>
                     {% endif %}
                 {% endfor %}
-                
+
                 {% if posts.has_next %}
                     <a href="?page={{ posts.next_page_number }}" class="px-3 py-2 text-gray-500 hover:text-primary-600 transition-colors">
                         <i class="fas fa-chevron-right"></i>
@@ -103,7 +103,7 @@
             </nav>
         </div>
         {% endif %}
-        
+
         {% else %}
         <!-- No posts message -->
         <div class="text-center py-16">

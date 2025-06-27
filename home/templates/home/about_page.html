@@ -73,7 +73,7 @@
                 The principles that guide everything we do at THINK eLearn.
             </p>
         </div>
-        
+
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {% for value in page.values %}
                 <div class="card-hover text-center">
@@ -105,7 +105,7 @@
                 Get to know the passionate individuals behind THINK eLearn.
             </p>
         </div>
-        
+
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {% for member in page.team_members %}
                 <div class="card-hover text-center">
@@ -120,7 +120,7 @@
                         <h3 class="text-xl font-semibold mb-2 text-gray-900">{{ member.value.name }}</h3>
                         <p class="text-primary-600 font-medium mb-4">{{ member.value.role }}</p>
                         <p class="text-gray-600 leading-relaxed mb-6">{{ member.value.bio }}</p>
-                        
+
                         <!-- Social Links -->
                         <div class="flex justify-center space-x-4">
                             {% if member.value.linkedin %}
@@ -159,16 +159,16 @@
                 Key milestones in our company's growth and evolution.
             </p>
         </div>
-        
+
         <div class="relative">
             <!-- Timeline line -->
             <div class="absolute left-8 md:left-1/2 transform md:-translate-x-px top-0 bottom-0 w-0.5 bg-primary-200"></div>
-            
+
             {% for milestone in page.milestones %}
                 <div class="relative flex items-center mb-8 {% cycle 'md:flex-row' 'md:flex-row-reverse' %}">
                     <!-- Timeline dot -->
                     <div class="absolute left-8 md:left-1/2 transform -translate-x-1/2 w-4 h-4 bg-primary-600 rounded-full border-4 border-white shadow-lg z-10"></div>
-                    
+
                     <!-- Content -->
                     <div class="ml-20 md:ml-0 md:w-1/2 {% if forloop.counter0|divisibleby:2 %}md:pr-8 md:text-right{% else %}md:pl-8{% endif %}">
                         <div class="card-hover p-6">

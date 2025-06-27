@@ -12,7 +12,7 @@ class HomePage(Page):
     hero_image = models.ForeignKey('wagtailimages.Image', null=True, blank=True, on_delete=models.SET_NULL)
     hero_cta_text = models.CharField(max_length=50, default="Get Started")
     hero_cta_link = models.ForeignKey('wagtailcore.Page', null=True, blank=True, on_delete=models.SET_NULL)
-    
+
     # Features Section
     features_title = models.CharField(max_length=255, default="Why Choose THINK eLearn")
     features = StreamField([
@@ -22,7 +22,7 @@ class HomePage(Page):
             ('description', blocks.TextBlock()),
         ]))
     ], blank=True)
-    
+
     # Testimonials
     testimonials = StreamField([
         ('testimonial', blocks.StructBlock([
@@ -32,7 +32,7 @@ class HomePage(Page):
             ('avatar', ImageChooserBlock(required=False)),
         ]))
     ], blank=True)
-    
+
     # Recent Blog Posts (auto-populated)
     show_recent_posts = models.BooleanField(default=True)
     recent_posts_count = models.IntegerField(default=3)
@@ -46,11 +46,11 @@ class AboutPage(Page):
     story_title = models.CharField(max_length=255, default="Our Story")
     story_content = RichTextField()
     story_image = models.ForeignKey('wagtailimages.Image', null=True, blank=True, on_delete=models.SET_NULL)
-    
+
     # Mission & Values
     mission_title = models.CharField(max_length=255, default="Our Mission")
     mission_content = RichTextField()
-    
+
     values = StreamField([
         ('value', blocks.StructBlock([
             ('title', blocks.CharBlock()),
@@ -58,7 +58,7 @@ class AboutPage(Page):
             ('icon', blocks.CharBlock(help_text="Font Awesome icon class")),
         ]))
     ], blank=True)
-    
+
     # Team Section
     team_title = models.CharField(max_length=255, default="Meet Our Team")
     team_members = StreamField([
@@ -79,7 +79,7 @@ class AboutPage(Page):
 class BlogIndexPage(Page):
     intro = RichTextField(blank=True)
     featured_post = models.ForeignKey('BlogPage', null=True, blank=True, on_delete=models.SET_NULL)
-    
+
     def get_blog_posts(self):
         return BlogPage.objects.live().descendant_of(self).order_by('-first_published_at')
 
@@ -89,7 +89,7 @@ class BlogPage(Page):
     published_date = models.DateTimeField(auto_now_add=True)
     featured_image = models.ForeignKey('wagtailimages.Image', null=True, blank=True, on_delete=models.SET_NULL)
     excerpt = models.TextField(max_length=300, help_text="Brief description for listings")
-    
+
     # Content
     body = StreamField([
         ('heading', blocks.CharBlock(form_classname="title")),
@@ -99,11 +99,11 @@ class BlogPage(Page):
         ('code', blocks.TextBlock(form_classname="monospace")),
         ('embed', EmbedBlock()),
     ])
-    
+
     # SEO & Organization
     categories = ParentalManyToManyField('BlogCategory', blank=True)
     tags = ClusterTaggableManager(through='BlogPageTag', blank=True)
-    
+
     # Reading time calculation
     @property
     def reading_time(self):
@@ -117,7 +117,7 @@ class BlogPage(Page):
 class PortfolioIndexPage(Page):
     intro = RichTextField(blank=True)
     featured_project = models.ForeignKey('ProjectPage', null=True, blank=True, on_delete=models.SET_NULL)
-    
+
 class ProjectPage(Page):
     # Project Details
     client = models.CharField(max_length=255)
@@ -129,19 +129,19 @@ class ProjectPage(Page):
     ])
     completion_date = models.DateField()
     project_url = models.URLField(blank=True)
-    
+
     # Content
     featured_image = models.ForeignKey('wagtailimages.Image', on_delete=models.CASCADE)
     overview = RichTextField()
     challenge = RichTextField(blank=True)
     solution = RichTextField(blank=True)
     results = RichTextField(blank=True)
-    
+
     # Gallery
     gallery_images = StreamField([
         ('image', ImageChooserBlock()),
     ], blank=True)
-    
+
     # Technologies Used
     technologies = StreamField([
         ('tech', blocks.StructBlock([
@@ -154,7 +154,7 @@ class ProjectPage(Page):
             ])),
         ]))
     ], blank=True)
-    
+
     # Testimonial
     testimonial_quote = models.TextField(blank=True)
     testimonial_author = models.CharField(max_length=255, blank=True)
@@ -167,12 +167,12 @@ class ProjectPage(Page):
 class ContactPage(Page):
     # Page Content
     intro = RichTextField(blank=True)
-    
+
     # Contact Information
     phone = models.CharField(max_length=20, blank=True)
     email = models.EmailField(blank=True)
     address = RichTextField(blank=True)
-    
+
     # Office Locations
     locations = StreamField([
         ('location', blocks.StructBlock([
@@ -183,7 +183,7 @@ class ContactPage(Page):
             ('map_embed', blocks.RawHTMLBlock(required=False)),
         ]))
     ], blank=True)
-    
+
     # Social Media
     social_links = StreamField([
         ('social', blocks.StructBlock([
@@ -197,7 +197,7 @@ class ContactPage(Page):
             ('url', blocks.URLBlock()),
         ]))
     ], blank=True)
-    
+
     # FAQ Section
     faqs = StreamField([
         ('faq', blocks.StructBlock([
@@ -214,7 +214,7 @@ class ContactFormSubmission(models.Model):
     subject = models.CharField(max_length=255)
     message = models.TextField()
     submitted_at = models.DateTimeField(auto_now_add=True)
-    
+
     class Meta:
         ordering = ['-submitted_at']
 ```
@@ -224,7 +224,7 @@ class ContactFormSubmission(models.Model):
 ```python
 class ServiceIndexPage(Page):
     intro = RichTextField(blank=True)
-    
+
 class ServicePage(Page):
     # Service Details
     service_type = models.CharField(max_length=100, choices=[
@@ -233,11 +233,11 @@ class ServicePage(Page):
         ('development', 'Custom Development'),
         ('support', 'Support & Maintenance'),
     ])
-    
+
     # Content
     featured_image = models.ForeignKey('wagtailimages.Image', on_delete=models.CASCADE)
     overview = RichTextField()
-    
+
     # Features & Benefits
     features = StreamField([
         ('feature', blocks.StructBlock([
@@ -246,7 +246,7 @@ class ServicePage(Page):
             ('icon', blocks.CharBlock()),
         ]))
     ], blank=True)
-    
+
     # Pricing (optional)
     show_pricing = models.BooleanField(default=False)
     price_from = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
@@ -264,7 +264,7 @@ class Testimonial(models.Model):
     author = models.CharField(max_length=255)
     company = models.CharField(max_length=255, blank=True)
     avatar = models.ForeignKey('wagtailimages.Image', null=True, blank=True, on_delete=models.SET_NULL)
-    
+
     panels = [
         FieldPanel('quote'),
         FieldPanel('author'),
@@ -276,7 +276,7 @@ class Partner(models.Model):
     name = models.CharField(max_length=255)
     logo = models.ForeignKey('wagtailimages.Image', on_delete=models.CASCADE)
     website = models.URLField(blank=True)
-    
+
 class BlogCategory(models.Model):
     name = models.CharField(max_length=100)
     slug = models.SlugField(unique=True)
