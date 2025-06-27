@@ -9,8 +9,10 @@ if os.environ.get("SENTRY_DSN"):
     sentry_sdk.init(
         dsn=os.environ.get("SENTRY_DSN"),
         integrations=[DjangoIntegration()],
-        traces_sample_rate=0.1,
+        traces_sample_rate=1.0,
         send_default_pii=True,
+        profile_session_sample_rate=0.5,
+        profile_lifecycle="trace",
     )
 
 # Security settings
