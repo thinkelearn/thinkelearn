@@ -156,7 +156,7 @@ class HomePage(Page):
             : self.recent_posts_count
         ]
 
-    parent_page_types = ["wagtailcore.Page"]
+    parent_page_types = []
     subpage_types = [
         "home.AboutPage",
         "home.ContactPage",
@@ -339,6 +339,7 @@ class AboutPage(Page):
         ),
     ]
 
+    parent_page_types = []
     subpage_types = []
 
     class Meta:
@@ -458,6 +459,7 @@ class ContactPage(AbstractEmailForm):
         FormSubmissionsPanel(),
     ]
 
+    parent_page_types = []
     subpage_types = []
 
     class Meta:
@@ -469,7 +471,7 @@ class PortfolioIndexPage(Page):
 
     content_panels = Page.content_panels + [FieldPanel("intro")]
 
-    parent_page_types = ["home.HomePage"]
+    parent_page_types = []
     subpage_types = ["home.ProjectPage"]
 
     def get_context(self, request):

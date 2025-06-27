@@ -19,7 +19,7 @@ class BlogIndexPage(Page):
 
     content_panels = Page.content_panels + [FieldPanel("intro")]
 
-    parent_page_types = ["home.HomePage"]
+    parent_page_types = []
     subpage_types = ["blog.BlogPage"]
 
     def get_context(self, request):
