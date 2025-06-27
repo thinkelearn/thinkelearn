@@ -97,6 +97,7 @@ thinkelearn/
    - Website: <http://localhost:8000>
    - Admin: <http://localhost:8000/admin/>
    - Django Admin: <http://localhost:8000/django-admin/>
+   - PgAdmin: <http://localhost:5050> (Email: `admin@thinkelearn.local`, Password: `admin`)
 
 ### Option 2: Traditional Setup
 
@@ -155,6 +156,7 @@ docker-compose exec db psql -U postgres -d thinkelearn
 # View logs
 docker-compose logs -f web              # Django logs
 docker-compose logs -f db               # Database logs
+docker-compose logs -f pgadmin          # PgAdmin logs
 ```
 
 ### Traditional Commands
@@ -182,7 +184,7 @@ npm install                             # Install Node.js dependencies
 ### Development
 
 - **Settings**: `thinkelearn.settings.dev`
-- **Database**: SQLite (traditional) or PostgreSQL (Docker)
+- **Database**: PostgreSQL (default) or SQLite (fallback for traditional setup)
 - **Debug**: Enabled
 - **Email**: Console backend
 
