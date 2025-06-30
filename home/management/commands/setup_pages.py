@@ -1,4 +1,5 @@
 from django.core.management.base import BaseCommand
+from wagtail.rich_text import RichText
 from home.models import (
     HomePage,
     AboutPage,
@@ -37,9 +38,13 @@ class Command(BaseCommand):
                 hero_title="About THINK eLearn",
                 hero_subtitle="Empowering educational institutions with innovative technology solutions.",
                 story_title="Our Story",
-                story_content="<p>THINK eLearn was founded with a mission to bridge the gap between traditional education and modern technology.</p>",
+                story_content=RichText(
+                    "<p>THINK eLearn was founded with a mission to bridge the gap between traditional education and modern technology.</p>"
+                ),
                 mission_title="Our Mission",
-                mission_content="<p>We empower educational institutions with cutting-edge technology solutions that enhance learning outcomes.</p>",
+                mission_content=RichText(
+                    "<p>We empower educational institutions with cutting-edge technology solutions that enhance learning outcomes.</p>"
+                ),
             )
             home_page.add_child(instance=about_page)
             about_page.save_revision().publish()
@@ -100,7 +105,9 @@ class Command(BaseCommand):
             blog_page = BlogIndexPage(
                 title="Blog",
                 slug="blog",
-                intro="<p>Stay updated with our latest insights on educational technology and industry trends.</p>",
+                intro=RichText(
+                    "<p>Stay updated with our latest insights on educational technology and industry trends.</p>"
+                ),
             )
             home_page.add_child(instance=blog_page)
             blog_page.save_revision().publish()
@@ -112,7 +119,9 @@ class Command(BaseCommand):
             portfolio_page = PortfolioIndexPage(
                 title="Portfolio",
                 slug="portfolio",
-                intro="<p>Explore our successful projects and case studies showcasing innovative educational technology solutions.</p>",
+                intro=RichText(
+                    "<p>Explore our successful projects and case studies showcasing innovative educational technology solutions.</p>"
+                ),
             )
             home_page.add_child(instance=portfolio_page)
             portfolio_page.save_revision().publish()
