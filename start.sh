@@ -63,6 +63,7 @@ show_usage() {
     echo ""
     echo "Commands:"
     echo "  start     Start all development containers (default)"
+    echo "  setup     Start containers and run full initial setup (admin + pages)"
     echo "  stop      Stop all running containers"
     echo "  reset     Stop containers and clean up Docker resources (preserves database)"
     echo "  clean     Stop containers and clean up everything (⚠️  REMOVES DATABASE)"
@@ -74,6 +75,7 @@ show_usage() {
     echo "Examples:"
     echo "  $0                # Start development environment"
     echo "  $0 start          # Start development environment"
+    echo "  $0 setup          # Start + create admin user + setup pages"
     echo "  $0 stop           # Stop all containers"
     echo "  $0 reset          # Clean up Docker issues, keep database"
     echo "  $0 clean          # ⚠️  DANGER: Removes all data including database"
@@ -115,6 +117,32 @@ start_containers() {
     echo ""
     print_status "Use 'docker-compose logs -f' to view logs"
     print_status "Use '$0 stop' to stop all containers"
+}
+
+# Function to run full setup (start + admin + pages)
+setup_environment() {
+    print_status "Setting up complete THINK eLearn development environment..."
+
+    # Start containers first
+    start_containers
+
+    # Create admin user
+    print_status "Creating admin user..."
+    print_status "Using defaults: admin / admin@thinkelearn.com / defaultpassword123"
+    docker-compose exec -T web python manage.py create_admin --reset
+
+    # Setup initial pages
+    print_status "Setting up core pages (About, Contact, Blog, Portfolio)..."
+    docker-compose exec -T web python manage.py setup_pages
+
+    echo ""
+    print_success "🎉 Complete setup finished!"
+    print_status "You can now log in to the admin with:"
+    echo "  👤 Username: admin"
+    echo "  🔒 Password: defaultpassword123"
+    echo "  🌐 Admin URL: http://localhost:8000/admin/"
+    echo ""
+    print_status "💡 Tip: Change the admin password after first login!"
 }
 
 # Function to stop containers
@@ -194,6 +222,10 @@ case "${1:-start}" in
     "start")
         check_dependencies
         start_containers
+        ;;
+    "setup")
+        check_dependencies
+        setup_environment
         ;;
     "stop")
         stop_containers

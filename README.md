@@ -73,19 +73,22 @@ thinkelearn/
 2. **Start the development environment**
 
    ```bash
-   # Quick start - starts all services with CSS watching and runs migrations
+   # Option A: Complete setup (recommended for first time)
+   ./start.sh setup
+
+   # Option B: Basic start (containers + migrations only)
    ./start.sh
 
-   # Alternative: use docker-compose directly (requires manual migration)
+   # Option C: Manual docker-compose (requires manual setup)
    docker-compose --profile css up
    ```
 
-3. **Create admin user** (first time only)
-
-   ```bash
-   # Create superuser
-   docker-compose exec web python manage.py createsuperuser
-   ```
+3. **Admin access** (after setup)
+   - If you used `./start.sh setup`: Login with `admin` / `defaultpassword123`
+   - If you used basic start: Create admin manually:
+     ```bash
+     docker-compose exec web python manage.py createsuperuser
+     ```
 
 4. **Access the application**
    - Website: <http://localhost:8000>
@@ -135,8 +138,11 @@ thinkelearn/
 The project includes a comprehensive `start.sh` script for easy container management:
 
 ```bash
-# Start development environment (all services + CSS watching + migrations)
+# Start development environment (containers + migrations)
 ./start.sh
+
+# Complete setup (containers + migrations + admin + pages)
+./start.sh setup
 
 # Stop all containers
 ./start.sh stop
