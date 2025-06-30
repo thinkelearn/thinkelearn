@@ -73,24 +73,18 @@ thinkelearn/
 2. **Start the development environment**
 
    ```bash
-   # Start all services
-   docker-compose up
+   # Quick start - starts all services with CSS watching and runs migrations
+   ./start.sh
 
-   # Start with CSS watching (for frontend development)
+   # Alternative: use docker-compose directly (requires manual migration)
    docker-compose --profile css up
    ```
 
-3. **Run initial setup**
+3. **Create admin user** (first time only)
 
    ```bash
-   # Run migrations
-   docker-compose exec web python manage.py migrate
-
    # Create superuser
    docker-compose exec web python manage.py createsuperuser
-
-   # Collect static files (if needed)
-   docker-compose exec web python manage.py collectstatic
    ```
 
 4. **Access the application**
@@ -135,6 +129,36 @@ thinkelearn/
    ```
 
 ## Development
+
+### Container Management Script
+
+The project includes a comprehensive `start.sh` script for easy container management:
+
+```bash
+# Start development environment (all services + CSS watching + migrations)
+./start.sh
+
+# Stop all containers
+./start.sh stop
+
+# Stop containers and clean up resources (preserves database)
+./start.sh reset
+
+# Stop containers and clean up everything (⚠️ REMOVES DATABASE)
+./start.sh clean
+
+# Full rebuild and restart (includes automatic migrations)
+./start.sh rebuild
+
+# Show container status
+./start.sh status
+
+# View logs from all containers
+./start.sh logs
+
+# Show help
+./start.sh help
+```
 
 ### Docker Commands
 

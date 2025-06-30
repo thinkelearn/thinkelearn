@@ -64,7 +64,8 @@ show_usage() {
     echo "Commands:"
     echo "  start     Start all development containers (default)"
     echo "  stop      Stop all running containers"
-    echo "  clean     Stop containers and clean up (remove containers, networks, volumes)"
+    echo "  reset     Stop containers and clean up Docker resources (preserves database)"
+    echo "  clean     Stop containers and clean up everything (⚠️  REMOVES DATABASE)"
     echo "  rebuild   Stop containers, clean up, and rebuild from scratch"
     echo "  status    Show status of all containers"
     echo "  logs      Show logs from all containers"
@@ -74,7 +75,8 @@ show_usage() {
     echo "  $0                # Start development environment"
     echo "  $0 start          # Start development environment"
     echo "  $0 stop           # Stop all containers"
-    echo "  $0 clean          # Stop and clean up everything"
+    echo "  $0 reset          # Clean up Docker issues, keep database"
+    echo "  $0 clean          # ⚠️  DANGER: Removes all data including database"
     echo "  $0 rebuild        # Full rebuild and restart"
 }
 
@@ -95,6 +97,10 @@ start_containers() {
     docker-compose --profile css up -d css
 
     print_success "All containers started successfully!"
+
+    # Run initial database setup
+    print_status "Running initial database setup..."
+    docker-compose exec -T web python manage.py migrate
 
     echo ""
     print_status "Development environment is ready:"
@@ -118,11 +124,28 @@ stop_containers() {
     print_success "All containers stopped"
 }
 
-# Function to clean up
+# Function to reset (clean without removing volumes)
+reset_containers() {
+    print_status "Resetting containers (preserving database)..."
+
+    # Stop all services including CSS profile, but keep volumes
+    docker-compose --profile css down --remove-orphans
+
+    print_status "Cleaning up Docker networks..."
+    docker network prune -f
+
+    print_status "Pruning unused Docker resources..."
+    docker system prune -f
+
+    print_success "Reset completed - database preserved"
+}
+
+# Function to clean up (including volumes)
 clean_containers() {
+    print_warning "⚠️  WARNING: This will permanently delete your database and all data!"
     print_status "Stopping and cleaning up containers..."
 
-    # Stop all services including CSS profile
+    # Stop all services including CSS profile AND remove volumes
     docker-compose --profile css down --volumes --remove-orphans
 
     print_status "Cleaning up Docker networks..."
@@ -131,7 +154,7 @@ clean_containers() {
     print_status "Pruning unused Docker resources..."
     docker system prune -f
 
-    print_success "Cleanup completed"
+    print_success "Full cleanup completed - database removed"
 }
 
 # Function to rebuild everything
@@ -174,6 +197,9 @@ case "${1:-start}" in
         ;;
     "stop")
         stop_containers
+        ;;
+    "reset")
+        reset_containers
         ;;
     "clean")
         clean_containers
