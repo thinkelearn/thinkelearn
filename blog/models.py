@@ -27,6 +27,11 @@ class BlogIndexPage(Page):
         context = super().get_context(request)
         blogpages = self.get_children().live().order_by("-first_published_at")
 
+        # Filter by category if provided
+        category = request.GET.get("category")
+        if category:
+            blogpages = blogpages.filter(blogpage__categories__slug=category)
+
         # Pagination
         page = request.GET.get("page")
         paginator = Paginator(blogpages, 6)  # Show 6 posts per page
@@ -38,6 +43,7 @@ class BlogIndexPage(Page):
             posts = paginator.page(paginator.num_pages)
 
         context["posts"] = posts
+        context["categories"] = BlogCategory.objects.all()
         return context
 
 

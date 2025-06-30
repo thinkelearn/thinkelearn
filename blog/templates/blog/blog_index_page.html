@@ -21,6 +21,26 @@
     </div>
 </section>
 
+<!-- Filter Section -->
+{% if categories %}
+<section class="section-padding bg-gray-50 border-b">
+    <div class="max-w-7xl mx-auto container-padding">
+        <div class="flex flex-wrap justify-center gap-4">
+            <a href="{% pageurl page %}"
+               class="px-6 py-2 rounded-full border transition-colors {% if not request.GET.category %}bg-primary-600 text-white border-primary-600{% else %}bg-white text-gray-700 border-gray-300 hover:border-primary-600 hover:text-primary-600{% endif %}">
+                All Blog Posts
+            </a>
+            {% for category in categories %}
+                <a href="?category={{ category.slug }}"
+                   class="px-6 py-2 rounded-full border transition-colors {% if request.GET.category == category.slug %}bg-primary-600 text-white border-primary-600{% else %}bg-white text-gray-700 border-gray-300 hover:border-primary-600 hover:text-primary-600{% endif %}">
+                    {{ category.name }}
+                </a>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+
 <!-- Blog Posts Section -->
 <section class="section-padding bg-white">
     <div class="max-w-7xl mx-auto container-padding">
