@@ -13,7 +13,7 @@
                 {{ page.hero_title }}
             </h1>
             {% if page.hero_subtitle %}
-            <p class="text-xl lg:text-2xl mb-8 text-primary-100 leading-relaxed max-w-3xl mx-auto">
+            <p class="text-xl lg:text-2xl mb-8 text-neutral-200 leading-relaxed max-w-3xl mx-auto">
                 {{ page.hero_subtitle }}
             </p>
             {% endif %}
@@ -25,7 +25,7 @@
 {% if page.intro_text %}
 <section class="section-padding bg-white">
     <div class="max-w-4xl mx-auto container-padding text-center">
-        <div class="prose prose-lg mx-auto text-gray-700">
+        <div class="prose prose-lg mx-auto text-neutral-700">
             {{ page.intro_text }}
         </div>
     </div>
@@ -33,20 +33,20 @@
 {% endif %}
 
 <!-- Contact Form and Info Section -->
-<section class="section-padding bg-gray-50">
+<section class="section-padding bg-neutral-50">
     <div class="max-w-7xl mx-auto container-padding">
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-12">
 
             <!-- Contact Form -->
             <div class="bg-white rounded-lg shadow-lg p-8">
-                <h2 class="text-2xl font-heading font-bold mb-6 text-gray-900">Send Us a Message</h2>
+                <h2 class="text-2xl font-heading font-bold mb-6 text-primary-800">Send Us a Message</h2>
 
                 <form action="{% pageurl page %}" method="POST" class="space-y-6">
                     {% csrf_token %}
 
                     {% for field in form %}
                         <div>
-                            <label for="{{ field.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
+                            <label for="{{ field.id_for_label }}" class="block text-sm font-medium text-neutral-700 mb-2">
                                 {{ field.label }}{% if field.field.required %} *{% endif %}
                             </label>
 
@@ -55,7 +55,7 @@
                                     name="{{ field.name }}"
                                     id="{{ field.id_for_label }}"
                                     rows="4"
-                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+                                    class="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-secondary-500 focus:border-secondary-500 transition-colors"
                                     {% if field.field.required %}required{% endif %}
                                     {% if field.help_text %}placeholder="{{ field.help_text }}"{% endif %}
                                 >{{ field.value|default:'' }}</textarea>
@@ -65,7 +65,7 @@
                                     name="{{ field.name }}"
                                     id="{{ field.id_for_label }}"
                                     value="{{ field.value|default:'' }}"
-                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+                                    class="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-secondary-500 focus:border-secondary-500 transition-colors"
                                     {% if field.field.required %}required{% endif %}
                                     {% if field.help_text %}placeholder="{{ field.help_text }}"{% endif %}
                                 />
@@ -79,7 +79,7 @@
                         </div>
                     {% endfor %}
 
-                    <button type="submit" class="btn bg-primary-600 text-white hover:bg-primary-700 w-full justify-center">
+                    <button type="submit" class="btn bg-secondary-500 text-white hover:bg-secondary-600 w-full justify-center">
                         Send Message
                         <i class="fas fa-paper-plane ml-2"></i>
                     </button>
@@ -90,8 +90,8 @@
             {% if page.show_contact_info %}
             <div class="space-y-8">
                 <div>
-                    <h2 class="text-2xl font-heading font-bold mb-6 text-gray-900">Get in Touch</h2>
-                    <p class="text-gray-600 mb-8">
+                    <h2 class="text-2xl font-heading font-bold mb-6 text-primary-800">Get in Touch</h2>
+                    <p class="text-neutral-600 mb-8">
                         Have questions? We'd love to hear from you. Send us a message and we'll respond as soon as possible.
                     </p>
                 </div>
@@ -99,13 +99,13 @@
                 <div class="space-y-6">
                     {% if page.phone %}
                     <div class="flex items-start">
-                        <div class="w-12 h-12 bg-primary-100 rounded-lg flex items-center justify-center mr-4 flex-shrink-0">
-                            <i class="fas fa-phone text-primary-600"></i>
+                        <div class="w-12 h-12 bg-secondary-100 rounded-lg flex items-center justify-center mr-4 flex-shrink-0">
+                            <i class="fas fa-phone text-secondary-500"></i>
                         </div>
                         <div>
-                            <h3 class="font-semibold text-gray-900 mb-1">Phone</h3>
-                            <p class="text-gray-600">
-                                <a href="tel:{{ page.phone }}" class="hover:text-primary-600 transition-colors">{{ page.phone }}</a>
+                            <h3 class="font-semibold text-primary-800 mb-1">Phone</h3>
+                            <p class="text-neutral-600">
+                                <a href="tel:{{ page.phone }}" class="hover:text-secondary-500 transition-colors">{{ page.phone }}</a>
                             </p>
                         </div>
                     </div>
@@ -113,13 +113,13 @@
 
                     {% if page.email %}
                     <div class="flex items-start">
-                        <div class="w-12 h-12 bg-primary-100 rounded-lg flex items-center justify-center mr-4 flex-shrink-0">
-                            <i class="fas fa-envelope text-primary-600"></i>
+                        <div class="w-12 h-12 bg-secondary-100 rounded-lg flex items-center justify-center mr-4 flex-shrink-0">
+                            <i class="fas fa-envelope text-secondary-500"></i>
                         </div>
                         <div>
-                            <h3 class="font-semibold text-gray-900 mb-1">Email</h3>
-                            <p class="text-gray-600">
-                                <a href="mailto:{{ page.email }}" class="hover:text-primary-600 transition-colors">{{ page.email }}</a>
+                            <h3 class="font-semibold text-primary-800 mb-1">Email</h3>
+                            <p class="text-neutral-600">
+                                <a href="mailto:{{ page.email }}" class="hover:text-secondary-500 transition-colors">{{ page.email }}</a>
                             </p>
                         </div>
                     </div>
@@ -127,11 +127,11 @@
 
                     {% if page.address %}
                     <div class="flex items-start">
-                        <div class="w-12 h-12 bg-primary-100 rounded-lg flex items-center justify-center mr-4 flex-shrink-0">
-                            <i class="fas fa-map-marker-alt text-primary-600"></i>
+                        <div class="w-12 h-12 bg-secondary-100 rounded-lg flex items-center justify-center mr-4 flex-shrink-0">
+                            <i class="fas fa-map-marker-alt text-secondary-500"></i>
                         </div>
                         <div>
-                            <h3 class="font-semibold text-gray-900 mb-1">Address</h3>
+                            <h3 class="font-semibold text-primary-800 mb-1">Address</h3>
                             <p class="text-gray-600 whitespace-pre-line">{{ page.address }}</p>
                         </div>
                     </div>
@@ -139,11 +139,11 @@
 
                     {% if page.office_hours %}
                     <div class="flex items-start">
-                        <div class="w-12 h-12 bg-primary-100 rounded-lg flex items-center justify-center mr-4 flex-shrink-0">
-                            <i class="fas fa-clock text-primary-600"></i>
+                        <div class="w-12 h-12 bg-secondary-100 rounded-lg flex items-center justify-center mr-4 flex-shrink-0">
+                            <i class="fas fa-clock text-secondary-500"></i>
                         </div>
                         <div>
-                            <h3 class="font-semibold text-gray-900 mb-1">Office Hours</h3>
+                            <h3 class="font-semibold text-primary-800 mb-1">Office Hours</h3>
                             <p class="text-gray-600 whitespace-pre-line">{{ page.office_hours }}</p>
                         </div>
                     </div>
@@ -153,7 +153,7 @@
                 <!-- Social Media -->
                 {% if page.linkedin_url or page.twitter_url or page.facebook_url %}
                 <div class="border-t pt-8">
-                    <h3 class="font-semibold text-gray-900 mb-4">Follow Us</h3>
+                    <h3 class="font-semibold text-primary-800 mb-4">Follow Us</h3>
                     <div class="flex space-x-4">
                         {% if page.linkedin_url %}
                         <a href="{{ page.linkedin_url }}" target="_blank" class="w-10 h-10 bg-blue-600 text-white rounded-full flex items-center justify-center hover:bg-blue-700 transition-colors">
@@ -184,26 +184,26 @@
 <section class="section-padding bg-white">
     <div class="max-w-4xl mx-auto container-padding">
         <div class="text-center mb-12">
-            <h2 class="text-3xl lg:text-4xl font-heading font-bold text-gray-900 mb-4">
+            <h2 class="text-3xl lg:text-4xl font-heading font-bold text-primary-800 mb-4">
                 {{ page.faq_title }}
             </h2>
-            <p class="text-xl text-gray-600">
+            <p class="text-xl text-neutral-600">
                 Find answers to commonly asked questions about our services.
             </p>
         </div>
 
         <div class="space-y-6">
             {% for faq in page.faqs %}
-                <div class="border border-gray-200 rounded-lg">
+                <div class="border border-neutral-200 rounded-lg">
                     <button
-                        class="w-full px-6 py-4 text-left flex justify-between items-center hover:bg-gray-50 focus:outline-none focus:bg-gray-50 transition-colors"
+                        class="w-full px-6 py-4 text-left flex justify-between items-center hover:bg-neutral-50 focus:outline-none focus:bg-neutral-50 transition-colors"
                         onclick="toggleFaq(this)"
                     >
-                        <h3 class="font-semibold text-gray-900">{{ faq.value.question }}</h3>
-                        <i class="fas fa-chevron-down text-gray-400 transform transition-transform"></i>
+                        <h3 class="font-semibold text-primary-800">{{ faq.value.question }}</h3>
+                        <i class="fas fa-chevron-down text-neutral-400 transform transition-transform"></i>
                     </button>
                     <div class="px-6 pb-4 hidden">
-                        <p class="text-gray-600 leading-relaxed">{{ faq.value.answer }}</p>
+                        <p class="text-neutral-600 leading-relaxed">{{ faq.value.answer }}</p>
                     </div>
                 </div>
             {% endfor %}

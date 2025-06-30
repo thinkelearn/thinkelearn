@@ -59,7 +59,7 @@
   }
 
   .hero-gradient {
-    @apply bg-gradient-to-br from-primary-600 via-primary-700 to-primary-800;
+    @apply bg-gradient-to-r from-primary-900 via-primary-600 to-primary-300;
   }
 }
 

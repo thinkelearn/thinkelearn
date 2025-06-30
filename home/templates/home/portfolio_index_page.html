@@ -23,16 +23,16 @@
 
 <!-- Filter Section -->
 {% if categories %}
-<section class="section-padding bg-gray-50 border-b">
+<section class="section-padding bg-neutral-50 border-b">
     <div class="max-w-7xl mx-auto container-padding">
         <div class="flex flex-wrap justify-center gap-4">
             <a href="{% pageurl page %}"
-               class="px-6 py-2 rounded-full border transition-colors {% if not request.GET.category %}bg-primary-600 text-white border-primary-600{% else %}bg-white text-gray-700 border-gray-300 hover:border-primary-600 hover:text-primary-600{% endif %}">
+               class="px-6 py-2 rounded-full border transition-colors {% if not request.GET.category %}bg-secondary-500 text-white border-secondary-500{% else %}bg-white text-neutral-700 border-neutral-300 hover:border-secondary-500 hover:text-secondary-500{% endif %}">
                 All Projects
             </a>
             {% for category in categories %}
                 <a href="?category={{ category.slug }}"
-                   class="px-6 py-2 rounded-full border transition-colors {% if request.GET.category == category.slug %}bg-primary-600 text-white border-primary-600{% else %}bg-white text-gray-700 border-gray-300 hover:border-primary-600 hover:text-primary-600{% endif %}">
+                   class="px-6 py-2 rounded-full border transition-colors {% if request.GET.category == category.slug %}bg-secondary-500 text-white border-secondary-500{% else %}bg-white text-neutral-700 border-neutral-300 hover:border-secondary-500 hover:text-secondary-500{% endif %}">
                     {{ category.name }}
                 </a>
             {% endfor %}
@@ -59,27 +59,27 @@
 
                     <div class="p-6">
                         <!-- Meta info -->
-                        <div class="flex items-center justify-between text-sm text-gray-500 mb-3">
+                        <div class="flex items-center justify-between text-sm text-neutral-500 mb-3">
                             <span>{{ project.project_date|date:"M Y" }}</span>
                             {% if project.client_name %}
-                                <span class="text-primary-600 font-medium">{{ project.client_name }}</span>
+                                <span class="text-secondary-500 font-medium">{{ project.client_name }}</span>
                             {% endif %}
                         </div>
 
                         <!-- Title and intro -->
-                        <h2 class="text-xl font-semibold mb-3 text-gray-900 group-hover:text-primary-600 transition-colors">
+                        <h2 class="text-xl font-semibold mb-3 text-primary-800 group-hover:text-secondary-500 transition-colors">
                             <a href="{% pageurl project %}">{{ project.title }}</a>
                         </h2>
 
                         {% if project.intro %}
-                        <p class="text-gray-600 mb-4 leading-relaxed">{{ project.intro }}</p>
+                        <p class="text-neutral-600 mb-4 leading-relaxed">{{ project.intro }}</p>
                         {% endif %}
 
                         <!-- Categories -->
                         {% if project.categories.all %}
                         <div class="flex flex-wrap gap-2 mb-4">
                             {% for category in project.categories.all %}
-                                <span class="inline-block bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded-full">
+                                <span class="inline-block bg-neutral-100 text-neutral-700 text-xs px-2 py-1 rounded-full">
                                     {{ category.name }}
                                 </span>
                             {% endfor %}
@@ -88,13 +88,13 @@
 
                         <!-- View project link -->
                         <div class="flex items-center justify-between">
-                            <a href="{% pageurl project %}" class="inline-flex items-center text-primary-600 hover:text-primary-700 font-medium transition-colors">
+                            <a href="{% pageurl project %}" class="inline-flex items-center text-secondary-500 hover:text-secondary-600 font-medium transition-colors">
                                 View Case Study
                                 <i class="fas fa-arrow-right ml-2 text-sm"></i>
                             </a>
 
                             {% if project.project_url %}
-                            <a href="{{ project.project_url }}" target="_blank" class="text-gray-400 hover:text-primary-600 transition-colors" title="Visit Live Site">
+                            <a href="{{ project.project_url }}" target="_blank" class="text-neutral-400 hover:text-secondary-500 transition-colors" title="Visit Live Site">
                                 <i class="fas fa-external-link-alt"></i>
                             </a>
                             {% endif %}
@@ -107,11 +107,11 @@
         {% else %}
         <!-- No projects message -->
         <div class="text-center py-16">
-            <div class="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                <i class="fas fa-folder-open text-gray-400 text-2xl"></i>
+            <div class="w-20 h-20 bg-neutral-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <i class="fas fa-folder-open text-neutral-400 text-2xl"></i>
             </div>
-            <h2 class="text-2xl font-semibold text-gray-900 mb-4">No Projects Yet</h2>
-            <p class="text-gray-600 max-w-md mx-auto">
+            <h2 class="text-2xl font-semibold text-primary-800 mb-4">No Projects Yet</h2>
+            <p class="text-neutral-600 max-w-md mx-auto">
                 We're working on showcasing our amazing projects. Check back soon to see our portfolio!
             </p>
         </div>
@@ -120,20 +120,20 @@
 </section>
 
 <!-- Call to Action Section -->
-<section class="section-padding bg-primary-600 text-white">
+<section class="section-padding bg-primary-800 text-white">
     <div class="max-w-4xl mx-auto container-padding text-center">
         <h2 class="text-3xl lg:text-4xl font-heading font-bold mb-6">
             Ready to Start Your Own Success Story?
         </h2>
-        <p class="text-xl mb-8 text-primary-100">
+        <p class="text-xl mb-8 text-neutral-200">
             Let's discuss how we can help you achieve your educational technology goals.
         </p>
         <div class="flex flex-col sm:flex-row gap-4 justify-center">
-            <a href="/contact/" class="btn bg-white text-primary-600 hover:bg-gray-100 shadow-lg">
+            <a href="/contact/" class="btn bg-white text-primary-800 hover:bg-neutral-100 shadow-lg">
                 Start Your Project
                 <i class="fas fa-rocket ml-2"></i>
             </a>
-            <a href="/about/" class="btn border-white text-white hover:bg-white hover:text-primary-600">
+            <a href="/about/" class="btn border-white text-white hover:bg-white hover:text-primary-800">
                 Learn About Us
                 <i class="fas fa-info-circle ml-2"></i>
             </a>

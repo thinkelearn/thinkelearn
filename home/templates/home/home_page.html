@@ -14,18 +14,18 @@
                     {{ page.hero_title }}
                 </h1>
                 {% if page.hero_subtitle %}
-                <p class="text-xl lg:text-2xl mb-8 text-primary-100 leading-relaxed">
+                <p class="text-xl lg:text-2xl mb-8 text-neutral-200 leading-relaxed">
                     {{ page.hero_subtitle }}
                 </p>
                 {% endif %}
                 <div class="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
                     {% if page.hero_cta_link %}
-                    <a href="{% pageurl page.hero_cta_link %}" class="btn bg-white text-primary-600 hover:bg-gray-100 shadow-lg">
+                    <a href="{% pageurl page.hero_cta_link %}" class="btn bg-white text-primary-800 hover:bg-neutral-100 shadow-lg">
                         {{ page.hero_cta_text }}
                         <i class="fas fa-arrow-right ml-2"></i>
                     </a>
                     {% endif %}
-                    <a href="/about/" class="btn border-white text-white hover:bg-white hover:text-primary-600">
+                    <a href="/about/" class="btn border-white text-white hover:bg-white hover:text-primary-800">
                         Learn More
                         <i class="fas fa-info-circle ml-2"></i>
                     </a>
@@ -54,10 +54,10 @@
 <section class="section-padding bg-white">
     <div class="max-w-7xl mx-auto container-padding">
         <div class="text-center mb-16">
-            <h2 class="text-3xl lg:text-4xl font-heading font-bold text-gray-900 mb-4">
+            <h2 class="text-3xl lg:text-4xl font-heading font-bold text-primary-800 mb-4">
                 {{ page.features_title }}
             </h2>
-            <p class="text-xl text-gray-600 max-w-3xl mx-auto">
+            <p class="text-xl text-neutral-600 max-w-3xl mx-auto">
                 {{ page.features_description }}
             </p>
         </div>
@@ -67,12 +67,12 @@
                 <div class="card-hover text-center">
                     <div class="p-8">
                         {% if feature.value.icon %}
-                        <div class="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                            <i class="{{ feature.value.icon }} text-primary-600 text-2xl"></i>
+                        <div class="w-16 h-16 bg-secondary-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                            <i class="{{ feature.value.icon }} text-secondary-500 text-2xl"></i>
                         </div>
                         {% endif %}
-                        <h3 class="text-xl font-semibold mb-4 text-gray-900">{{ feature.value.title }}</h3>
-                        <p class="text-gray-600 leading-relaxed">{{ feature.value.description }}</p>
+                        <h3 class="text-xl font-semibold mb-4 text-primary-800">{{ feature.value.title }}</h3>
+                        <p class="text-neutral-600 leading-relaxed">{{ feature.value.description }}</p>
                     </div>
                 </div>
             {% endfor %}
@@ -83,13 +83,13 @@
 
 <!-- Testimonials Section -->
 {% if page.testimonials %}
-<section class="section-padding bg-gray-50">
+<section class="section-padding bg-neutral-50">
     <div class="max-w-7xl mx-auto container-padding">
         <div class="text-center mb-16">
-            <h2 class="text-3xl lg:text-4xl font-heading font-bold text-gray-900 mb-4">
+            <h2 class="text-3xl lg:text-4xl font-heading font-bold text-primary-800 mb-4">
                 {{ page.testimonials_title }}
             </h2>
-            <p class="text-xl text-gray-600 max-w-3xl mx-auto">
+            <p class="text-xl text-neutral-600 max-w-3xl mx-auto">
                 {{ page.testimonials_description }}
             </p>
         </div>
@@ -99,23 +99,23 @@
                 <div class="card-hover">
                     <div class="p-8">
                         <div class="mb-6">
-                            <i class="fas fa-quote-left text-primary-600 text-2xl"></i>
+                            <i class="fas fa-quote-left text-secondary-500 text-2xl"></i>
                         </div>
-                        <blockquote class="text-gray-700 mb-6 leading-relaxed">
+                        <blockquote class="text-neutral-700 mb-6 leading-relaxed">
                             "{{ testimonial.value.quote }}"
                         </blockquote>
                         <div class="flex items-center">
                             {% if testimonial.value.avatar %}
                                 {% image testimonial.value.avatar fill-50x50 class="w-12 h-12 rounded-full mr-4" %}
                             {% else %}
-                                <div class="w-12 h-12 bg-primary-100 rounded-full flex items-center justify-center mr-4">
-                                    <i class="fas fa-user text-primary-600"></i>
+                                <div class="w-12 h-12 bg-secondary-100 rounded-full flex items-center justify-center mr-4">
+                                    <i class="fas fa-user text-secondary-500"></i>
                                 </div>
                             {% endif %}
                             <div>
-                                <div class="font-semibold text-gray-900">{{ testimonial.value.author }}</div>
+                                <div class="font-semibold text-primary-800">{{ testimonial.value.author }}</div>
                                 {% if testimonial.value.company %}
-                                <div class="text-sm text-gray-600">{{ testimonial.value.company }}</div>
+                                <div class="text-sm text-neutral-600">{{ testimonial.value.company }}</div>
                                 {% endif %}
                             </div>
                         </div>
@@ -134,10 +134,10 @@
 <section class="section-padding bg-white">
     <div class="max-w-7xl mx-auto container-padding">
         <div class="text-center mb-16">
-            <h2 class="text-3xl lg:text-4xl font-heading font-bold text-gray-900 mb-4">
+            <h2 class="text-3xl lg:text-4xl font-heading font-bold text-primary-800 mb-4">
                 {{ page.recent_posts_title }}
             </h2>
-            <p class="text-xl text-gray-600 max-w-3xl mx-auto">
+            <p class="text-xl text-neutral-600 max-w-3xl mx-auto">
                 {{ page.recent_posts_description }}
             </p>
         </div>
@@ -155,7 +155,7 @@
 
                     <div class="p-6">
                         <!-- Meta info -->
-                        <div class="flex items-center text-sm text-gray-500 mb-3">
+                        <div class="flex items-center text-sm text-neutral-500 mb-3">
                             <span>{{ post.date|date:"M d, Y" }}</span>
                             {% if post.author_name %}
                                 <span class="mx-2">•</span>
@@ -164,16 +164,16 @@
                         </div>
 
                         <!-- Title and intro -->
-                        <h3 class="text-xl font-semibold mb-3 text-gray-900 group-hover:text-primary-600 transition-colors">
+                        <h3 class="text-xl font-semibold mb-3 text-primary-800 group-hover:text-secondary-500 transition-colors">
                             <a href="{% pageurl post %}">{{ post.title }}</a>
                         </h3>
 
                         {% if post.intro %}
-                        <p class="text-gray-600 mb-4 leading-relaxed">{{ post.intro|truncatewords:20 }}</p>
+                        <p class="text-neutral-600 mb-4 leading-relaxed">{{ post.intro|truncatewords:20 }}</p>
                         {% endif %}
 
                         <!-- Read more link -->
-                        <a href="{% pageurl post %}" class="inline-flex items-center text-primary-600 hover:text-primary-700 font-medium transition-colors">
+                        <a href="{% pageurl post %}" class="inline-flex items-center text-secondary-500 hover:text-secondary-600 font-medium transition-colors">
                             Read More
                             <i class="fas fa-arrow-right ml-2 text-sm"></i>
                         </a>
@@ -183,7 +183,7 @@
         </div>
 
         <div class="text-center mt-12">
-            <a href="/blog/" class="btn border-primary-600 text-primary-600 hover:bg-primary-600 hover:text-white">
+            <a href="/blog/" class="btn border-secondary-500 text-secondary-500 hover:bg-secondary-500 hover:text-white">
                 View All Posts
                 <i class="fas fa-arrow-right ml-2"></i>
             </a>
@@ -195,20 +195,20 @@
 {% endif %}
 
 <!-- Call to Action Section -->
-<section class="section-padding bg-primary-600 text-white">
+<section class="section-padding bg-primary-800 text-white">
     <div class="max-w-4xl mx-auto container-padding text-center">
         <h2 class="text-3xl lg:text-4xl font-heading font-bold mb-6">
             Ready to Transform Your Learning Experience?
         </h2>
-        <p class="text-xl mb-8 text-primary-100">
+        <p class="text-xl mb-8 text-neutral-200">
             Let's discuss how we can help you achieve your educational technology goals.
         </p>
         <div class="flex flex-col sm:flex-row gap-4 justify-center">
-            <a href="/contact/" class="btn bg-white text-primary-600 hover:bg-gray-100 shadow-lg">
+            <a href="/contact/" class="btn bg-white text-primary-800 hover:bg-neutral-100 shadow-lg">
                 Get Started Today
                 <i class="fas fa-rocket ml-2"></i>
             </a>
-            <a href="/portfolio/" class="btn border-white text-white hover:bg-white hover:text-primary-600">
+            <a href="/portfolio/" class="btn border-white text-white hover:bg-white hover:text-primary-800">
                 View Our Work
                 <i class="fas fa-eye ml-2"></i>
             </a>
