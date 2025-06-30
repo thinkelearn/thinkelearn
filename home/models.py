@@ -51,6 +51,10 @@ class HomePage(Page):
         default="Why Choose THINK eLearn",
         help_text="Title for the features section",
     )
+    features_description = models.TextField(
+        default="Discover what makes THINK eLearn the perfect partner for your educational technology needs.",
+        help_text="Description text for the features section",
+    )
     features = StreamField(
         [
             (
@@ -79,6 +83,10 @@ class HomePage(Page):
         default="What Our Clients Say",
         help_text="Title for the testimonials section",
     )
+    testimonials_description = models.TextField(
+        default="See what our clients have to say about their experience working with us.",
+        help_text="Description text for the testimonials section",
+    )
     testimonials = StreamField(
         [
             (
@@ -106,6 +114,10 @@ class HomePage(Page):
         default="Latest Insights",
         help_text="Title for the recent posts section",
     )
+    recent_posts_description = models.TextField(
+        default="Stay informed with our latest articles on educational technology, learning methodologies, and industry insights.",
+        help_text="Description text for the recent posts section",
+    )
     recent_posts_count = models.IntegerField(
         default=3, help_text="Number of recent posts to display"
     )
@@ -124,6 +136,7 @@ class HomePage(Page):
         MultiFieldPanel(
             [
                 FieldPanel("features_title"),
+                FieldPanel("features_description"),
                 FieldPanel("features"),
             ],
             heading="Features Section",
@@ -131,6 +144,7 @@ class HomePage(Page):
         MultiFieldPanel(
             [
                 FieldPanel("testimonials_title"),
+                FieldPanel("testimonials_description"),
                 FieldPanel("testimonials"),
             ],
             heading="Testimonials",
@@ -139,6 +153,7 @@ class HomePage(Page):
             [
                 FieldPanel("show_recent_posts"),
                 FieldPanel("recent_posts_title"),
+                FieldPanel("recent_posts_description"),
                 FieldPanel("recent_posts_count"),
             ],
             heading="Recent Posts Section",
