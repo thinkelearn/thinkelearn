@@ -113,11 +113,22 @@ Key dependencies:
 
 ### Design System
 
-- **Primary colors**: Blue theme (#3b82f6 variants)
-- **Secondary colors**: Green theme (#22c55e variants)
+- **Primary colors**: Warm brown theme (#361612 to #784421 variants) - Professional, educational feel
+- **Secondary colors**: Orange accent theme (#ff6600 variants) - Brand highlight color matching logo
+- **Neutral colors**: Warm gray theme (#1c1917 to #fafaf9 variants) - Better harmony with brown palette
 - **Typography**: Inter (body), Poppins (headings)
-- **Components**: Buttons, cards, forms with consistent styling
+- **Components**: Buttons, cards, forms with consistent styling using warm color palette
 - **Responsive**: Mobile-first approach with Tailwind breakpoints
+
+#### Color Usage Guidelines
+
+- **Headers/Navigation**: `text-primary-800` or `bg-primary-800` (dark brown)
+- **Buttons/CTAs**: `bg-secondary-500 hover:bg-secondary-600` (orange)
+- **Links**: `text-secondary-500 hover:text-secondary-600` (orange)
+- **Body text**: `text-neutral-700` (warm dark gray)
+- **Light backgrounds**: `bg-neutral-50` (warm off-white)
+- **Section backgrounds**: `bg-primary-50` (very light brown tint)
+- **Borders**: `border-neutral-200` or `border-primary-200` (warm grays)
 
 ## Development Workflow
 

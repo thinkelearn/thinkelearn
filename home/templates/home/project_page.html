@@ -10,46 +10,46 @@
     <div class="max-w-7xl mx-auto container-padding">
         <!-- Breadcrumb -->
         <nav class="mb-8">
-            <ol class="flex items-center space-x-2 text-sm text-gray-500">
-                <li><a href="/" class="hover:text-primary-600 transition-colors">Home</a></li>
+            <ol class="flex items-center space-x-2 text-sm text-neutral-500">
+                <li><a href="/" class="hover:text-secondary-500 transition-colors">Home</a></li>
                 <li><i class="fas fa-chevron-right text-xs"></i></li>
-                <li><a href="{% pageurl page.get_parent %}" class="hover:text-primary-600 transition-colors">Portfolio</a></li>
+                <li><a href="{% pageurl page.get_parent %}" class="hover:text-secondary-500 transition-colors">Portfolio</a></li>
                 <li><i class="fas fa-chevron-right text-xs"></i></li>
-                <li class="text-gray-900">{{ page.title }}</li>
+                <li class="text-primary-800">{{ page.title }}</li>
             </ol>
         </nav>
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
             <!-- Project Info -->
             <div>
-                <h1 class="text-3xl lg:text-5xl font-heading font-bold mb-6 text-gray-900 leading-tight">
+                <h1 class="text-3xl lg:text-5xl font-heading font-bold mb-6 text-primary-800 leading-tight">
                     {{ page.title }}
                 </h1>
 
                 {% if page.intro %}
-                <p class="text-xl text-gray-600 mb-8 leading-relaxed">{{ page.intro }}</p>
+                <p class="text-xl text-neutral-600 mb-8 leading-relaxed">{{ page.intro }}</p>
                 {% endif %}
 
                 <!-- Project Meta -->
                 <div class="grid grid-cols-2 gap-6 mb-8">
                     {% if page.client_name %}
                     <div>
-                        <h3 class="font-semibold text-gray-900 mb-2">Client</h3>
-                        <p class="text-gray-600">{{ page.client_name }}</p>
+                        <h3 class="font-semibold text-primary-800 mb-2">Client</h3>
+                        <p class="text-neutral-600">{{ page.client_name }}</p>
                     </div>
                     {% endif %}
 
                     <div>
-                        <h3 class="font-semibold text-gray-900 mb-2">Completed</h3>
-                        <p class="text-gray-600">{{ page.project_date|date:"F Y" }}</p>
+                        <h3 class="font-semibold text-primary-800 mb-2">Completed</h3>
+                        <p class="text-neutral-600">{{ page.project_date|date:"F Y" }}</p>
                     </div>
 
                     {% if page.categories.all %}
                     <div>
-                        <h3 class="font-semibold text-gray-900 mb-2">Category</h3>
+                        <h3 class="font-semibold text-primary-800 mb-2">Category</h3>
                         <div class="flex flex-wrap gap-2">
                             {% for category in page.categories.all %}
-                                <span class="inline-block bg-primary-100 text-primary-700 text-sm px-3 py-1 rounded-full">
+                                <span class="inline-block bg-secondary-100 text-secondary-700 text-sm px-3 py-1 rounded-full">
                                     {{ category.name }}
                                 </span>
                             {% endfor %}
@@ -59,10 +59,10 @@
 
                     {% if page.get_technologies_list %}
                     <div>
-                        <h3 class="font-semibold text-gray-900 mb-2">Technologies</h3>
+                        <h3 class="font-semibold text-primary-800 mb-2">Technologies</h3>
                         <div class="flex flex-wrap gap-2">
                             {% for tech in page.get_technologies_list %}
-                                <span class="inline-block bg-gray-100 text-gray-700 text-sm px-3 py-1 rounded-full">
+                                <span class="inline-block bg-neutral-100 text-neutral-700 text-sm px-3 py-1 rounded-full">
                                     {{ tech }}
                                 </span>
                             {% endfor %}
@@ -74,12 +74,12 @@
                 <!-- Action Buttons -->
                 <div class="flex flex-col sm:flex-row gap-4">
                     {% if page.project_url %}
-                    <a href="{{ page.project_url }}" target="_blank" class="btn bg-primary-600 text-white hover:bg-primary-700 shadow-lg">
+                    <a href="{{ page.project_url }}" target="_blank" class="btn bg-secondary-500 text-white hover:bg-secondary-600 shadow-lg">
                         View Live Project
                         <i class="fas fa-external-link-alt ml-2"></i>
                     </a>
                     {% endif %}
-                    <a href="/contact/" class="btn border-primary-600 text-primary-600 hover:bg-primary-600 hover:text-white">
+                    <a href="/contact/" class="btn border-secondary-500 text-secondary-500 hover:bg-secondary-500 hover:text-white">
                         Start Your Project
                         <i class="fas fa-rocket ml-2"></i>
                     </a>
@@ -109,9 +109,9 @@
 
 <!-- Challenge Section -->
 {% if page.challenge_content %}
-<section class="section-padding bg-gray-50">
+<section class="section-padding bg-neutral-50">
     <div class="max-w-4xl mx-auto container-padding">
-        <h2 class="text-3xl font-heading font-bold mb-8 text-gray-900">{{ page.challenge_title }}</h2>
+        <h2 class="text-3xl font-heading font-bold mb-8 text-primary-800">{{ page.challenge_title }}</h2>
         <div class="prose prose-lg max-w-none">
             {{ page.challenge_content|richtext }}
         </div>
@@ -123,7 +123,7 @@
 {% if page.solution_content %}
 <section class="section-padding bg-white">
     <div class="max-w-4xl mx-auto container-padding">
-        <h2 class="text-3xl font-heading font-bold mb-8 text-gray-900">{{ page.solution_title }}</h2>
+        <h2 class="text-3xl font-heading font-bold mb-8 text-primary-800">{{ page.solution_title }}</h2>
         <div class="prose prose-lg max-w-none">
             {{ page.solution_content|richtext }}
         </div>
@@ -133,17 +133,17 @@
 
 <!-- Results Section -->
 {% if page.results %}
-<section class="section-padding bg-primary-50">
+<section class="section-padding bg-secondary-50">
     <div class="max-w-7xl mx-auto container-padding">
-        <h2 class="text-3xl font-heading font-bold mb-12 text-gray-900 text-center">{{ page.results_title }}</h2>
+        <h2 class="text-3xl font-heading font-bold mb-12 text-primary-800 text-center">{{ page.results_title }}</h2>
 
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {% for result in page.results %}
                 <div class="bg-white rounded-lg p-8 text-center shadow-sm">
-                    <div class="text-3xl font-bold text-primary-600 mb-2">{{ result.value.value }}</div>
-                    <h3 class="font-semibold text-gray-900 mb-2">{{ result.value.label }}</h3>
+                    <div class="text-3xl font-bold text-secondary-500 mb-2">{{ result.value.value }}</div>
+                    <h3 class="font-semibold text-primary-800 mb-2">{{ result.value.label }}</h3>
                     {% if result.value.description %}
-                    <p class="text-gray-600 text-sm">{{ result.value.description }}</p>
+                    <p class="text-neutral-600 text-sm">{{ result.value.description }}</p>
                     {% endif %}
                 </div>
             {% endfor %}
@@ -156,25 +156,25 @@
 {% if page.testimonial_quote %}
 <section class="section-padding bg-white">
     <div class="max-w-4xl mx-auto container-padding">
-        <div class="bg-gray-50 rounded-lg p-8 lg:p-12 text-center">
+        <div class="bg-neutral-50 rounded-lg p-8 lg:p-12 text-center">
             <div class="mb-6">
-                <i class="fas fa-quote-left text-primary-600 text-3xl"></i>
+                <i class="fas fa-quote-left text-secondary-500 text-3xl"></i>
             </div>
-            <blockquote class="text-xl lg:text-2xl text-gray-700 mb-8 leading-relaxed">
+            <blockquote class="text-xl lg:text-2xl text-neutral-700 mb-8 leading-relaxed">
                 "{{ page.testimonial_quote }}"
             </blockquote>
             <div class="flex items-center justify-center">
                 {% if page.testimonial_avatar %}
                     {% image page.testimonial_avatar fill-60x60 class="w-15 h-15 rounded-full mr-4" %}
                 {% else %}
-                    <div class="w-15 h-15 bg-primary-100 rounded-full flex items-center justify-center mr-4">
-                        <i class="fas fa-user text-primary-600"></i>
+                    <div class="w-15 h-15 bg-secondary-100 rounded-full flex items-center justify-center mr-4">
+                        <i class="fas fa-user text-secondary-500"></i>
                     </div>
                 {% endif %}
                 <div class="text-left">
-                    <div class="font-semibold text-gray-900">{{ page.testimonial_author }}</div>
+                    <div class="font-semibold text-primary-800">{{ page.testimonial_author }}</div>
                     {% if page.testimonial_company %}
-                    <div class="text-sm text-gray-600">{{ page.testimonial_company }}</div>
+                    <div class="text-sm text-neutral-600">{{ page.testimonial_company }}</div>
                     {% endif %}
                 </div>
             </div>
@@ -185,9 +185,9 @@
 
 <!-- Related Projects -->
 {% if related_projects %}
-<section class="section-padding bg-gray-50">
+<section class="section-padding bg-neutral-50">
     <div class="max-w-7xl mx-auto container-padding">
-        <h3 class="text-2xl font-heading font-bold mb-8 text-gray-900 text-center">Related Projects</h3>
+        <h3 class="text-2xl font-heading font-bold mb-8 text-primary-800 text-center">Related Projects</h3>
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
             {% for project in related_projects %}
@@ -201,15 +201,15 @@
                     {% endif %}
 
                     <div class="p-6">
-                        <h4 class="text-lg font-semibold mb-2 text-gray-900 group-hover:text-primary-600 transition-colors">
+                        <h4 class="text-lg font-semibold mb-2 text-primary-800 group-hover:text-secondary-500 transition-colors">
                             <a href="{% pageurl project %}">{{ project.title }}</a>
                         </h4>
 
                         {% if project.intro %}
-                        <p class="text-gray-600 text-sm mb-3">{{ project.intro|truncatewords:15 }}</p>
+                        <p class="text-neutral-600 text-sm mb-3">{{ project.intro|truncatewords:15 }}</p>
                         {% endif %}
 
-                        <div class="text-xs text-gray-500">{{ project.project_date|date:"M Y" }}</div>
+                        <div class="text-xs text-neutral-500">{{ project.project_date|date:"M Y" }}</div>
                     </div>
                 </article>
             {% endfor %}
@@ -219,20 +219,20 @@
 {% endif %}
 
 <!-- Call to Action -->
-<section class="section-padding bg-primary-600 text-white">
+<section class="section-padding bg-primary-800 text-white">
     <div class="max-w-4xl mx-auto container-padding text-center">
         <h2 class="text-2xl lg:text-3xl font-heading font-bold mb-4">
             Inspired by This Project?
         </h2>
-        <p class="text-xl mb-6 text-primary-100">
+        <p class="text-xl mb-6 text-neutral-200">
             Let's create something amazing together for your educational technology needs.
         </p>
         <div class="flex flex-col sm:flex-row gap-4 justify-center">
-            <a href="/contact/" class="btn bg-white text-primary-600 hover:bg-gray-100 shadow-lg">
+            <a href="/contact/" class="btn bg-white text-primary-800 hover:bg-neutral-100 shadow-lg">
                 Start a Conversation
                 <i class="fas fa-arrow-right ml-2"></i>
             </a>
-            <a href="{% pageurl page.get_parent %}" class="btn border-white text-white hover:bg-white hover:text-primary-600">
+            <a href="{% pageurl page.get_parent %}" class="btn border-white text-white hover:bg-white hover:text-primary-800">
                 View More Projects
                 <i class="fas fa-eye ml-2"></i>
             </a>

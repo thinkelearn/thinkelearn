@@ -6,33 +6,74 @@
 {% block title %}Search{% endblock %}
 
 {% block content %}
-<h1>Search</h1>
+<section class="section-padding bg-white">
+    <div class="max-w-4xl mx-auto container-padding">
+        <h1 class="text-3xl lg:text-4xl font-heading font-bold text-primary-800 mb-8">Search</h1>
 
-<form action="{% url 'search' %}" method="get">
-    <input type="text" name="query"{% if search_query %} value="{{ search_query }}"{% endif %}>
-    <input type="submit" value="Search" class="button">
-</form>
+        <form action="{% url 'search' %}" method="get" class="mb-8">
+            <div class="flex gap-2">
+                <input type="text" name="query"{% if search_query %} value="{{ search_query }}"{% endif %}
+                       class="flex-1 px-4 py-3 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary-500 focus:border-transparent"
+                       placeholder="Search for pages, posts, and content...">
+                <button type="submit" class="btn bg-secondary-500 text-white hover:bg-secondary-600 px-6">
+                    <i class="fas fa-search"></i>
+                </button>
+            </div>
+        </form>
 
-{% if search_results %}
-<ul>
-    {% for result in search_results %}
-    <li>
-        <h4><a href="{% pageurl result %}">{{ result }}</a></h4>
-        {% if result.search_description %}
-        {{ result.search_description }}
+        {% if search_results %}
+        <div class="space-y-6">
+            {% for result in search_results %}
+            <div class="bg-white border border-neutral-200 rounded-lg p-6 hover:shadow-md transition-shadow">
+                <h3 class="text-xl font-semibold mb-2">
+                    <a href="{% pageurl result %}" class="text-primary-800 hover:text-secondary-500 transition-colors">
+                        {{ result }}
+                    </a>
+                </h3>
+                {% if result.search_description %}
+                <p class="text-neutral-600 leading-relaxed">{{ result.search_description }}</p>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+
+
+        <!-- Pagination -->
+        {% if search_results.has_previous or search_results.has_next %}
+        <div class="flex justify-center mt-8 space-x-4">
+            {% if search_results.has_previous %}
+            <a href="{% url 'search' %}?query={{ search_query|urlencode }}&amp;page={{ search_results.previous_page_number }}"
+               class="btn border-neutral-300 text-neutral-700 hover:bg-neutral-50">
+                <i class="fas fa-chevron-left mr-2"></i> Previous
+            </a>
+            {% endif %}
+
+            {% if search_results.has_next %}
+            <a href="{% url 'search' %}?query={{ search_query|urlencode }}&amp;page={{ search_results.next_page_number }}"
+               class="btn border-neutral-300 text-neutral-700 hover:bg-neutral-50">
+                Next <i class="fas fa-chevron-right ml-2"></i>
+            </a>
+            {% endif %}
+        </div>
         {% endif %}
-    </li>
-    {% endfor %}
-</ul>
-
-{% if search_results.has_previous %}
-<a href="{% url 'search' %}?query={{ search_query|urlencode }}&amp;page={{ search_results.previous_page_number }}">Previous</a>
-{% endif %}
-
-{% if search_results.has_next %}
-<a href="{% url 'search' %}?query={{ search_query|urlencode }}&amp;page={{ search_results.next_page_number }}">Next</a>
-{% endif %}
-{% elif search_query %}
-No results found
-{% endif %}
+        {% elif search_query %}
+        <div class="text-center py-12">
+            <div class="w-20 h-20 bg-neutral-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <i class="fas fa-search text-neutral-400 text-2xl"></i>
+            </div>
+            <h2 class="text-2xl font-semibold text-primary-800 mb-4">No Results Found</h2>
+            <p class="text-neutral-600 mb-6">Sorry, we couldn't find any results for "{{ search_query }}".</p>
+            <p class="text-neutral-500 text-sm">Try different keywords or check your spelling.</p>
+        </div>
+        {% else %}
+        <div class="text-center py-12">
+            <div class="w-20 h-20 bg-secondary-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <i class="fas fa-search text-secondary-500 text-2xl"></i>
+            </div>
+            <h2 class="text-2xl font-semibold text-primary-800 mb-4">Search Our Site</h2>
+            <p class="text-neutral-600">Enter your search terms above to find pages, blog posts, and content.</p>
+        </div>
+        {% endif %}
+    </div>
+</section>
 {% endblock %}

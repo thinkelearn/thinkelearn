@@ -10,27 +10,27 @@
     <div class="max-w-4xl mx-auto container-padding">
         <!-- Breadcrumb -->
         <nav class="mb-8">
-            <ol class="flex items-center space-x-2 text-sm text-gray-500">
-                <li><a href="/" class="hover:text-primary-600 transition-colors">Home</a></li>
+            <ol class="flex items-center space-x-2 text-sm text-neutral-500">
+                <li><a href="/" class="hover:text-secondary-500 transition-colors">Home</a></li>
                 <li><i class="fas fa-chevron-right text-xs"></i></li>
-                <li><a href="{% pageurl page.get_parent %}" class="hover:text-primary-600 transition-colors">Blog</a></li>
+                <li><a href="{% pageurl page.get_parent %}" class="hover:text-secondary-500 transition-colors">Blog</a></li>
                 <li><i class="fas fa-chevron-right text-xs"></i></li>
-                <li class="text-gray-900">{{ page.title }}</li>
+                <li class="text-primary-800">{{ page.title }}</li>
             </ol>
         </nav>
 
         <!-- Article header -->
         <header class="mb-8">
-            <h1 class="text-3xl lg:text-5xl font-heading font-bold mb-6 text-gray-900 leading-tight">
+            <h1 class="text-3xl lg:text-5xl font-heading font-bold mb-6 text-primary-800 leading-tight">
                 {{ page.title }}
             </h1>
 
             {% if page.intro %}
-            <p class="text-xl text-gray-600 mb-6 leading-relaxed">{{ page.intro }}</p>
+            <p class="text-xl text-neutral-600 mb-6 leading-relaxed">{{ page.intro }}</p>
             {% endif %}
 
             <!-- Meta information -->
-            <div class="flex flex-wrap items-center gap-6 text-sm text-gray-500 mb-6">
+            <div class="flex flex-wrap items-center gap-6 text-sm text-neutral-500 mb-6">
                 <div class="flex items-center">
                     <i class="fas fa-calendar mr-2"></i>
                     <span>{{ page.date|date:"F d, Y" }}</span>
@@ -41,8 +41,8 @@
                     {% if page.author_image %}
                         {% image page.author_image fill-32x32 class="w-8 h-8 rounded-full mr-2" %}
                     {% else %}
-                        <div class="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center mr-2">
-                            <i class="fas fa-user text-gray-500 text-xs"></i>
+                        <div class="w-8 h-8 bg-neutral-200 rounded-full flex items-center justify-center mr-2">
+                            <i class="fas fa-user text-neutral-500 text-xs"></i>
                         </div>
                     {% endif %}
                     <span>by {{ page.author_name }}</span>
@@ -63,7 +63,7 @@
             {% if page.tags.all %}
             <div class="flex flex-wrap gap-2">
                 {% for tag in page.tags.all %}
-                    <span class="inline-block bg-primary-100 text-primary-700 text-sm px-3 py-1 rounded-full">
+                    <span class="inline-block bg-secondary-100 text-secondary-700 text-sm px-3 py-1 rounded-full">
                         #{{ tag.name }}
                     </span>
                 {% endfor %}
@@ -91,21 +91,21 @@
 
 <!-- Author info -->
 {% if page.author_bio %}
-<section class="section-padding bg-gray-50">
+<section class="section-padding bg-neutral-50">
     <div class="max-w-4xl mx-auto container-padding">
         <div class="bg-white rounded-lg p-8 shadow-sm">
-            <h3 class="text-xl font-semibold mb-4 text-gray-900">About the Author</h3>
+            <h3 class="text-xl font-semibold mb-4 text-primary-800">About the Author</h3>
             <div class="flex items-start space-x-4">
                 {% if page.author_image %}
                     {% image page.author_image fill-80x80 class="w-20 h-20 rounded-full flex-shrink-0" %}
                 {% else %}
-                    <div class="w-20 h-20 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0">
-                        <i class="fas fa-user text-gray-500 text-2xl"></i>
+                    <div class="w-20 h-20 bg-neutral-200 rounded-full flex items-center justify-center flex-shrink-0">
+                        <i class="fas fa-user text-neutral-500 text-2xl"></i>
                     </div>
                 {% endif %}
                 <div>
-                    <h4 class="font-semibold text-gray-900 mb-2">{{ page.author_name }}</h4>
-                    <p class="text-gray-600 leading-relaxed">{{ page.author_bio }}</p>
+                    <h4 class="font-semibold text-primary-800 mb-2">{{ page.author_name }}</h4>
+                    <p class="text-neutral-600 leading-relaxed">{{ page.author_bio }}</p>
                 </div>
             </div>
         </div>
@@ -117,7 +117,7 @@
 {% if related_posts %}
 <section class="section-padding bg-white">
     <div class="max-w-7xl mx-auto container-padding">
-        <h3 class="text-2xl font-heading font-bold mb-8 text-gray-900 text-center">Related Posts</h3>
+        <h3 class="text-2xl font-heading font-bold mb-8 text-primary-800 text-center">Related Posts</h3>
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
             {% for post in related_posts %}
@@ -131,15 +131,15 @@
                     {% endif %}
 
                     <div class="p-4">
-                        <h4 class="text-lg font-semibold mb-2 text-gray-900 group-hover:text-primary-600 transition-colors">
+                        <h4 class="text-lg font-semibold mb-2 text-primary-800 group-hover:text-secondary-500 transition-colors">
                             <a href="{% pageurl post %}">{{ post.title }}</a>
                         </h4>
 
                         {% if post.intro %}
-                        <p class="text-gray-600 text-sm mb-3">{{ post.intro|truncatewords:15 }}</p>
+                        <p class="text-neutral-600 text-sm mb-3">{{ post.intro|truncatewords:15 }}</p>
                         {% endif %}
 
-                        <div class="text-xs text-gray-500">{{ post.date|date:"M d, Y" }}</div>
+                        <div class="text-xs text-neutral-500">{{ post.date|date:"M d, Y" }}</div>
                     </div>
                 </article>
             {% endfor %}
@@ -149,20 +149,20 @@
 {% endif %}
 
 <!-- Call to Action -->
-<section class="section-padding bg-primary-600 text-white">
+<section class="section-padding bg-primary-800 text-white">
     <div class="max-w-4xl mx-auto container-padding text-center">
         <h2 class="text-2xl lg:text-3xl font-heading font-bold mb-4">
             Stay Updated with Our Latest Insights
         </h2>
-        <p class="text-xl mb-6 text-primary-100">
+        <p class="text-xl mb-6 text-neutral-200">
             Don't miss out on our latest articles and industry updates.
         </p>
         <div class="flex flex-col sm:flex-row gap-4 justify-center">
-            <a href="{% pageurl page.get_parent %}" class="btn bg-white text-primary-600 hover:bg-gray-100 shadow-lg">
+            <a href="{% pageurl page.get_parent %}" class="btn bg-white text-primary-800 hover:bg-neutral-100 shadow-lg">
                 View All Posts
                 <i class="fas fa-arrow-right ml-2"></i>
             </a>
-            <a href="/contact/" class="btn border-white text-white hover:bg-white hover:text-primary-600">
+            <a href="/contact/" class="btn border-white text-white hover:bg-white hover:text-primary-800">
                 Get In Touch
                 <i class="fas fa-envelope ml-2"></i>
             </a>
