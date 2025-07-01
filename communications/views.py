@@ -1,9 +1,11 @@
+from django.conf import settings
 from django.http import HttpResponse, StreamingHttpResponse, Http404
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from django.views import View
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404
+from django.template.response import TemplateResponse
 from twilio.twiml.voice_response import VoiceResponse
 from twilio.twiml.messaging_response import MessagingResponse
 from .models import VoicemailMessage, SMSMessage
@@ -85,8 +87,12 @@ def recording_proxy_view(request, voicemail_id):
         # Get recording URL from Twilio
         recording_url = voicemail.recording_url
 
-        # Fetch the recording from Twilio
-        response = requests.get(recording_url, stream=True)
+        # Fetch the recording from Twilio with authentication
+        response = requests.get(
+            recording_url,
+            stream=True,
+            auth=(settings.TWILIO_ACCOUNT_SID, settings.TWILIO_AUTH_TOKEN),
+        )
         response.raise_for_status()
 
         # Create streaming response
@@ -120,8 +126,6 @@ def recording_player_view(request, voicemail_id):
 
     if not voicemail.recording_url:
         raise Http404("Recording not available")
-
-    from django.template.response import TemplateResponse
 
     context = {
         "voicemail": voicemail,
