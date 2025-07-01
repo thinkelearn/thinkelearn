@@ -86,6 +86,7 @@ thinkelearn/
 3. **Admin access** (after setup)
    - If you used `./start.sh setup`: Login with `admin` / `defaultpassword123`
    - If you used basic start: Create admin manually:
+
      ```bash
      docker-compose exec web python manage.py createsuperuser
      ```
@@ -319,7 +320,9 @@ python manage.py migrate
 The platform uses two distinct admin interfaces:
 
 ### Wagtail Admin (`/admin/`)
+
 **Purpose**: Content Management System
+
 - **Content creators and editors** use this interface
 - Manage pages, blog posts, images, documents
 - User-friendly visual editor with drag-and-drop
@@ -327,7 +330,9 @@ The platform uses two distinct admin interfaces:
 - Media library management
 
 ### Django Admin (`/django-admin/`)
+
 **Purpose**: System Administration
+
 - **Administrators and technical staff** use this interface
 - User and group management
 - **Communications management** (voicemails, SMS)
@@ -336,6 +341,7 @@ The platform uses two distinct admin interfaces:
 - Raw database access when needed
 
 ### Access Control
+
 - Same user accounts work for both admin interfaces
 - Different permission levels can be assigned
 - Content editors typically only need Wagtail admin access
