@@ -13,6 +13,16 @@ services:
     environment:
       - DJANGO_SETTINGS_MODULE=thinkelearn.settings.dev
       - DATABASE_URL=postgres://postgres:postgres@db:5432/thinkelearn
+      # Twilio configuration
+      - TWILIO_ACCOUNT_SID=${TWILIO_ACCOUNT_SID}
+      - TWILIO_AUTH_TOKEN=${TWILIO_AUTH_TOKEN}
+      - TWILIO_PHONE_NUMBER=${TWILIO_PHONE_NUMBER}
+      # Email notification configuration
+      - VOICEMAIL_NOTIFICATION_EMAILS=${VOICEMAIL_NOTIFICATION_EMAILS}
+      - SMS_NOTIFICATION_EMAILS=${SMS_NOTIFICATION_EMAILS}
+      - DEFAULT_FROM_EMAIL=${DEFAULT_FROM_EMAIL}
+    env_file:
+      - .env
     depends_on:
       - db
     command: python manage.py runserver 0.0.0.0:8000
@@ -41,6 +51,15 @@ services:
       - pgadmin_data:/var/lib/pgadmin
     depends_on:
       - db
+
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "1025:1025"  # SMTP server
+      - "8025:8025"  # Web UI
+    environment:
+      - MP_SMTP_AUTH_ACCEPT_ANY=1
+      - MP_SMTP_AUTH_ALLOW_INSECURE=1
 
   css:
     build:

@@ -92,9 +92,10 @@ thinkelearn/
 
 4. **Access the application**
    - Website: <http://localhost:8000>
-   - Admin: <http://localhost:8000/admin/>
-   - Django Admin: <http://localhost:8000/django-admin/>
-   - PgAdmin: <http://localhost:5050> (Email: `admin@thinkelearn.com`, Password: `admin`)
+   - **Wagtail Admin** (CMS): <http://localhost:8000/admin/> - Content management, pages, documents
+   - **Django Admin** (System): <http://localhost:8000/django-admin/> - User management, communications, system data
+   - **Mailpit** (Email testing): <http://localhost:8025> - View email notifications
+   - **pgAdmin** (Database): <http://localhost:5050> (Email: `admin@thinkelearn.com`, Password: `admin`)
 
 ### Option 2: Traditional Setup
 
@@ -306,11 +307,39 @@ python manage.py migrate
 ## URL Structure
 
 - `/` - Homepage
-- `/admin/` - Wagtail admin interface
-- `/django-admin/` - Django admin interface
+- `/admin/` - **Wagtail Admin** - Content management, pages, documents, media
+- `/django-admin/` - **Django Admin** - User management, communications, system administration
 - `/search/` - Search functionality
 - `/documents/` - Document serving
+- `/communications/` - Twilio webhook endpoints and recording access
 - Future routes: `/blog/`, `/portfolio/`, `/contact/`
+
+## Admin Interfaces
+
+The platform uses two distinct admin interfaces:
+
+### Wagtail Admin (`/admin/`)
+**Purpose**: Content Management System
+- **Content creators and editors** use this interface
+- Manage pages, blog posts, images, documents
+- User-friendly visual editor with drag-and-drop
+- SEO settings, page publishing workflow
+- Media library management
+
+### Django Admin (`/django-admin/`)
+**Purpose**: System Administration
+- **Administrators and technical staff** use this interface
+- User and group management
+- **Communications management** (voicemails, SMS)
+- System settings and configuration
+- Technical data and logs
+- Raw database access when needed
+
+### Access Control
+- Same user accounts work for both admin interfaces
+- Different permission levels can be assigned
+- Content editors typically only need Wagtail admin access
+- System administrators need access to both interfaces
 
 ## Contributing
 

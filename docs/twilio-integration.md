@@ -110,16 +110,23 @@ Stores SMS messages with the following fields:
 
 ## Admin Interface
 
-Both models are registered with Django admin for easy management:
+Both models are registered with **Django Admin** (not Wagtail Admin) for technical management:
 
-1. **Access**: Navigate to `/admin/` and log in
+1. **Access**: Navigate to `/django-admin/` and log in
+   - **Note**: Use Django Admin (`/django-admin/`), not Wagtail Admin (`/admin/`)
+   - Django Admin is for system administration and technical data
+   - Wagtail Admin is for content management (pages, media, etc.)
+
 2. **View Messages**:
    - Communications → Voicemail messages
    - Communications → SMS messages
+
 3. **Features**:
-   - Search by phone number or content
-   - Filter by date
-   - Read-only access to Twilio IDs and timestamps
+   - Search by phone number, content, or notes
+   - Filter by status, assigned staff, and date
+   - Audio player for voicemail recordings
+   - Staff assignment and workflow management
+   - Internal notes and follow-up tracking
 
 ## Call Flow
 
