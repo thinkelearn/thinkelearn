@@ -1,0 +1,21 @@
+NEW VOICEMAIL RECEIVED - {{ site_name }}
+
+A new voicemail has been received on the {{ site_name }} phone system.
+
+DETAILS:
+--------
+From: {{ voicemail.caller_number }}
+Duration: {% if voicemail.duration %}{{ voicemail.duration }} seconds{% else %}Unknown{% endif %}
+Received: {{ voicemail.created_at|date:"F j, Y \a\\t g:i A" }}
+
+{% if voicemail.transcription %}TRANSCRIPTION:
+{{ voicemail.transcription }}
+
+{% endif %}ACTIONS:
+--------
+Listen to Recording: {{ recording_url }}
+View in Admin: {{ admin_url }}
+
+---
+This is an automated notification from {{ site_name }}.
+Please follow up with the caller as soon as possible.

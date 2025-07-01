@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Voicemail from {{ voicemail.caller_number }} - THINK eLearn</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f8f9fa;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #361612 0%, #784421 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        .content {
+            padding: 30px;
+        }
+        .detail {
+            margin: 15px 0;
+            display: flex;
+            justify-content: space-between;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+        .label {
+            font-weight: 600;
+            color: #361612;
+        }
+        .value {
+            color: #666;
+        }
+        .audio-container {
+            background: #f8f9fa;
+            border: 2px solid #ff6600;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .audio-player {
+            width: 100%;
+            max-width: 400px;
+            margin: 10px auto;
+            outline: none;
+        }
+        .audio-player::-webkit-media-controls {
+            background-color: white;
+            border-radius: 4px;
+        }
+        .actions {
+            text-align: center;
+            margin: 20px 0;
+        }
+        .button {
+            display: inline-block;
+            background: #ff6600;
+            color: white;
+            padding: 12px 24px;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 5px;
+            transition: background 0.3s;
+        }
+        .button:hover {
+            background: #e55a00;
+        }
+        .button.secondary {
+            background: #6c757d;
+        }
+        .button.secondary:hover {
+            background: #5a6268;
+        }
+        .transcription {
+            background: #f8f9fa;
+            border-left: 4px solid #ff6600;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 0 4px 4px 0;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎙️ Voicemail Recording</h1>
+            <p>From {{ voicemail.caller_number }}</p>
+        </div>
+
+        <div class="content">
+            <div class="detail">
+                <span class="label">Caller Number:</span>
+                <span class="value">{{ voicemail.caller_number }}</span>
+            </div>
+
+            <div class="detail">
+                <span class="label">Duration:</span>
+                <span class="value">
+                    {% if voicemail.duration %}
+                        {{ voicemail.duration }} seconds
+                    {% else %}
+                        Unknown
+                    {% endif %}
+                </span>
+            </div>
+
+            <div class="detail">
+                <span class="label">Received:</span>
+                <span class="value">{{ voicemail.created_at|date:"F j, Y \a\\t g:i A" }}</span>
+            </div>
+
+            <div class="audio-container">
+                <h3>🎧 Recording Player</h3>
+                <audio controls class="audio-player" preload="metadata">
+                    <source src="{{ recording_stream_url }}" type="audio/wav">
+                    <source src="{{ recording_stream_url }}" type="audio/mpeg">
+                    <p class="error">
+                        Your browser doesn't support audio playback.
+                        <a href="{{ recording_stream_url }}">Download the recording</a> instead.
+                    </p>
+                </audio>
+                <p style="margin-top: 10px; font-size: 14px; color: #666;">
+                    Use the controls above to play, pause, and adjust the volume.
+                </p>
+            </div>
+
+            {% if voicemail.transcription %}
+            <div class="transcription">
+                <h4>📝 Transcription</h4>
+                <p>{{ voicemail.transcription }}</p>
+            </div>
+            {% endif %}
+
+            <div class="actions">
+                <a href="{{ recording_stream_url }}" download="voicemail_{{ voicemail.id }}.wav" class="button">
+                    💾 Download Recording
+                </a>
+                <a href="/django-admin/communications/voicemailmessage/{{ voicemail.id }}/change/" class="button secondary">
+                    📝 View in Admin
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Add some basic error handling for audio loading
+        document.addEventListener('DOMContentLoaded', function() {
+            const audio = document.querySelector('.audio-player');
+
+            audio.addEventListener('error', function(e) {
+                console.error('Audio loading error:', e);
+                const container = document.querySelector('.audio-container');
+                container.innerHTML = `
+                    <div class="error">
+                        <h4>❌ Unable to load recording</h4>
+                        <p>There was an error loading the audio file. Please try downloading it instead.</p>
+                        <a href="{{ recording_stream_url }}" download class="button">💾 Download Recording</a>
+                    </div>
+                `;
+            });
+
+            audio.addEventListener('loadstart', function() {
+                console.log('Audio loading started...');
+            });
+
+            audio.addEventListener('canplay', function() {
+                console.log('Audio ready to play');
+            });
+        });
+    </script>
+</body>
+</html>

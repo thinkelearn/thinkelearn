@@ -1,0 +1,24 @@
+NEW SMS MESSAGE RECEIVED - {{ site_name }}
+
+A new SMS message has been received on the {{ site_name }} phone system.
+
+DETAILS:
+--------
+From: {{ sms.from_number }}
+To: {{ sms.to_number }}
+Received: {{ sms.created_at|date:"F j, Y \a\\t g:i A" }}
+
+MESSAGE:
+--------
+{{ sms.body }}
+
+{% if sms.media_url %}MEDIA:
+{{ sms.media_url }}
+
+{% endif %}ACTIONS:
+--------
+View in Admin: {{ admin_url }}
+
+---
+This is an automated notification from {{ site_name }}.
+An auto-reply has been sent to the sender.
