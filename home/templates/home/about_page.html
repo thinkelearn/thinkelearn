@@ -47,7 +47,7 @@
 
 <!-- Mission Section -->
 {% if page.mission_content %}
-<section class="section-padding bg-neutral-50">
+<section class="section-padding bg-cyan-50">
     <div class="max-w-4xl mx-auto container-padding">
         <div class="text-center mb-12">
             <h2 class="text-3xl lg:text-4xl font-heading font-bold text-primary-800 mb-6">
@@ -79,8 +79,8 @@
                 <div class="card-hover text-center">
                     <div class="p-8">
                         {% if value.value.icon %}
-                        <div class="w-16 h-16 bg-secondary-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                            <i class="{{ value.value.icon }} text-secondary-600 text-2xl"></i>
+                        <div class="w-16 h-16 bg-cream-200 rounded-full flex items-center justify-center mx-auto mb-6">
+                            <i class="{{ value.value.icon }} text-cyan-600 text-2xl"></i>
                         </div>
                         {% endif %}
                         <h3 class="text-xl font-semibold mb-4 text-primary-800">{{ value.value.title }}</h3>
@@ -95,7 +95,7 @@
 
 <!-- Team Section -->
 {% if page.team_members %}
-<section class="section-padding bg-neutral-50">
+<section class="section-padding bg-cream-100">
     <div class="max-w-7xl mx-auto container-padding">
         <div class="text-center mb-16">
             <h2 class="text-3xl lg:text-4xl font-heading font-bold text-gray-900 mb-4">
@@ -113,8 +113,8 @@
                         {% if member.value.photo %}
                             {% image member.value.photo fill-150x150 class="w-24 h-24 rounded-full mx-auto mb-6 object-cover" %}
                         {% else %}
-                            <div class="w-24 h-24 bg-neutral-200 rounded-full flex items-center justify-center mx-auto mb-6">
-                                <i class="fas fa-user text-neutral-500 text-2xl"></i>
+                            <div class="w-24 h-24 bg-cyan-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                                <i class="fas fa-user text-cyan-500 text-2xl"></i>
                             </div>
                         {% endif %}
                         <h3 class="text-xl font-semibold mb-2 text-primary-800">{{ member.value.name }}</h3>
@@ -167,12 +167,12 @@
             {% for milestone in page.milestones %}
                 <div class="relative flex items-center mb-8 {% cycle 'md:flex-row' 'md:flex-row-reverse' %}">
                     <!-- Timeline dot -->
-                    <div class="absolute left-8 md:left-1/2 transform -translate-x-1/2 w-4 h-4 bg-secondary-500 rounded-full border-4 border-white shadow-lg z-10"></div>
+                    <div class="absolute left-8 md:left-1/2 transform -translate-x-1/2 w-4 h-4 bg-cyan-500 rounded-full border-4 border-white shadow-lg z-10"></div>
 
                     <!-- Content -->
                     <div class="ml-20 md:ml-0 md:w-1/2 {% if forloop.counter0|divisibleby:2 %}md:pr-8 md:text-right{% else %}md:pl-8{% endif %}">
                         <div class="card-hover p-6">
-                            <div class="text-2xl font-bold text-secondary-500 mb-2">{{ milestone.value.year }}</div>
+                            <div class="text-2xl font-bold text-cyan-600 mb-2">{{ milestone.value.year }}</div>
                             <h3 class="text-xl font-semibold mb-3 text-primary-800">{{ milestone.value.title }}</h3>
                             <p class="text-neutral-600 leading-relaxed">{{ milestone.value.description }}</p>
                         </div>

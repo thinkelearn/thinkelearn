@@ -23,16 +23,16 @@
 
 <!-- Filter Section -->
 {% if categories %}
-<section class="section-padding bg-neutral-50 border-b">
+<section class="section-padding bg-cyan-50 border-b">
     <div class="max-w-7xl mx-auto container-padding">
         <div class="flex flex-wrap justify-center gap-4">
             <a href="{% pageurl page %}"
-               class="px-6 py-2 rounded-full border transition-colors {% if not request.GET.category %}bg-secondary-500 text-white border-secondary-500{% else %}bg-white text-neutral-700 border-neutral-300 hover:border-secondary-500 hover:text-secondary-500{% endif %}">
+               class="px-6 py-2 rounded-full border transition-colors {% if not request.GET.category %}bg-cyan-500 text-white border-cyan-500{% else %}bg-white text-neutral-700 border-neutral-300 hover:border-cyan-500 hover:text-cyan-500{% endif %}">
                 All Blog Posts
             </a>
             {% for category in categories %}
                 <a href="?category={{ category.slug }}"
-                   class="px-6 py-2 rounded-full border transition-colors {% if request.GET.category == category.slug %}bg-secondary-500 text-white border-secondary-500{% else %}bg-white text-neutral-700 border-neutral-300 hover:border-secondary-500 hover:text-secondary-500{% endif %}">
+                   class="px-6 py-2 rounded-full border transition-colors {% if request.GET.category == category.slug %}bg-cyan-500 text-white border-cyan-500{% else %}bg-white text-neutral-700 border-neutral-300 hover:border-cyan-500 hover:text-cyan-500{% endif %}">
                     {{ category.name }}
                 </a>
             {% endfor %}
@@ -42,7 +42,7 @@
 {% endif %}
 
 <!-- Blog Posts Section -->
-<section class="section-padding bg-white">
+<section class="section-padding bg-cream-50">
     <div class="max-w-7xl mx-auto container-padding">
 
         {% if posts %}
@@ -68,7 +68,7 @@
                         </div>
 
                         <!-- Title and intro -->
-                        <h2 class="text-xl font-semibold mb-3 text-primary-800 group-hover:text-secondary-500 transition-colors">
+                        <h2 class="text-xl font-semibold mb-3 text-primary-800 group-hover:text-cyan-600 transition-colors">
                             <a href="{% pageurl post %}">{{ post.title }}</a>
                         </h2>
 
@@ -80,7 +80,7 @@
                         {% if post.tags.all %}
                         <div class="flex flex-wrap gap-2 mb-4">
                             {% for tag in post.tags.all %}
-                                <span class="inline-block bg-neutral-100 text-neutral-700 text-xs px-2 py-1 rounded-full">
+                                <span class="inline-block bg-cream-200 text-neutral-700 text-xs px-2 py-1 rounded-full">
                                     {{ tag.name }}
                                 </span>
                             {% endfor %}
@@ -88,7 +88,7 @@
                         {% endif %}
 
                         <!-- Read more link -->
-                        <a href="{% pageurl post %}" class="inline-flex items-center text-secondary-500 hover:text-secondary-600 font-medium transition-colors">
+                        <a href="{% pageurl post %}" class="inline-flex items-center text-cyan-600 hover:text-cyan-700 font-medium transition-colors">
                             Read More
                             <i class="fas fa-arrow-right ml-2 text-sm"></i>
                         </a>
@@ -102,21 +102,21 @@
         <div class="flex justify-center mt-12">
             <nav class="flex items-center space-x-2">
                 {% if posts.has_previous %}
-                    <a href="?page={{ posts.previous_page_number }}" class="px-3 py-2 text-neutral-500 hover:text-secondary-500 transition-colors">
+                    <a href="?page={{ posts.previous_page_number }}" class="px-3 py-2 text-neutral-500 hover:text-cyan-600 transition-colors">
                         <i class="fas fa-chevron-left"></i>
                     </a>
                 {% endif %}
 
                 {% for page_num in posts.paginator.page_range %}
                     {% if page_num == posts.number %}
-                        <span class="px-3 py-2 bg-secondary-500 text-white rounded">{{ page_num }}</span>
+                        <span class="px-3 py-2 bg-cyan-500 text-white rounded">{{ page_num }}</span>
                     {% else %}
-                        <a href="?page={{ page_num }}" class="px-3 py-2 text-neutral-500 hover:text-secondary-500 transition-colors">{{ page_num }}</a>
+                        <a href="?page={{ page_num }}" class="px-3 py-2 text-neutral-500 hover:text-cyan-600 transition-colors">{{ page_num }}</a>
                     {% endif %}
                 {% endfor %}
 
                 {% if posts.has_next %}
-                    <a href="?page={{ posts.next_page_number }}" class="px-3 py-2 text-neutral-500 hover:text-secondary-500 transition-colors">
+                    <a href="?page={{ posts.next_page_number }}" class="px-3 py-2 text-neutral-500 hover:text-cyan-600 transition-colors">
                         <i class="fas fa-chevron-right"></i>
                     </a>
                 {% endif %}
@@ -127,8 +127,8 @@
         {% else %}
         <!-- No posts message -->
         <div class="text-center py-16">
-            <div class="w-20 h-20 bg-neutral-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                <i class="fas fa-blog text-neutral-400 text-2xl"></i>
+            <div class="w-20 h-20 bg-cream-200 rounded-full flex items-center justify-center mx-auto mb-6">
+                <i class="fas fa-blog text-cyan-500 text-2xl"></i>
             </div>
             <h2 class="text-2xl font-semibold text-primary-800 mb-4">No Blog Posts Yet</h2>
             <p class="text-neutral-600 max-w-md mx-auto">

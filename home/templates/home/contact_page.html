@@ -23,7 +23,7 @@
 
 <!-- Introduction Section -->
 {% if page.intro_text %}
-<section class="section-padding bg-white">
+<section class="section-padding bg-cyan-50">
     <div class="max-w-4xl mx-auto container-padding text-center">
         <div class="prose prose-lg mx-auto text-neutral-700">
             {{ page.intro_text }}
@@ -33,7 +33,7 @@
 {% endif %}
 
 <!-- Contact Form and Info Section -->
-<section class="section-padding bg-neutral-50">
+<section class="section-padding bg-cream-100">
     <div class="max-w-7xl mx-auto container-padding">
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-12">
 
@@ -55,7 +55,7 @@
                                     name="{{ field.name }}"
                                     id="{{ field.id_for_label }}"
                                     rows="4"
-                                    class="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-secondary-500 focus:border-secondary-500 transition-colors"
+                                    class="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition-colors"
                                     {% if field.field.required %}required{% endif %}
                                     {% if field.help_text %}placeholder="{{ field.help_text }}"{% endif %}
                                 >{{ field.value|default:'' }}</textarea>
@@ -65,7 +65,7 @@
                                     name="{{ field.name }}"
                                     id="{{ field.id_for_label }}"
                                     value="{{ field.value|default:'' }}"
-                                    class="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-secondary-500 focus:border-secondary-500 transition-colors"
+                                    class="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition-colors"
                                     {% if field.field.required %}required{% endif %}
                                     {% if field.help_text %}placeholder="{{ field.help_text }}"{% endif %}
                                 />
@@ -79,7 +79,7 @@
                         </div>
                     {% endfor %}
 
-                    <button type="submit" class="btn bg-secondary-500 text-white hover:bg-secondary-600 w-full justify-center">
+                    <button type="submit" class="btn bg-cyan-500 text-white hover:bg-cyan-600 w-full justify-center">
                         Send Message
                         <i class="fas fa-paper-plane ml-2"></i>
                     </button>
@@ -99,13 +99,13 @@
                 <div class="space-y-6">
                     {% if page.phone %}
                     <div class="flex items-start">
-                        <div class="w-12 h-12 bg-secondary-100 rounded-lg flex items-center justify-center mr-4 flex-shrink-0">
-                            <i class="fas fa-phone text-secondary-500"></i>
+                        <div class="w-12 h-12 bg-cream-200 rounded-lg flex items-center justify-center mr-4 flex-shrink-0">
+                            <i class="fas fa-phone text-cyan-600"></i>
                         </div>
                         <div>
                             <h3 class="font-semibold text-primary-800 mb-1">Phone</h3>
                             <p class="text-neutral-600">
-                                <a href="tel:{{ page.phone }}" class="hover:text-secondary-500 transition-colors">{{ page.phone }}</a>
+                                <a href="tel:{{ page.phone }}" class="hover:text-cyan-600 transition-colors">{{ page.phone }}</a>
                             </p>
                         </div>
                     </div>
@@ -113,13 +113,13 @@
 
                     {% if page.email %}
                     <div class="flex items-start">
-                        <div class="w-12 h-12 bg-secondary-100 rounded-lg flex items-center justify-center mr-4 flex-shrink-0">
-                            <i class="fas fa-envelope text-secondary-500"></i>
+                        <div class="w-12 h-12 bg-cream-200 rounded-lg flex items-center justify-center mr-4 flex-shrink-0">
+                            <i class="fas fa-envelope text-cyan-600"></i>
                         </div>
                         <div>
                             <h3 class="font-semibold text-primary-800 mb-1">Email</h3>
                             <p class="text-neutral-600">
-                                <a href="mailto:{{ page.email }}" class="hover:text-secondary-500 transition-colors">{{ page.email }}</a>
+                                <a href="mailto:{{ page.email }}" class="hover:text-cyan-600 transition-colors">{{ page.email }}</a>
                             </p>
                         </div>
                     </div>
@@ -127,8 +127,8 @@
 
                     {% if page.address %}
                     <div class="flex items-start">
-                        <div class="w-12 h-12 bg-secondary-100 rounded-lg flex items-center justify-center mr-4 flex-shrink-0">
-                            <i class="fas fa-map-marker-alt text-secondary-500"></i>
+                        <div class="w-12 h-12 bg-cream-200 rounded-lg flex items-center justify-center mr-4 flex-shrink-0">
+                            <i class="fas fa-map-marker-alt text-cyan-600"></i>
                         </div>
                         <div>
                             <h3 class="font-semibold text-primary-800 mb-1">Address</h3>
@@ -139,8 +139,8 @@
 
                     {% if page.office_hours %}
                     <div class="flex items-start">
-                        <div class="w-12 h-12 bg-secondary-100 rounded-lg flex items-center justify-center mr-4 flex-shrink-0">
-                            <i class="fas fa-clock text-secondary-500"></i>
+                        <div class="w-12 h-12 bg-cream-200 rounded-lg flex items-center justify-center mr-4 flex-shrink-0">
+                            <i class="fas fa-clock text-cyan-600"></i>
                         </div>
                         <div>
                             <h3 class="font-semibold text-primary-800 mb-1">Office Hours</h3>

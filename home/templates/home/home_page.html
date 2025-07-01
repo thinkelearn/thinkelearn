@@ -51,7 +51,9 @@
 
 <!-- Features Section -->
 {% if page.features %}
-<section class="section-padding bg-white">
+<!-- Divider -->
+<div class="py-4 bg-cream-50 max-w-7xl mx-auto container-padding"></div>
+<section class="section-padding bg-cyan-50">
     <div class="max-w-7xl mx-auto container-padding">
         <div class="text-center mb-16">
             <h2 class="text-3xl lg:text-4xl font-heading font-bold text-primary-800 mb-4">
@@ -64,15 +66,15 @@
 
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {% for feature in page.features %}
-                <div class="card-hover text-center">
+                <div class="bg-cyan-600 rounded-lg shadow-lg hover:shadow-xl transition-shadow duration-300 text-center">
                     <div class="p-8">
                         {% if feature.value.icon %}
-                        <div class="w-16 h-16 bg-secondary-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                            <i class="{{ feature.value.icon }} text-secondary-500 text-2xl"></i>
+                        <div class="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-6">
+                            <i class="{{ feature.value.icon }} text-cyan-600 text-2xl"></i>
                         </div>
                         {% endif %}
-                        <h3 class="text-xl font-semibold mb-4 text-primary-800">{{ feature.value.title }}</h3>
-                        <p class="text-neutral-600 leading-relaxed">{{ feature.value.description }}</p>
+                        <h3 class="text-xl font-semibold mb-4 text-white">{{ feature.value.title }}</h3>
+                        <p class="text-cyan-50 leading-relaxed">{{ feature.value.description }}</p>
                     </div>
                 </div>
             {% endfor %}
@@ -83,39 +85,41 @@
 
 <!-- Testimonials Section -->
 {% if page.testimonials %}
-<section class="section-padding bg-neutral-50">
+<!-- Divider -->
+<div class="py-4 bg-cream-50 max-w-7xl mx-auto container-padding"></div>
+<section class="section-padding bg-primary-200">
     <div class="max-w-7xl mx-auto container-padding">
         <div class="text-center mb-16">
             <h2 class="text-3xl lg:text-4xl font-heading font-bold text-primary-800 mb-4">
                 {{ page.testimonials_title }}
             </h2>
-            <p class="text-xl text-neutral-600 max-w-3xl mx-auto">
+            <p class="text-xl text-primary-700 max-w-3xl mx-auto">
                 {{ page.testimonials_description }}
             </p>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {% for testimonial in page.testimonials %}
-                <div class="card-hover">
+                <div class="bg-white rounded-lg shadow-lg hover:shadow-xl transition-shadow duration-300 text-primary-800">
                     <div class="p-8">
                         <div class="mb-6">
                             <i class="fas fa-quote-left text-secondary-500 text-2xl"></i>
                         </div>
-                        <blockquote class="text-neutral-700 mb-6 leading-relaxed">
+                        <blockquote class="text-primary-700 mb-6 leading-relaxed">
                             "{{ testimonial.value.quote }}"
                         </blockquote>
                         <div class="flex items-center">
                             {% if testimonial.value.avatar %}
                                 {% image testimonial.value.avatar fill-50x50 class="w-12 h-12 rounded-full mr-4" %}
                             {% else %}
-                                <div class="w-12 h-12 bg-secondary-100 rounded-full flex items-center justify-center mr-4">
-                                    <i class="fas fa-user text-secondary-500"></i>
+                                <div class="w-12 h-12 bg-primary-100 rounded-full flex items-center justify-center mr-4">
+                                    <i class="fas fa-user text-primary-600"></i>
                                 </div>
                             {% endif %}
                             <div>
                                 <div class="font-semibold text-primary-800">{{ testimonial.value.author }}</div>
                                 {% if testimonial.value.company %}
-                                <div class="text-sm text-neutral-600">{{ testimonial.value.company }}</div>
+                                <div class="text-sm text-primary-600">{{ testimonial.value.company }}</div>
                                 {% endif %}
                             </div>
                         </div>
@@ -144,9 +148,9 @@
 
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {% for post in recent_posts %}
-                <article class="card-hover group">
+                <article class="bg-cyan-50 rounded-lg shadow-lg hover:shadow-xl transition-shadow duration-300 group">
                     {% if post.featured_image %}
-                    <div class="aspect-w-16 aspect-h-9 mb-6 overflow-hidden rounded-lg">
+                    <div class="aspect-w-16 aspect-h-9 mb-6 overflow-hidden rounded-t-lg">
                         <a href="{% pageurl post %}">
                             {% image post.featured_image fill-400x225 class="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300" %}
                         </a>
@@ -164,7 +168,7 @@
                         </div>
 
                         <!-- Title and intro -->
-                        <h3 class="text-xl font-semibold mb-3 text-primary-800 group-hover:text-secondary-500 transition-colors">
+                        <h3 class="text-xl font-semibold mb-3 text-primary-800 group-hover:text-cyan-600 transition-colors">
                             <a href="{% pageurl post %}">{{ post.title }}</a>
                         </h3>
 
@@ -173,7 +177,7 @@
                         {% endif %}
 
                         <!-- Read more link -->
-                        <a href="{% pageurl post %}" class="inline-flex items-center text-secondary-500 hover:text-secondary-600 font-medium transition-colors">
+                        <a href="{% pageurl post %}" class="inline-flex items-center text-cyan-600 hover:text-cyan-700 font-medium transition-colors">
                             Read More
                             <i class="fas fa-arrow-right ml-2 text-sm"></i>
                         </a>
@@ -183,7 +187,7 @@
         </div>
 
         <div class="text-center mt-12">
-            <a href="/blog/" class="btn border-secondary-500 text-secondary-500 hover:bg-secondary-500 hover:text-white">
+            <a href="/blog/" class="btn border-cyan-500 text-cyan-600 hover:bg-cyan-500 hover:text-white">
                 View All Posts
                 <i class="fas fa-arrow-right ml-2"></i>
             </a>
@@ -194,26 +198,32 @@
 {% endwith %}
 {% endif %}
 
+<!-- Divider -->
+<div class="py-4 bg-cream-50 max-w-7xl mx-auto container-padding"></div>
+
 <!-- Call to Action Section -->
-<section class="section-padding bg-primary-800 text-white">
+<section class="section-padding bg-cyan-600 text-white">
     <div class="max-w-4xl mx-auto container-padding text-center">
         <h2 class="text-3xl lg:text-4xl font-heading font-bold mb-6">
             Ready to Transform Your Learning Experience?
         </h2>
-        <p class="text-xl mb-8 text-neutral-200">
+        <p class="text-xl mb-8 text-cyan-100">
             Let's discuss how we can help you achieve your educational technology goals.
         </p>
         <div class="flex flex-col sm:flex-row gap-4 justify-center">
-            <a href="/contact/" class="btn bg-white text-primary-800 hover:bg-neutral-100 shadow-lg">
+            <a href="/contact/" class="btn bg-white text-cyan-700 hover:bg-cyan-50 shadow-lg">
                 Get Started Today
                 <i class="fas fa-rocket ml-2"></i>
             </a>
-            <a href="/portfolio/" class="btn border-white text-white hover:bg-white hover:text-primary-800">
+            <a href="/portfolio/" class="btn border-white text-white hover:bg-white hover:text-cyan-700">
                 View Our Work
                 <i class="fas fa-eye ml-2"></i>
             </a>
         </div>
     </div>
 </section>
+
+<!-- Divider -->
+<div class="py-4 bg-cream-50 max-w-7xl mx-auto container-padding"></div>
 
 {% endblock content %}

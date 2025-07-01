@@ -46,6 +46,32 @@ module.exports = {
           700: '#44403c',
           800: '#292524',
           900: '#1c1917',
+        },
+        // Balance colors - Cyan palette based on #B4DFED
+        cyan: {
+          50: '#f0f9fc',
+          100: '#e1f3f8',
+          200: '#c3e7f1',
+          300: '#b4dfed', // Base color
+          400: '#8cc8dd',
+          500: '#64b1cd',
+          600: '#4a8ba8',
+          700: '#376583',
+          800: '#24405e',
+          900: '#1a2f44',
+        },
+        // Balance colors - Cream/Yellow palette based on #EEECE1
+        cream: {
+          50: '#fefefe',
+          100: '#fbfaf8',
+          200: '#f7f5f0',
+          300: '#eeece1', // Base color
+          400: '#e2ddc8',
+          500: '#d6ceaf',
+          600: '#c4b888',
+          700: '#a69761',
+          800: '#8a7a46',
+          900: '#6b5f35',
         }
       },
       fontFamily: {
