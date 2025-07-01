@@ -91,8 +91,8 @@ start_containers() {
     docker network prune -f > /dev/null 2>&1 || true
 
     # Start main services
-    print_status "Starting web server, database, and pgAdmin..."
-    docker-compose up -d web db pgadmin
+    print_status "Starting web server, database, pgAdmin, and Mailpit..."
+    docker-compose up -d web db pgadmin mailpit
 
     # Start CSS build process
     print_status "Starting Tailwind CSS build process..."
@@ -107,11 +107,18 @@ start_containers() {
     echo ""
     print_status "Development environment is ready:"
     echo "  🌐 Web application: http://localhost:8000"
-    echo "  🗄️  pgAdmin: http://localhost:5050"
+    echo "  📝 Wagtail Admin (CMS): http://localhost:8000/admin/"
+    echo "  ⚙️  Django Admin (System): http://localhost:8000/django-admin/"
+    echo "  📧 Mailpit (email testing): http://localhost:8025"
+    echo "  🗄️  pgAdmin (database): http://localhost:5050"
     echo "  📊 Database: postgres://postgres:postgres@localhost:5432/thinkelearn"
     echo "  🎨 CSS: Tailwind is watching for changes"
     echo ""
-    print_status "Admin credentials for pgAdmin:"
+    print_status "Admin interfaces:"
+    echo "  📝 Wagtail Admin - Content management, pages, media"
+    echo "  ⚙️  Django Admin - User management, communications, system data"
+    echo ""
+    print_status "Credentials for pgAdmin:"
     echo "  Email: admin@thinkelearn.com"
     echo "  Password: admin"
     echo ""
@@ -137,10 +144,13 @@ setup_environment() {
 
     echo ""
     print_success "🎉 Complete setup finished!"
-    print_status "You can now log in to the admin with:"
+    print_status "You can now log in to both admin interfaces with:"
     echo "  👤 Username: admin"
     echo "  🔒 Password: defaultpassword123"
-    echo "  🌐 Admin URL: http://localhost:8000/admin/"
+    echo ""
+    print_status "Admin interfaces:"
+    echo "  📝 Wagtail Admin (CMS): http://localhost:8000/admin/"
+    echo "  ⚙️  Django Admin (System): http://localhost:8000/django-admin/"
     echo ""
     print_status "💡 Tip: Change the admin password after first login!"
 }

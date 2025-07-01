@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>New SMS Message - {{ site_name }}</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #361612; color: white; padding: 20px; border-radius: 5px 5px 0 0; }
+        .content { background: #f9f9f9; padding: 20px; border-radius: 0 0 5px 5px; }
+        .detail { margin: 10px 0; }
+        .label { font-weight: bold; color: #361612; }
+        .message { background: white; padding: 15px; border-left: 4px solid #ff6600; margin: 15px 0;
+                  font-style: italic; }
+        .button { display: inline-block; background: #ff6600; color: white; padding: 12px 24px;
+                 text-decoration: none; border-radius: 5px; margin: 10px 5px; }
+        .button:hover { background: #e55a00; }
+        .footer { margin-top: 20px; font-size: 12px; color: #666; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>💬 New SMS Message Received</h2>
+        </div>
+        <div class="content">
+            <p>A new SMS message has been received on the {{ site_name }} phone system.</p>
+
+            <div class="detail">
+                <span class="label">From:</span> {{ sms.from_number }}
+            </div>
+            <div class="detail">
+                <span class="label">To:</span> {{ sms.to_number }}
+            </div>
+            <div class="detail">
+                <span class="label">Received:</span> {{ sms.created_at|date:"F j, Y \a\\t g:i A" }}
+            </div>
+
+            <div class="detail">
+                <span class="label">Message:</span>
+                <div class="message">
+                    {{ sms.body|linebreaks }}
+                </div>
+            </div>
+
+            {% if sms.media_url %}
+            <div class="detail">
+                <span class="label">Media:</span>
+                <a href="{{ sms.media_url }}" target="_blank">View Attachment</a>
+            </div>
+            {% endif %}
+
+            <div style="margin: 20px 0;">
+                <a href="{{ admin_url }}" class="button">📝 View in Admin</a>
+            </div>
+
+            <div class="footer">
+                <p>This is an automated notification from {{ site_name }}.<br>
+                An auto-reply has been sent to the sender.</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

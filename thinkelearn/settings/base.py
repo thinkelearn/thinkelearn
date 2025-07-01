@@ -27,6 +27,7 @@ INSTALLED_APPS = [
     "home",
     "search",
     "blog",
+    "communications",
     "wagtail.contrib.forms",
     "wagtail.contrib.redirects",
     "wagtail.embeds",
@@ -47,6 +48,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django.contrib.sites",
 ]
 
 MIDDLEWARE = [
@@ -195,3 +197,28 @@ WAGTAILDOCS_EXTENSIONS = [
     "xlsx",
     "zip",
 ]
+
+# Twilio settings
+TWILIO_ACCOUNT_SID = os.environ.get("TWILIO_ACCOUNT_SID")
+TWILIO_AUTH_TOKEN = os.environ.get("TWILIO_AUTH_TOKEN")
+TWILIO_PHONE_NUMBER = os.environ.get("TWILIO_PHONE_NUMBER")
+
+# Communication notifications
+SITE_NAME = "THINK eLearn"
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "noreply@thinkelearn.com")
+
+# Email notification recipients
+VOICEMAIL_NOTIFICATION_EMAILS = [
+    email.strip()
+    for email in os.environ.get("VOICEMAIL_NOTIFICATION_EMAILS", "").split(",")
+    if email.strip()
+]
+
+SMS_NOTIFICATION_EMAILS = [
+    email.strip()
+    for email in os.environ.get("SMS_NOTIFICATION_EMAILS", "").split(",")
+    if email.strip()
+]
+
+# Site framework
+SITE_ID = 1
