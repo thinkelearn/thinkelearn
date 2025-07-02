@@ -1,0 +1,210 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+env:
+  PYTHON_VERSION: '3.13'
+  NODE_VERSION: '20'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_DB: test_thinkelearn
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+      with:
+        version: "latest"
+
+    - name: Install Python dependencies
+      run: |
+        uv sync --all-extras
+
+    - name: Install Node.js dependencies
+      run: |
+        npm ci
+
+    - name: Build CSS
+      run: |
+        npm run build-css-prod
+
+    - name: Run Django system checks
+      env:
+        DJANGO_SETTINGS_MODULE: thinkelearn.settings.test
+        DATABASE_URL: postgres://postgres:postgres@localhost:5432/test_thinkelearn
+      run: |
+        uv run python manage.py check --deploy
+
+    - name: Run migrations
+      env:
+        DJANGO_SETTINGS_MODULE: thinkelearn.settings.test
+        DATABASE_URL: postgres://postgres:postgres@localhost:5432/test_thinkelearn
+      run: |
+        uv run python manage.py migrate
+
+    - name: Run tests with coverage
+      env:
+        DJANGO_SETTINGS_MODULE: thinkelearn.settings.test
+        DATABASE_URL: postgres://postgres:postgres@localhost:5432/test_thinkelearn
+      run: |
+        uv run python manage.py test --keepdb
+
+    - name: Run pytest tests
+      env:
+        DJANGO_SETTINGS_MODULE: thinkelearn.settings.test
+        DATABASE_URL: postgres://postgres:postgres@localhost:5432/test_thinkelearn
+      run: |
+        uv run pytest --cov --cov-report=xml --cov-report=term-missing
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        file: ./coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
+
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+      with:
+        version: "latest"
+
+    - name: Install dependencies
+      run: |
+        uv sync --group dev
+
+    - name: Run ruff linting
+      run: |
+        uv run ruff check .
+
+    - name: Run ruff formatting check
+      run: |
+        uv run ruff format --check .
+
+    - name: Run mypy type checking
+      run: |
+        uv run mypy . --config-file pyproject.toml || true
+
+  security:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+      with:
+        version: "latest"
+
+    - name: Install dependencies
+      run: |
+        uv sync
+
+    - name: Run safety check
+      run: |
+        uv run safety check --json || true
+
+    - name: Run bandit security linter
+      run: |
+        uv run bandit -r . -f json || true
+
+  build-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: |
+        npm ci
+
+    - name: Build CSS for production
+      run: |
+        npm run build-css-prod
+
+    - name: Verify CSS build
+      run: |
+        test -f thinkelearn/static/css/thinkelearn.css
+
+    - name: Check CSS size
+      run: |
+        ls -lah thinkelearn/static/css/thinkelearn.css
+
+  docker-build:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build Docker image (test only)
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./Dockerfile
+        push: false
+        tags: thinkelearn:test
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
