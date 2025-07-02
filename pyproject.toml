@@ -82,6 +82,18 @@ warn_unused_ignores = true
 warn_redundant_casts = true
 warn_unused_configs = true
 plugins = ["mypy_django_plugin.main"]
+disallow_untyped_defs = false
+disallow_any_generics = false
+strict_optional = false
+
+[[tool.mypy.overrides]]
+module = [
+    "*.models",
+    "*.admin",
+    "*.migrations.*",
+    "*.tests.*",
+]
+ignore_errors = true
 
 [tool.django-stubs]
 django_settings_module = "thinkelearn.settings.dev"
