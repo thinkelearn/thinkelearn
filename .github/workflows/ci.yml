@@ -242,7 +242,7 @@ jobs:
       - name: Deploy to Railway
         uses: bervProject/railway-deploy@main
         with:
-          service: thinkelearn
+          service: web
           detach: true
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
