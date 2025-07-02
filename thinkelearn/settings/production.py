@@ -1,7 +1,9 @@
 import os
+
 import dj_database_url
 import sentry_sdk
 from sentry_sdk.integrations.django import DjangoIntegration
+
 from .base import *  # noqa: F403,F405
 
 # Sentry configuration
@@ -25,7 +27,8 @@ if not SECRET_KEY:
     import warnings
 
     warnings.warn(
-        "Using temporary SECRET_KEY during build. Ensure SECRET_KEY is set at runtime."
+        "Using temporary SECRET_KEY during build. Ensure SECRET_KEY is set at runtime.",
+        stacklevel=2,
     )
 
 # Railway deployment settings - allow all hosts for Railway
@@ -35,7 +38,7 @@ ALLOWED_HOSTS = ["*"]
 if os.environ.get("DATABASE_URL"):
     # Use DATABASE_URL if provided (Railway standard)
     DATABASES = {
-        "default": dj_database_url.config(
+        "default": dj_database_url.config(  # type: ignore[dict-item]
             default=os.environ.get("DATABASE_URL"),
             conn_max_age=600,
             conn_health_checks=True,
@@ -51,7 +54,7 @@ elif os.environ.get("PGHOST"):
             "PASSWORD": os.environ.get("PGPASSWORD"),
             "HOST": os.environ.get("PGHOST"),
             "PORT": os.environ.get("PGPORT", "5432"),
-            "OPTIONS": {
+            "OPTIONS": {  # type: ignore[dict-item]
                 "sslmode": "require",
             },
         }

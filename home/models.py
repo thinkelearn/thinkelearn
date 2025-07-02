@@ -1,16 +1,15 @@
+from django import forms
 from django.db import models
-
-from wagtail.models import Page
-from wagtail.fields import StreamField, RichTextField
+from modelcluster.fields import ParentalKey, ParentalManyToManyField
 from wagtail import blocks
-from wagtail.images.blocks import ImageChooserBlock
 from wagtail.admin.panels import FieldPanel, MultiFieldPanel
-from wagtail.search import index
 from wagtail.contrib.forms.models import AbstractEmailForm, AbstractFormField
 from wagtail.contrib.forms.panels import FormSubmissionsPanel
+from wagtail.fields import RichTextField, StreamField
+from wagtail.images.blocks import ImageChooserBlock
+from wagtail.models import Page
+from wagtail.search import index
 from wagtail.snippets.models import register_snippet
-from modelcluster.fields import ParentalKey, ParentalManyToManyField
-from django import forms
 
 
 class HomePage(Page):

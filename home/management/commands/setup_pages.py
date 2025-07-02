@@ -1,13 +1,14 @@
 from django.core.management.base import BaseCommand
 from wagtail.rich_text import RichText
-from home.models import (
-    HomePage,
-    AboutPage,
-    ContactPage,
-    PortfolioIndexPage,
-    ContactFormField,
-)
+
 from blog.models import BlogIndexPage
+from home.models import (
+    AboutPage,
+    ContactFormField,
+    ContactPage,
+    HomePage,
+    PortfolioIndexPage,
+)
 
 
 class Command(BaseCommand):
