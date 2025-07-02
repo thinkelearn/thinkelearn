@@ -91,7 +91,7 @@ exclude_dirs = ["tests", "migrations", "venv", ".venv", "node_modules"]
 skips = ["B101", "B601"]
 
 [tool.coverage.run]
-source = "."
+source = ["."]
 omit = [
     "*/migrations/*",
     "*/venv/*",
@@ -112,4 +112,35 @@ exclude_lines = [
     "def __repr__",
     "raise AssertionError",
     "raise NotImplementedError",
+]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "thinkelearn.settings.test"
+python_files = ["tests.py", "test_*.py", "*_tests.py"]
+python_classes = ["Test*", "*Tests"]
+python_functions = ["test_*"]
+testpaths = [".", "home/tests", "blog/tests", "communications/tests"]
+addopts = [
+    "--verbose",
+    "--tb=short",
+    "--strict-markers",
+    "--strict-config",
+    "--create-db",
+    "--reuse-db",
+    "--cov=home",
+    "--cov=blog",
+    "--cov=communications",
+    "--cov-report=term-missing",
+    "--cov-report=html:htmlcov",
+    "--cov-fail-under=50",
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::django.utils.deprecation.RemovedInDjango60Warning",
+    "ignore::PendingDeprecationWarning",
 ]
