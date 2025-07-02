@@ -1,9 +1,10 @@
 from django.urls import path
+
 from .views import (
-    VoicemailWebhookView,
     SMSWebhookView,
-    recording_proxy_view,
+    VoicemailWebhookView,
     recording_player_view,
+    recording_proxy_view,
 )
 
 app_name = "communications"

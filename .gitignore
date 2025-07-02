@@ -22,7 +22,6 @@ yarn-debug.log*
 yarn-error.log*
 
 # Package lock files (keep package.json but ignore lock files)
-package-lock.json
 yarn.lock
 
 # Environment variables
@@ -69,3 +68,4 @@ coverage.xml
 
 # mypy
 .mypy_cache/
+safety_report.json

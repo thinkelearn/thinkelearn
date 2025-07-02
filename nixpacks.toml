@@ -1,0 +1,41 @@
+[variables]
+# Python version
+PYTHON_VERSION = "3.13"
+
+# Node.js version for CSS building
+NODE_VERSION = "20"
+
+# Django settings
+DJANGO_SETTINGS_MODULE = "thinkelearn.settings.production"
+
+# Static files
+STATIC_ROOT = "/app/staticfiles"
+STATIC_URL = "/static/"
+
+[phases.setup]
+nixPkgs = ["python313", "nodejs_20", "npm"]
+
+[phases.install]
+cmds = [
+    # Install Python dependencies
+    "pip install uv",
+    "uv sync --frozen",
+
+    # Install Node.js dependencies
+    "npm ci --omit=dev",
+]
+
+[phases.build]
+cmds = [
+    # Build CSS for production
+    "npm run build-css-prod",
+
+    # Collect static files
+    "uv run python manage.py collectstatic --noinput",
+
+    # Run system checks
+    "uv run python manage.py check --deploy",
+]
+
+[start]
+cmd = "uv run gunicorn thinkelearn.wsgi:application --bind 0.0.0.0:$PORT"

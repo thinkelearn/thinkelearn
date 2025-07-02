@@ -1,7 +1,8 @@
 from django.contrib import admin
-from django.utils.html import format_html
 from django.urls import reverse
-from .models import VoicemailMessage, SMSMessage
+from django.utils.html import format_html
+
+from .models import SMSMessage, VoicemailMessage
 
 
 @admin.register(VoicemailMessage)

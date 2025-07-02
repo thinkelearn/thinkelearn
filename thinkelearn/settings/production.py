@@ -1,7 +1,9 @@
 import os
+
 import dj_database_url
 import sentry_sdk
 from sentry_sdk.integrations.django import DjangoIntegration
+
 from .base import *  # noqa: F403,F405
 
 # Sentry configuration
@@ -21,21 +23,26 @@ SECRET_KEY = os.environ.get("SECRET_KEY")
 if not SECRET_KEY:
     # During Docker build, use a temporary key for collectstatic
     # This will be overridden at runtime with the real SECRET_KEY
-    SECRET_KEY = "django-insecure-build-time-key-will-be-overridden-at-runtime"
+    SECRET_KEY = "django-insecure-build-time-key-will-be-overridden-at-runtime"  # nosec
     import warnings
 
     warnings.warn(
-        "Using temporary SECRET_KEY during build. Ensure SECRET_KEY is set at runtime."
+        "Using temporary SECRET_KEY during build. Ensure SECRET_KEY is set at runtime.",
+        stacklevel=2,
     )
 
-# Railway deployment settings - allow all hosts for Railway
-ALLOWED_HOSTS = ["*"]
+# Railway deployment settings
+ALLOWED_HOSTS = [
+    "thinkelearn.com",
+    "www.thinkelearn.com",
+    ".railway.app",
+]
 
 # Database configuration - Railway provides both DATABASE_URL and individual vars
 if os.environ.get("DATABASE_URL"):
     # Use DATABASE_URL if provided (Railway standard)
     DATABASES = {
-        "default": dj_database_url.config(
+        "default": dj_database_url.config(  # type: ignore[dict-item]
             default=os.environ.get("DATABASE_URL"),
             conn_max_age=600,
             conn_health_checks=True,
@@ -51,7 +58,7 @@ elif os.environ.get("PGHOST"):
             "PASSWORD": os.environ.get("PGPASSWORD"),
             "HOST": os.environ.get("PGHOST"),
             "PORT": os.environ.get("PGPORT", "5432"),
-            "OPTIONS": {
+            "OPTIONS": {  # type: ignore[dict-item]
                 "sslmode": "require",
             },
         }
@@ -109,6 +116,11 @@ else:
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = "DENY"
+SECURE_HSTS_SECONDS = 31536000  # 1 year
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+SECURE_HSTS_PRELOAD = True
+SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
+SECURE_CROSS_ORIGIN_OPENER_POLICY = "same-origin"
 
 # HTTPS settings (Railway provides HTTPS)
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")

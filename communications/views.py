@@ -1,17 +1,19 @@
+import logging
+
+import requests
 from django.conf import settings
-from django.http import HttpResponse, StreamingHttpResponse, Http404
-from django.views.decorators.csrf import csrf_exempt
-from django.utils.decorators import method_decorator
-from django.views import View
 from django.contrib.auth.decorators import login_required
+from django.http import Http404, HttpResponse, StreamingHttpResponse
 from django.shortcuts import get_object_or_404
 from django.template.response import TemplateResponse
-from twilio.twiml.voice_response import VoiceResponse
+from django.utils.decorators import method_decorator
+from django.views import View
+from django.views.decorators.csrf import csrf_exempt
 from twilio.twiml.messaging_response import MessagingResponse
-from .models import VoicemailMessage, SMSMessage
-from .utils import send_voicemail_notification, send_sms_notification
-import requests
-import logging
+from twilio.twiml.voice_response import VoiceResponse
+
+from .models import SMSMessage, VoicemailMessage
+from .utils import send_sms_notification, send_voicemail_notification
 
 logger = logging.getLogger(__name__)
 
@@ -92,6 +94,7 @@ def recording_proxy_view(request, voicemail_id):
             recording_url,
             stream=True,
             auth=(settings.TWILIO_ACCOUNT_SID, settings.TWILIO_AUTH_TOKEN),
+            timeout=10,
         )
         response.raise_for_status()
 
@@ -116,7 +119,7 @@ def recording_proxy_view(request, voicemail_id):
 
     except Exception as e:
         logger.error(f"Error streaming recording {voicemail_id}: {e}")
-        raise Http404("Recording could not be loaded")
+        raise Http404("Recording could not be loaded") from e
 
 
 @login_required
