@@ -68,3 +68,4 @@ coverage.xml
 
 # mypy
 .mypy_cache/
+safety_report.json

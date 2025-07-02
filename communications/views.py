@@ -94,6 +94,7 @@ def recording_proxy_view(request, voicemail_id):
             recording_url,
             stream=True,
             auth=(settings.TWILIO_ACCOUNT_SID, settings.TWILIO_AUTH_TOKEN),
+            timeout=10,
         )
         response.raise_for_status()
 

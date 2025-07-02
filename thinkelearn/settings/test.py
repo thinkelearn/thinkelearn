@@ -5,7 +5,7 @@ from .base import *  # noqa: F403,F401
 
 # Test-specific settings
 DEBUG = True
-SECRET_KEY = "test-secret-key-not-for-production"
+SECRET_KEY = "test-secret-key-not-for-production"  # nosec
 
 # Database configuration for testing
 

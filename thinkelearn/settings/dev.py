@@ -8,7 +8,7 @@ from .base import *  # noqa: F403
 DEBUG = True
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-+b*&pr)e-cccn-$kw35u-tv1r89%t92k#(&*no#^dj72w)ymz_"
+SECRET_KEY = "django-insecure-+b*&pr)e-cccn-$kw35u-tv1r89%t92k#(&*no#^dj72w)ymz_"  # nosec
 
 # SECURITY WARNING: define the correct hosts in production!
 ALLOWED_HOSTS = ["*"]
@@ -20,7 +20,7 @@ EMAIL_PORT = 1025
 EMAIL_USE_TLS = False
 EMAIL_USE_SSL = False
 EMAIL_HOST_USER = ""
-EMAIL_HOST_PASSWORD = ""
+EMAIL_HOST_PASSWORD = ""  # nosec
 
 # Database configuration - use PostgreSQL by default in development
 # Fallback to SQLite only if DATABASE_URL is not set (traditional setup)

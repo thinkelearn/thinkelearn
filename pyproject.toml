@@ -15,7 +15,7 @@ dependencies = [
     "whitenoise>=6.9.0",
 ]
 
-[dependency-groups]
+[project.optional-dependencies]
 dev = [
     "pre-commit>=4.2.0",
     "ruff>=0.8.4",
@@ -156,3 +156,9 @@ filterwarnings = [
     "ignore::django.utils.deprecation.RemovedInDjango60Warning",
     "ignore::PendingDeprecationWarning",
 ]
+
+[tool.setuptools]
+py-modules = []
+
+[tool.setuptools.packages.find]
+include = ["home*", "blog*", "communications*", "search*", "thinkelearn*"]

@@ -31,3 +31,19 @@ repos:
       - id: ruff
         args: [--fix, --exit-non-zero-on-fix]
       - id: ruff-format
+
+  - repo: https://github.com/pycqa/bandit
+    rev: 1.8.0
+    hooks:
+      - id: bandit
+        args: ["-c", "pyproject.toml"]
+        additional_dependencies: ["bandit[toml]"]
+
+  - repo: local
+    hooks:
+      - id: safety
+        name: safety
+        entry: uv run safety check --output=text
+        language: python
+        types: [python]
+        files: ^requirements.txt$

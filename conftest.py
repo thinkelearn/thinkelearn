@@ -63,7 +63,7 @@ def admin_user(django_user_model):
     return django_user_model.objects.create_user(
         username="admin",
         email="admin@example.com",
-        password="testpass123",
+        password="testpass123",  # nosec
         is_staff=True,
         is_superuser=True,
     )
@@ -75,7 +75,7 @@ def staff_user(django_user_model):
     return django_user_model.objects.create_user(
         username="staff",
         email="staff@example.com",
-        password="testpass123",
+        password="testpass123",  # nosec
         is_staff=True,
     )
 
@@ -84,5 +84,7 @@ def staff_user(django_user_model):
 def regular_user(django_user_model):
     """Create a regular user for testing"""
     return django_user_model.objects.create_user(
-        username="user", email="user@example.com", password="testpass123"
+        username="user",
+        email="user@example.com",
+        password="testpass123",  # nosec
     )

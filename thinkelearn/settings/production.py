@@ -23,7 +23,7 @@ SECRET_KEY = os.environ.get("SECRET_KEY")
 if not SECRET_KEY:
     # During Docker build, use a temporary key for collectstatic
     # This will be overridden at runtime with the real SECRET_KEY
-    SECRET_KEY = "django-insecure-build-time-key-will-be-overridden-at-runtime"
+    SECRET_KEY = "django-insecure-build-time-key-will-be-overridden-at-runtime"  # nosec
     import warnings
 
     warnings.warn(
