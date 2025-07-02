@@ -169,7 +169,7 @@ jobs:
 
     - name: Run bandit security linter
       run: |
-        uv run bandit -r . -f json
+        uv run bandit -c pyproject.toml -r . -f json
 
   build-test:
     runs-on: ubuntu-latest
