@@ -14,6 +14,7 @@ THINK eLearn is a comprehensive eLearning website platform that combines Django'
 ## Tech Stack
 
 ### Core Technologies
+
 - **Backend**: Django 5.2.3 with Wagtail 7.0.1 CMS
 - **Database**: SQLite (development), PostgreSQL (production/CI)
 - **Frontend**: Tailwind CSS with custom design system
@@ -21,6 +22,7 @@ THINK eLearn is a comprehensive eLearning website platform that combines Django'
 - **Package Management**: uv for Python dependencies, npm for Node.js
 
 ### DevOps & CI/CD
+
 - **Testing**: pytest with 120+ comprehensive tests, 80%+ coverage
 - **Code Quality**: ruff (linting/formatting), mypy (type checking)
 - **Security**: safety (vulnerability scanning), bandit (security linting)
@@ -31,12 +33,14 @@ THINK eLearn is a comprehensive eLearning website platform that combines Django'
 ## Features
 
 ### Core Platform
+
 - **Content Management**: Flexible page creation and editing via Wagtail admin
 - **Responsive Design**: Mobile-first approach with Tailwind CSS
 - **Search Functionality**: Built-in Wagtail search capabilities
 - **SEO Optimized**: Meta tags, structured data, and SEO fields
 
 ### Content Modules
+
 - **Homepage**: Hero sections, features, testimonials with StreamFields
 - **About Page**: Company story, team members, values, timeline
 - **Contact System**: Advanced forms with email handling and FAQ sections
@@ -45,6 +49,7 @@ THINK eLearn is a comprehensive eLearning website platform that combines Django'
 - **Communications**: Twilio SMS/voicemail integration with admin workflow
 
 ### DevOps & Quality Assurance
+
 - **Comprehensive Testing**: 120+ tests covering models, views, forms, and integrations
 - **Automated CI/CD**: GitHub Actions pipeline with parallel job execution
 - **Code Quality**: Automated linting, formatting, and type checking
@@ -300,14 +305,42 @@ FROM auth_user;
 
 ### Testing & Quality Assurance
 
-The project includes a comprehensive test suite and code quality tools:
+The project includes a comprehensive test suite and code quality tools.
+
+#### Testing Requirements
+
+**Docker containers are strongly recommended for testing** because:
+- Tests require a properly initialized database with Wagtail pages
+- Local testing with pytest fails due to missing database migrations
+- Containers provide a consistent, pre-configured environment
+
+#### Setup for Testing
+
+1. **Start containers with full setup**:
+   ```bash
+   ./start.sh setup    # Creates database, admin user, and initial pages
+   ```
+
+2. **Run tests in containers**:
+   ```bash
+   docker-compose exec web pytest    # Recommended approach
+   ```
+
+#### Testing Commands
 
 ```bash
 # Quick setup for CI/CD development
 ./scripts/setup-ci-cd.sh              # Automated CI/CD environment setup
 
-# Testing
-pytest                                 # Run all tests
+# Testing (Docker - Recommended)
+docker-compose exec web pytest                                 # Run all tests in container
+docker-compose exec web pytest --cov                          # Run tests with coverage report
+docker-compose exec web pytest --cov --cov-report=html        # Generate HTML coverage report
+docker-compose exec web pytest home/tests/                     # Run specific app tests
+docker-compose exec web python manage.py test --settings=thinkelearn.settings.test  # Django test runner
+
+# Testing (Local - Alternative)
+pytest                                 # Run all tests locally
 pytest --cov                          # Run tests with coverage report
 pytest --cov --cov-report=html        # Generate HTML coverage report
 pytest home/tests/                     # Run specific app tests
