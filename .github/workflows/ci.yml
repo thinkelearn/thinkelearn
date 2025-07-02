@@ -1,4 +1,4 @@
-name: CI Pipeline
+name: CI/CD Pipeline
 
 # Streamlined CI focusing on business logic testing
 # Tests: 25 focused business logic tests (Twilio workflows, custom methods)
@@ -199,3 +199,16 @@ jobs:
         tags: thinkelearn:test
         cache-from: type=gha
         cache-to: type=gha,mode=max
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [test, lint, security, build-test]
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: railwayapp/cli@v3
+        with:
+          railway_token: ${{ secrets.RAILWAY_TOKEN }}
+        env:
+          RAILWAY_SERVICE: thinkelearn
+      - run: railway up --detach
