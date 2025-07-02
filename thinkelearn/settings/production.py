@@ -31,8 +31,12 @@ if not SECRET_KEY:
         stacklevel=2,
     )
 
-# Railway deployment settings - allow all hosts for Railway
-ALLOWED_HOSTS = ["*"]
+# Railway deployment settings
+ALLOWED_HOSTS = [
+    "thinkelearn.com",
+    "www.thinkelearn.com",
+    ".railway.app",
+]
 
 # Database configuration - Railway provides both DATABASE_URL and individual vars
 if os.environ.get("DATABASE_URL"):
@@ -112,6 +116,10 @@ else:
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = "DENY"
+SECURE_HSTS_SECONDS = 31536000  # 1 year
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+SECURE_HSTS_PRELOAD = True
+SECURE_REFERRER_POLICY = "same-origin"
 
 # HTTPS settings (Railway provides HTTPS)
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")

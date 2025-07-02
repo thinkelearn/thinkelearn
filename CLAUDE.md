@@ -58,18 +58,14 @@ npm run build-css-prod     # Production build with minification
 **The test suite focuses on business logic only, not framework functionality.**
 
 ```bash
-# Run all tests with Django's test runner (RECOMMENDED)
-python manage.py test --settings=thinkelearn.settings.test  # ~70 focused business logic tests
+# Run all tests with pytest (RECOMMENDED)
+uv run pytest
 
 # Run specific app tests
-python manage.py test home.tests               # 11 custom method and workflow tests
-python manage.py test communications.tests    # 14 Twilio integration workflow tests
+uv run pytest home/tests
 
 # Run specific test
-python manage.py test home.tests.test_models.HomePageTest.test_homepage_defaults
-
-# pytest is NOT recommended (configuration issues, creates framework over-testing)
-# Use Django's test runner instead for reliable, focused testing
+uv run pytest home/tests/test_models.py::HomePageTest::test_homepage_defaults
 
 # Code quality checks
 uv run ruff check .          # Linting
