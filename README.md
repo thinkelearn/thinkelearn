@@ -307,6 +307,20 @@ FROM auth_user;
 
 The project includes a streamlined test suite focusing on **business logic only**, not framework functionality.
 
+#### Choosing a Test Runner
+
+This project is configured to work with both Django's default test runner and `pytest`. Here's when to use each:
+
+- **`python manage.py test` (Recommended for CI/CD and most development)**
+  - **Why**: This is the official Django way to run tests. It fully respects the Django project's configuration (`settings.py`), including the test-specific settings in `thinkelearn/settings/test.py`.
+  - **When to use**: Use this for all standard testing, especially when you want to be sure your tests run in an environment that perfectly mirrors your application's setup. This is the command used in the CI pipeline.
+
+- **`uv run pytest` (For advanced debugging and specific scenarios)**
+  - **Why**: `pytest` offers a more powerful and flexible testing experience, with richer output, more advanced fixtures, and a vast ecosystem of plugins.
+  - **When to use**: Use `pytest` when you need more detailed test reports, want to use `pytest`-specific features (like `pdb` integration on failure), or are debugging complex test scenarios. Be aware that while `pytest-django` does a great job, the primary, guaranteed configuration is through Django's runner.
+
+In short: **`manage.py test` is for reliability and consistency; `pytest` is for power and advanced features.**
+
 #### Testing Philosophy
 
 **Tests focus on custom business logic, not framework features:**
