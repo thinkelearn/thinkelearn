@@ -50,6 +50,18 @@
     @apply py-16 lg:py-24;
   }
 
+  .section-padding-reduced-bottom {
+    @apply pt-16 lg:pt-24 pb-2 lg:pb-4;
+  }
+
+  .section-padding-reduced-top {
+    @apply pt-4 lg:pt-8 pb-16 lg:pb-24;
+  }
+
+  .section-padding-reduced {
+    @apply py-4 lg:py-8;
+  }
+
   .container-padding {
     @apply px-4 sm:px-6 lg:px-8;
   }

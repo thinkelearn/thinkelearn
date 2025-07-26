@@ -29,9 +29,12 @@
     </div>
 </section>
 
+<!-- Divider -->
+<div class="py-4 bg-cyan-600 mx-auto container-padding"></div>
+
 <!-- Company Story Section -->
 {% if page.story_content %}
-<section class="section-padding bg-white">
+<section class="section-padding-reduced-bottom bg-white">
     <div class="max-w-4xl mx-auto container-padding">
         <div class="text-center mb-12">
             <h2 class="text-3xl lg:text-4xl font-heading font-bold text-primary-800 mb-6">
@@ -45,12 +48,15 @@
 </section>
 {% endif %}
 
+<!-- Tree Image -->
+<div class="max-w-4xl mx-auto container-padding"><img src="{% static 'images/tree.png' %}"></div>
+
 <!-- Divider -->
-<div class="py-4 bg-primary-400 mx-auto container-padding"></div>
+<div class="py-4 bg-cyan-600 mx-auto container-padding"></div>
 
 <!-- Mission Section -->
 {% if page.mission_content %}
-<section class="section-padding bg-cyan-50">
+<section class="section-padding-reduced-top bg-cyan-50">
     <div class="max-w-4xl mx-auto container-padding">
         <div class="text-center mb-12">
             <h2 class="text-3xl lg:text-4xl font-heading font-bold text-primary-800 mb-6">
@@ -67,11 +73,14 @@
 <!-- Divider -->
 <div class="py-4 bg-primary-400 mx-auto container-padding"></div>
 
-<!-- Values Section -->
+<!-- Roots Image -->
+<div class="max-w-4xl mx-auto container-padding"><img src="{% static 'images/roots.png' %}"></div>
+
+<!-- Values Header Section -->
 {% if page.values %}
-<section class="section-padding bg-white">
+<section class="section-padding-reduced bg-white">
     <div class="max-w-7xl mx-auto container-padding">
-        <div class="text-center mb-16">
+        <div class="text-center">
             <h2 class="text-3xl lg:text-4xl font-heading font-bold text-gray-900 mb-4">
                 {{ page.values_title }}
             </h2>
@@ -79,7 +88,12 @@
                 The principles that guide everything we do at THINK eLearn.
             </p>
         </div>
+    </div>
+</section>
 
+<!-- Values Grid Section -->
+<section class="section-padding bg-primary-400">
+    <div class="max-w-7xl mx-auto container-padding">
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {% for value in page.values %}
                 <div class="card-hover text-center">
@@ -189,6 +203,9 @@
     </div>
 </section>
 {% endif %}
+
+<!-- Divider -->
+<div class="py-4 bg-cream-50 max-w-7xl mx-auto container-padding"></div>
 
 <!-- Call to Action Section -->
 <section class="section-padding bg-cyan-600 text-white">
