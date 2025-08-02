@@ -319,13 +319,13 @@ class ShowcaseStreamFieldTest(TestCase):
         block = VideoContentBlock()
 
         # Test embed type without URL
-        value = {"video_type": "embed", "embed_url": "", "video_file": None}
+        value = {"video_type": "embed", "embed_url": None, "video_file": None}
 
         with self.assertRaises(StructBlockValidationError):
             block.clean(value)
 
         # Test upload type without file
-        value = {"video_type": "upload", "embed_url": "", "video_file": None}
+        value = {"video_type": "upload", "embed_url": None, "video_file": None}
 
         with self.assertRaises(StructBlockValidationError):
             block.clean(value)

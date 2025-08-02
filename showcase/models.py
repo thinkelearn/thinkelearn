@@ -69,6 +69,14 @@ class VideoContentBlock(blocks.StructBlock):
         result = super().clean(value)
         video_type = value.get("video_type")
         video_file = value.get("video_file")
+        embed_url = value.get("embed_url")
+
+        if video_type == "embed" and not embed_url:
+            raise blocks.StructBlockValidationError(
+                block_errors={
+                    "embed_url": ["This field is required when using embed type."]
+                }
+            )
 
         if video_type == "upload" and not video_file:
             raise blocks.StructBlockValidationError(
