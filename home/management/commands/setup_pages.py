@@ -8,6 +8,7 @@ from home.models import (
     ContactPage,
     HomePage,
     PortfolioIndexPage,
+    ProcessPage,
 )
 
 
@@ -127,6 +128,16 @@ class Command(BaseCommand):
             home_page.add_child(instance=portfolio_page)
             portfolio_page.save_revision().publish()
             self.stdout.write("✅ Created Portfolio page")
+            pages_created += 1
+
+        # Create Process page if it doesn't exist
+        if not ProcessPage.objects.exists():
+            process_page = ProcessPage(
+                title="Process", slug="process", hero_title="THINK eLearn Process"
+            )
+            home_page.add_child(instance=process_page)
+            process_page.save_revision().publish()
+            self.stdout.write("✅ Created Process page")
             pages_created += 1
 
         self.stdout.write(

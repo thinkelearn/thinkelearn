@@ -669,3 +669,57 @@ class ProjectPage(Page):
 
         context["related_projects"] = related_projects.distinct()[:3]
         return context
+
+
+class ProcessPage(Page):
+    # Hero Section
+    hero_title = models.CharField(
+        max_length=255,
+        default="THINK eLearn Process",
+        help_text="Main headline for the process page",
+    )
+    hero_subtitle = models.TextField(
+        blank=True, help_text="Subtitle text below the main headline"
+    )
+    hero_image = models.ForeignKey(
+        "wagtailimages.Image",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        help_text="Hero background",
+    )
+
+    # Process Section
+    process_title = models.CharField(
+        max_length=255,
+        default="Our Process",
+        help_text="Title for the process section",
+    )
+    process_content = RichTextField(
+        blank=True, help_text="Rich text content about the company process"
+    )
+
+    content_panels = Page.content_panels + [
+        MultiFieldPanel(
+            [
+                FieldPanel("hero_title"),
+                FieldPanel("hero_subtitle"),
+                FieldPanel("hero_image"),
+            ],
+            heading="Hero Section",
+        ),
+        MultiFieldPanel(
+            [
+                FieldPanel("process_title"),
+                FieldPanel("process_content"),
+            ],
+            heading="Company Process",
+        ),
+    ]
+
+    parent_page_types = []
+    subpage_types = []
+
+    class Meta:
+        verbose_name = "Process Page"

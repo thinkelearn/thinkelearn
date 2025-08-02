@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% load static wagtailcore_tags wagtailimages_tags %}
+
+{% block body_class %}template-processpage{% endblock %}
+
+{% block content %}
+
+<!-- Hero Section -->
+<section class="hero-gradient text-white section-padding overflow-hidden relative">
+    <div class="max-w-7xl mx-auto container-padding relative z-10">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+            <div class="text-center lg:text-left">
+                <h1 class="text-4xl lg:text-6xl font-heading font-bold mb-6 leading-tight">
+                    {{ page.hero_title }}
+                </h1>
+                {% if page.hero_subtitle %}
+                <p class="text-xl lg:text-2xl mb-8 text-neutral-200 leading-relaxed">
+                    {{ page.hero_subtitle }}
+                </p>
+                {% endif %}
+            </div>
+            {% if page.hero_image %}
+            <div class="relative">
+                {% image page.hero_image fill-600x400 class="responsive-image shadow-2xl" %}
+                <div class="absolute inset-0 bg-gradient-to-t from-primary-900/20 to-transparent rounded-lg"></div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</section>
+
+<!-- Divider -->
+<div class="py-4 bg-cyan-600 mx-auto container-padding"></div>
+
+<!-- Company Process Section -->
+{% if page.process_content %}
+<section class="section-padding-reduced-bottom bg-white">
+    <div class="max-w-4xl mx-auto container-padding">
+        <div class="text-center mb-12">
+            <h2 class="text-3xl lg:text-4xl font-heading font-bold text-primary-800 mb-6">
+                {{ page.process_title }}
+            </h2>
+        </div>
+        <div class="prose prose-lg mx-auto text-neutral-700">
+            {{ page.process_content|richtext }}
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- Divider -->
+<div class="py-4 bg-cream-50 max-w-7xl mx-auto container-padding"></div>
+
+<!-- Call to Action Section -->
+<section class="section-padding bg-cyan-600 text-white">
+    <div class="max-w-4xl mx-auto container-padding text-center">
+        <h2 class="text-3xl lg:text-4xl font-heading font-bold mb-6">
+            Ready to Work With Us?
+        </h2>
+        <p class="text-xl mb-8 text-cyan-100">
+            Let's discuss how we can help you achieve your educational technology goals.
+        </p>
+        <div class="flex flex-col sm:flex-row gap-4 justify-center">
+            <a href="/contact/" class="btn bg-white text-cyan-700 hover:bg-cyan-50 shadow-lg">
+                Get In Touch
+                <i class="fas fa-arrow-right ml-2"></i>
+            </a>
+            <a href="/showcase/" class="btn border-white text-white hover:bg-white hover:text-cyan-700">
+                View Our Work
+                <i class="fas fa-eye ml-2"></i>
+            </a>
+        </div>
+    </div>
+</section>
+
+<!-- Divider -->
+<div class="py-4 bg-cream-50 max-w-7xl mx-auto container-padding"></div>
+
+{% endblock content %}
