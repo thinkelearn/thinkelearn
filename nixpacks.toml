@@ -35,7 +35,12 @@ cmds = [
 
     # Collect static files
     "uv run python manage.py collectstatic --noinput",
+]
 
+# Custom phase for database setup (runs after build, before start)
+[phases.setup_db]
+dependsOn = ["build"]
+cmds = [
     # Run database migrations
     "uv run python manage.py migrate --noinput",
 
@@ -49,3 +54,4 @@ cmds = [
 
 [start]
 cmd = "uv run gunicorn thinkelearn.wsgi:application --bind 0.0.0.0:$PORT"
+dependsOn = ["setup_db"]
