@@ -27,6 +27,9 @@ cmds = [
 
 [phases.build]
 cmds = [
+    # Preserve default provider commands
+    "...",
+
     # Build CSS for production
     "npm run build-css-prod",
 
