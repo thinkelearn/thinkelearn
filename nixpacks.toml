@@ -33,6 +33,13 @@ cmds = [
     # Collect static files
     "uv run python manage.py collectstatic --noinput",
 
+    # Run database migrations
+    "uv run python manage.py migrate --noinput",
+
+    # Set up initial pages
+    "uv run python manage.py setup_pages",
+    "uv run python manage.py setup_showcase",
+
     # Run system checks
     "uv run python manage.py check --deploy",
 ]
