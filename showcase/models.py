@@ -5,6 +5,7 @@ from modelcluster.fields import ParentalManyToManyField
 from wagtail import blocks
 from wagtail.admin.panels import FieldPanel, MultiFieldPanel
 from wagtail.documents.blocks import DocumentChooserBlock
+from wagtail.embeds.blocks import EmbedBlock
 from wagtail.fields import RichTextField, StreamField
 from wagtail.images.blocks import ImageChooserBlock
 from wagtail.models import Page
@@ -56,7 +57,7 @@ class VideoContentBlock(blocks.StructBlock):
         ],
         default="embed",
     )
-    embed_url = blocks.URLBlock(required=False, help_text="YouTube or Vimeo URL")
+    embed_url = EmbedBlock(required=False, help_text="YouTube or Vimeo URL")
     video_file = DocumentChooserBlock(required=False, help_text="Uploaded video file")
     thumbnail = ImageChooserBlock(required=False, help_text="Custom thumbnail image")
 
@@ -67,16 +68,9 @@ class VideoContentBlock(blocks.StructBlock):
     def clean(self, value):
         result = super().clean(value)
         video_type = value.get("video_type")
-        embed_url = value.get("embed_url")
         video_file = value.get("video_file")
 
-        if video_type == "embed" and not embed_url:
-            raise blocks.StructBlockValidationError(
-                block_errors={
-                    "embed_url": ["This field is required when using embed type."]
-                }
-            )
-        elif video_type == "upload" and not video_file:
+        if video_type == "upload" and not video_file:
             raise blocks.StructBlockValidationError(
                 block_errors={
                     "video_file": ["This field is required when using upload type."]
