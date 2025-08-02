@@ -1,0 +1,342 @@
+{% extends "base.html" %}
+{% load static wagtailcore_tags wagtailimages_tags wagtailembeds_tags %}
+
+{% block body_class %}template-showcasepage{% endblock %}
+
+{% block content %}
+
+<!-- Hero Section -->
+<section class="bg-gradient-to-br from-primary-900 via-primary-800 to-primary-700 text-white section-padding overflow-hidden relative">
+    <div class="max-w-7xl mx-auto container-padding relative z-10">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+            <div>
+                <div class="flex items-center space-x-4 mb-6">
+                    {% if page.showcase_date %}
+                        <span class="text-sm bg-primary-700 px-3 py-1 rounded-full">
+                            {{ page.showcase_date|date:"F Y" }}
+                        </span>
+                    {% endif %}
+                    {% if page.duration %}
+                        <span class="text-sm bg-secondary-500 px-3 py-1 rounded-full">
+                            <i class="fas fa-clock mr-1"></i>
+                            {{ page.duration }}
+                        </span>
+                    {% endif %}
+                </div>
+
+                <h1 class="text-4xl lg:text-5xl font-heading font-bold mb-6 leading-tight">
+                    {{ page.title }}
+                </h1>
+
+                {% if page.intro %}
+                <p class="text-xl mb-8 text-primary-100 leading-relaxed">
+                    {{ page.intro }}
+                </p>
+                {% endif %}
+
+                <!-- Categories and Technologies -->
+                <div class="space-y-4">
+                    {% if page.categories.all %}
+                    <div class="flex flex-wrap gap-2">
+                        {% for category in page.categories.all %}
+                            <span class="inline-flex items-center bg-white/10 text-white text-sm px-3 py-1 rounded-full">
+                                {% if category.icon %}
+                                    <i class="{{ category.icon }} mr-2"></i>
+                                {% endif %}
+                                {{ category.name }}
+                            </span>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+
+                    {% if page.get_technologies_list %}
+                    <div class="flex flex-wrap gap-2">
+                        {% for tech in page.get_technologies_list %}
+                            <span class="inline-block bg-secondary-500/20 text-secondary-100 text-sm px-3 py-1 rounded">
+                                {{ tech }}
+                            </span>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if page.featured_image %}
+            <div class="relative">
+                <div class="aspect-w-16 aspect-h-9 rounded-lg overflow-hidden shadow-2xl">
+                    {% image page.featured_image fill-800x450 class="w-full h-full object-cover" %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</section>
+
+<!-- Description Section -->
+{% if page.description %}
+<section class="section-padding bg-white">
+    <div class="max-w-4xl mx-auto container-padding">
+        <div class="prose prose-lg prose-primary mx-auto">
+            {{ page.description|richtext }}
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- Learning Metadata -->
+{% if page.target_audience or page.learning_objectives %}
+<section class="section-padding bg-neutral-50">
+    <div class="max-w-6xl mx-auto container-padding">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {% if page.target_audience %}
+            <div class="bg-white p-6 rounded-lg shadow-sm">
+                <h3 class="text-xl font-semibold text-primary-800 mb-4 flex items-center">
+                    <i class="fas fa-users text-secondary-500 mr-3"></i>
+                    Target Audience
+                </h3>
+                <p class="text-neutral-700 leading-relaxed">{{ page.target_audience }}</p>
+            </div>
+            {% endif %}
+
+            {% if page.learning_objectives %}
+            <div class="bg-white p-6 rounded-lg shadow-sm">
+                <h3 class="text-xl font-semibold text-primary-800 mb-4 flex items-center">
+                    <i class="fas fa-bullseye text-secondary-500 mr-3"></i>
+                    Learning Objectives
+                </h3>
+                <p class="text-neutral-700 leading-relaxed">{{ page.learning_objectives }}</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- Content Sections -->
+{% if page.content_sections %}
+<section class="section-padding bg-white">
+    <div class="max-w-7xl mx-auto container-padding">
+        {% for section in page.content_sections %}
+
+            {% if section.block_type == 'packaged_content' %}
+            <!-- Packaged Learning Module -->
+            <div class="mb-16">
+                <div class="text-center mb-8">
+                    <h2 class="text-3xl font-heading font-bold text-primary-800 mb-4">
+                        {{ section.value.title }}
+                    </h2>
+                    {% if section.value.description %}
+                    <p class="text-lg text-neutral-600 max-w-3xl mx-auto">
+                        {{ section.value.description }}
+                    </p>
+                    {% endif %}
+                </div>
+
+                {% if section.value.thumbnail %}
+                <div class="aspect-w-16 aspect-h-9 mb-6 rounded-lg overflow-hidden shadow-lg">
+                    {% image section.value.thumbnail fill-1200x675 class="w-full h-full object-cover" %}
+                </div>
+                {% endif %}
+
+                <div class="bg-neutral-50 rounded-lg p-8 text-center">
+                    <div class="mb-6">
+                        <i class="fas fa-play-circle text-6xl text-secondary-500 mb-4"></i>
+                        <h3 class="text-xl font-semibold text-primary-800 mb-2">Interactive Learning Module</h3>
+                        <p class="text-neutral-600">Click below to launch the full interactive experience</p>
+                    </div>
+
+                    {% if section.value.package_file %}
+                    <a href="{% url 'showcase:package_viewer' page.pk section.value.package_file.id %}"
+                       target="_blank"
+                       class="btn bg-secondary-500 text-white hover:bg-secondary-600 shadow-lg inline-flex items-center">
+                        <i class="fas fa-external-link-alt mr-2"></i>
+                        Launch Interactive Content
+                    </a>
+                    {% else %}
+                    <p class="text-neutral-600">Content package not available</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% elif section.block_type == 'video_content' %}
+            <!-- Video Content -->
+            <div class="mb-16">
+                <div class="text-center mb-8">
+                    <h2 class="text-3xl font-heading font-bold text-primary-800 mb-4">
+                        {{ section.value.title }}
+                    </h2>
+                    {% if section.value.description %}
+                    <p class="text-lg text-neutral-600 max-w-3xl mx-auto">
+                        {{ section.value.description }}
+                    </p>
+                    {% endif %}
+                </div>
+
+                <div class="aspect-w-16 aspect-h-9 rounded-lg overflow-hidden shadow-lg">
+                    {% if section.value.video_type == 'embed' and section.value.embed_url %}
+                        {% embed section.value.embed_url %}
+                    {% elif section.value.video_type == 'upload' and section.value.video_file %}
+                        <video controls class="w-full h-full object-cover">
+                            <source src="{{ section.value.video_file.url }}" type="video/mp4">
+                            Your browser does not support the video tag.
+                        </video>
+                    {% elif section.value.thumbnail %}
+                        {% image section.value.thumbnail fill-1200x675 class="w-full h-full object-cover" %}
+                        <div class="absolute inset-0 flex items-center justify-center bg-black/20">
+                            <i class="fas fa-play-circle text-6xl text-white"></i>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% elif section.block_type == 'gallery_content' %}
+            <!-- Image Gallery -->
+            <div class="mb-16">
+                <div class="text-center mb-8">
+                    <h2 class="text-3xl font-heading font-bold text-primary-800 mb-4">
+                        {{ section.value.title }}
+                    </h2>
+                    {% if section.value.description %}
+                    <p class="text-lg text-neutral-600 max-w-3xl mx-auto">
+                        {{ section.value.description }}
+                    </p>
+                    {% endif %}
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {% for item in section.value.images %}
+                    <div class="group cursor-pointer">
+                        <div class="aspect-w-4 aspect-h-3 rounded-lg overflow-hidden shadow-md">
+                            {% image item.image fill-400x300 class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" %}
+                        </div>
+                        {% if item.caption %}
+                        <p class="text-sm text-neutral-600 mt-2 text-center">{{ item.caption }}</p>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            {% elif section.block_type == 'interactive_content' %}
+            <!-- Interactive Content -->
+            <div class="mb-16">
+                <div class="text-center mb-8">
+                    <h2 class="text-3xl font-heading font-bold text-primary-800 mb-4">
+                        {{ section.value.title }}
+                    </h2>
+                    {% if section.value.description %}
+                    <p class="text-lg text-neutral-600 max-w-3xl mx-auto">
+                        {{ section.value.description }}
+                    </p>
+                    {% endif %}
+                </div>
+
+                <div class="bg-neutral-50 rounded-lg p-8 text-center">
+                    {% if section.value.thumbnail %}
+                    <div class="aspect-w-16 aspect-h-9 mb-6 rounded-lg overflow-hidden shadow-lg">
+                        {% image section.value.thumbnail fill-800x450 class="w-full h-full object-cover" %}
+                    </div>
+                    {% endif %}
+
+                    <div class="mb-6">
+                        <i class="fas fa-download text-4xl text-secondary-500 mb-4"></i>
+                        <h3 class="text-xl font-semibold text-primary-800 mb-2">Interactive Resource</h3>
+                        <p class="text-neutral-600">Download and explore this interactive content</p>
+                    </div>
+
+                    <a href="{{ section.value.content_file.url }}"
+                       target="_blank"
+                       class="btn bg-secondary-500 text-white hover:bg-secondary-600 shadow-lg inline-flex items-center">
+                        <i class="fas fa-download mr-2"></i>
+                        Download Resource
+                    </a>
+                </div>
+            </div>
+
+            {% elif section.block_type == 'text_content' %}
+            <!-- Text Content -->
+            <div class="mb-16">
+                {% if section.value.title %}
+                <h2 class="text-3xl font-heading font-bold text-primary-800 mb-8 text-center">
+                    {{ section.value.title }}
+                </h2>
+                {% endif %}
+                <div class="prose prose-lg prose-primary mx-auto">
+                    {{ section.value.content|richtext }}
+                </div>
+            </div>
+            {% endif %}
+
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+<!-- Related Showcases -->
+{% if related_showcases %}
+<section class="section-padding bg-neutral-50">
+    <div class="max-w-7xl mx-auto container-padding">
+        <div class="text-center mb-12">
+            <h2 class="text-3xl font-heading font-bold text-primary-800 mb-4">
+                Related Examples
+            </h2>
+            <p class="text-lg text-neutral-600">
+                Explore more examples of our work
+            </p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {% for showcase in related_showcases %}
+            <article class="card-hover group bg-white rounded-lg shadow-md overflow-hidden">
+                {% if showcase.featured_image %}
+                <div class="aspect-w-16 aspect-h-9 overflow-hidden">
+                    <a href="{% pageurl showcase %}">
+                        {% image showcase.featured_image fill-400x225 class="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300" %}
+                    </a>
+                </div>
+                {% endif %}
+
+                <div class="p-6">
+                    <h3 class="text-lg font-semibold mb-2 text-primary-800 group-hover:text-secondary-500 transition-colors">
+                        <a href="{% pageurl showcase %}">{{ showcase.title }}</a>
+                    </h3>
+                    {% if showcase.intro %}
+                    <p class="text-neutral-600 text-sm mb-4">{{ showcase.intro|truncatechars:120 }}</p>
+                    {% endif %}
+                    <a href="{% pageurl showcase %}" class="text-secondary-500 hover:text-secondary-600 font-medium text-sm">
+                        View Example →
+                    </a>
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- Call to Action Section -->
+<section class="section-padding bg-primary-800 text-white">
+    <div class="max-w-4xl mx-auto container-padding text-center">
+        <h2 class="text-3xl lg:text-4xl font-heading font-bold mb-6">
+            Ready to Create Something Like This?
+        </h2>
+        <p class="text-xl mb-8 text-primary-100">
+            Let's discuss how we can bring your educational content vision to life.
+        </p>
+        <div class="flex flex-col sm:flex-row gap-4 justify-center">
+            <a href="/contact/" class="btn bg-secondary-500 text-white hover:bg-secondary-600 shadow-lg">
+                Get Started
+                <i class="fas fa-arrow-right ml-2"></i>
+            </a>
+            <a href="{% pageurl page.get_parent %}" class="btn border-white text-white hover:bg-white hover:text-primary-800">
+                View More Examples
+                <i class="fas fa-grid-3x3 ml-2"></i>
+            </a>
+        </div>
+    </div>
+</section>
+
+<!-- Divider -->
+<div class="py-4 bg-cream-50 max-w-7xl mx-auto container-padding"></div>
+
+{% endblock content %}

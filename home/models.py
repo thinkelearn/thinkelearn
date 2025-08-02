@@ -175,6 +175,7 @@ class HomePage(Page):
         "home.AboutPage",
         "home.ContactPage",
         "home.PortfolioIndexPage",
+        "showcase.ShowcaseIndexPage",
         "blog.BlogIndexPage",
     ]
 

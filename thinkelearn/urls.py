@@ -13,12 +13,24 @@ urlpatterns = [
     path("documents/", include(wagtaildocs_urls)),
     path("search/", search_views.search, name="search"),
     path("communications/", include("communications.urls")),
+    path("showcase/", include("showcase.urls")),
 ]
 
 
 if settings.DEBUG:
     from django.conf.urls.static import static
     from django.contrib.staticfiles.urls import staticfiles_urlpatterns
+
+    from showcase.views import serve_extracted_content
+
+    # Add specific URL pattern for extracted showcase content FIRST
+    urlpatterns += [
+        path(
+            "media/showcase_extracted/<int:document_id>/<path:file_path>",
+            serve_extracted_content,
+            name="showcase_extracted_content",
+        ),
+    ]
 
     # Serve static and media files from development server
     urlpatterns += staticfiles_urlpatterns()

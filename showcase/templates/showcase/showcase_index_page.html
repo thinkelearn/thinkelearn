@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+{% load static wagtailcore_tags wagtailimages_tags %}
+
+{% block body_class %}template-showcaseindexpage{% endblock %}
+
+{% block content %}
+
+<!-- Hero Section -->
+<section class="hero-gradient text-white section-padding overflow-hidden relative">
+    <div class="max-w-7xl mx-auto container-padding relative z-10">
+        <div class="text-center">
+            <h1 class="text-4xl lg:text-6xl font-heading font-bold mb-6 leading-tight">
+                {{ page.hero_title }}
+            </h1>
+            {% if page.hero_subtitle %}
+            <p class="text-xl lg:text-2xl mb-8 text-amber-100 max-w-3xl mx-auto leading-relaxed">
+                {{ page.hero_subtitle }}
+            </p>
+            {% endif %}
+            {% if page.intro %}
+            <div class="prose prose-lg prose-invert mx-auto">
+                {{ page.intro|richtext }}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</section>
+
+<!-- Filter Section -->
+{% if categories %}
+<section class="section-padding bg-neutral-50 border-b">
+    <div class="max-w-7xl mx-auto container-padding">
+        <div class="flex flex-wrap justify-center gap-4">
+            <a href="{% pageurl page %}"
+               class="px-6 py-2 rounded-full border transition-colors {% if not request.GET.category %}bg-secondary-500 text-white border-secondary-500{% else %}bg-white text-neutral-700 border-neutral-300 hover:border-secondary-500 hover:text-secondary-500{% endif %}">
+                View All
+            </a>
+            {% for category in categories %}
+                <a href="?category={{ category.slug }}"
+                   class="px-6 py-2 rounded-full border transition-colors flex items-center {% if request.GET.category == category.slug %}bg-secondary-500 text-white border-secondary-500{% else %}bg-white text-neutral-700 border-neutral-300 hover:border-secondary-500 hover:text-secondary-500{% endif %}">
+                    {% if category.icon %}
+                        <i class="{{ category.icon }} mr-2"></i>
+                    {% endif %}
+                    {{ category.name }}
+                </a>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- Showcases Grid -->
+<section class="section-padding bg-white">
+    <div class="max-w-7xl mx-auto container-padding">
+
+        {% if showcases %}
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {% for showcase in showcases %}
+                <article class="card-hover group bg-white rounded-lg shadow-md overflow-hidden">
+                    {% if showcase.featured_image %}
+                    <div class="aspect-w-16 aspect-h-9 overflow-hidden">
+                        <a href="{% pageurl showcase %}">
+                            {% image showcase.featured_image fill-400x225 class="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300" %}
+                        </a>
+                    </div>
+                    {% endif %}
+
+                    <div class="p-6">
+                        <!-- Meta info -->
+                        <div class="flex items-center justify-between text-sm text-neutral-500 mb-3">
+                            {% if showcase.showcase_date %}
+                                <span>{{ showcase.showcase_date|date:"M Y" }}</span>
+                            {% endif %}
+                            {% if showcase.duration %}
+                                <span class="text-secondary-500 font-medium">{{ showcase.duration }}</span>
+                            {% endif %}
+                        </div>
+
+                        <!-- Title and intro -->
+                        <h2 class="text-xl font-semibold mb-3 text-primary-800 group-hover:text-secondary-500 transition-colors">
+                            <a href="{% pageurl showcase %}">{{ showcase.title }}</a>
+                        </h2>
+
+                        {% if showcase.intro %}
+                        <p class="text-neutral-600 mb-4 leading-relaxed">{{ showcase.intro }}</p>
+                        {% endif %}
+
+                        <!-- Categories and Technologies -->
+                        {% if showcase.categories.all %}
+                        <div class="flex flex-wrap gap-2 mb-4">
+                            {% for category in showcase.categories.all %}
+                                <span class="inline-flex items-center bg-neutral-100 text-neutral-700 text-xs px-2 py-1 rounded-full">
+                                    {% if category.icon %}
+                                        <i class="{{ category.icon }} mr-1"></i>
+                                    {% endif %}
+                                    {{ category.name }}
+                                </span>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+
+                        {% if showcase.get_technologies_list %}
+                        <div class="flex flex-wrap gap-1 mb-4">
+                            {% for tech in showcase.get_technologies_list %}
+                                <span class="inline-block bg-secondary-100 text-secondary-700 text-xs px-2 py-1 rounded">
+                                    {{ tech }}
+                                </span>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+
+                        <!-- View showcase link -->
+                        <div class="flex items-center justify-between">
+                            <a href="{% pageurl showcase %}" class="inline-flex items-center text-secondary-500 hover:text-secondary-600 font-medium transition-colors">
+                                View Example
+                                <i class="fas fa-arrow-right ml-2 text-sm"></i>
+                            </a>
+
+                            {% if showcase.target_audience %}
+                            <span class="text-xs text-neutral-400 font-medium" title="Target Audience">
+                                <i class="fas fa-users mr-1"></i>
+                                {{ showcase.target_audience|truncatechars:20 }}
+                            </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </article>
+            {% endfor %}
+        </div>
+
+        {% else %}
+        <!-- No examples message -->
+        <div class="text-center py-16">
+            <div class="w-20 h-20 bg-neutral-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <i class="fas fa-play-circle text-neutral-400 text-2xl"></i>
+            </div>
+            <h2 class="text-2xl font-semibold text-primary-800 mb-4">No Examples Yet</h2>
+            <p class="text-neutral-600 max-w-md mx-auto">
+                We're working on creating amazing demonstrations of our capabilities. Check back soon to see our work in action!
+            </p>
+        </div>
+        {% endif %}
+    </div>
+</section>
+
+<!-- Call to Action Section -->
+<section class="section-padding bg-primary-800 text-white">
+    <div class="max-w-4xl mx-auto container-padding text-center">
+        <h2 class="text-3xl lg:text-4xl font-heading font-bold mb-6">
+            Inspired by What You've Seen?
+        </h2>
+        <p class="text-xl mb-8 text-primary-100">
+            Let's create something amazing together. Get in touch to discuss your educational content needs.
+        </p>
+        <div class="flex flex-col sm:flex-row gap-4 justify-center">
+            <a href="/contact/" class="btn bg-secondary-500 text-white hover:bg-secondary-600 shadow-lg">
+                Start Your Project
+                <i class="fas fa-rocket ml-2"></i>
+            </a>
+            <a href="/about/" class="btn border-white text-white hover:bg-white hover:text-primary-800">
+                Learn About Us
+                <i class="fas fa-info-circle ml-2"></i>
+            </a>
+        </div>
+    </div>
+</section>
+
+<!-- Divider -->
+<div class="py-4 bg-cream-50 max-w-7xl mx-auto container-padding"></div>
+
+{% endblock content %}
