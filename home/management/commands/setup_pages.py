@@ -7,7 +7,6 @@ from home.models import (
     ContactFormField,
     ContactPage,
     HomePage,
-    PortfolioIndexPage,
     ProcessPage,
 )
 
@@ -114,20 +113,6 @@ class Command(BaseCommand):
             home_page.add_child(instance=blog_page)
             blog_page.save_revision().publish()
             self.stdout.write("✅ Created Blog page")
-            pages_created += 1
-
-        # Create Portfolio index page if it doesn't exist
-        if not PortfolioIndexPage.objects.exists():
-            portfolio_page = PortfolioIndexPage(
-                title="Portfolio",
-                slug="portfolio",
-                intro=RichText(
-                    "<p>Explore our successful projects and case studies showcasing innovative educational technology solutions.</p>"
-                ),
-            )
-            home_page.add_child(instance=portfolio_page)
-            portfolio_page.save_revision().publish()
-            self.stdout.write("✅ Created Portfolio page")
             pages_created += 1
 
         # Create Process page if it doesn't exist
