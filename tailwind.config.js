@@ -73,6 +73,19 @@ module.exports = {
           700: '#a69761',
           800: '#8a7a46',
           900: '#6b5f35',
+        },
+        // Accent colors - Vibrant orange palette based on #F7931E
+        accent: {
+          50: '#fef6f0',
+          100: '#fcead5',
+          200: '#f9d5ab',
+          300: '#f6c081',
+          400: '#f3ab57',
+          500: '#f7931e', // Base color
+          600: '#e5831a',
+          700: '#d37316',
+          800: '#c16312',
+          900: '#af530e',
         }
       },
       fontFamily: {
