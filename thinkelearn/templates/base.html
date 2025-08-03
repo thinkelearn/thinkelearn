@@ -39,6 +39,16 @@
     {% block extra_css %}{% endblock %}
 </head>
 
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-G8EV443EEK"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-G8EV443EEK');
+</script>
+
 <body class="h-full bg-cream-50 {% block body_class %}{% endblock %}">
     {% wagtailuserbar %}
 
