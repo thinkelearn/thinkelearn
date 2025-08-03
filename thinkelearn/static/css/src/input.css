@@ -90,3 +90,11 @@
     @apply text-white !important;
   }
 }
+
+/* Showcase page video embed */
+.max-w-full iframe {
+    max-width: 100%;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 16/9;
+}

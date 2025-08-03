@@ -172,9 +172,11 @@
                     {% endif %}
                 </div>
 
-                <div class="aspect-w-16 aspect-h-9 rounded-lg overflow-hidden shadow-lg">
+                <div class="rounded-lg overflow-hidden shadow-lg">
                     {% if section.value.video_type == 'embed' and section.value.embed_url %}
-                        {{ section.value.embed_url }}
+                        <div class="max-w-full">
+                            {% embed section.value.embed_url.url max_width=1200 %}
+                        </div>
                     {% elif section.value.video_type == 'upload' and section.value.video_file %}
                         <video controls class="w-full h-full object-cover">
                             <source src="{{ section.value.video_file.url }}" type="video/mp4">
