@@ -14,7 +14,8 @@ THINK eLearn is a **production-ready Django/Wagtail educational technology platf
 - **Deployment**: Railway with nixpacks containerization
 - **Communications**: Twilio SMS and voicemail integration
 - **Apps**:
-  - `home`: Complete HomePage, AboutPage, ContactPage, PortfolioIndexPage, ProjectPage models
+  - `home`: HomePage, AboutPage, ContactPage models
+  - `portfolio`: PortfolioIndexPage, ProjectPage, ProjectCategory models with client showcase functionality
   - `blog`: Full BlogIndexPage and BlogPage with categories, tags, and pagination
   - `showcase`: Advanced content demonstration system with ZIP package support, video embedding, and galleries
   - `communications`: Advanced Twilio SMS/voicemail system with admin workflow
@@ -64,6 +65,7 @@ uv run pytest
 
 # Run specific app tests
 uv run pytest home/tests
+uv run pytest portfolio/tests
 uv run pytest showcase/tests
 uv run pytest communications/tests
 
@@ -193,6 +195,41 @@ Key dependencies:
 - **Section backgrounds**: `bg-primary-50` (very light brown tint)
 - **Borders**: `border-neutral-200` or `border-primary-200` (warm grays)
 
+## Portfolio System
+
+### Overview
+
+The portfolio system showcases client work, case studies, and project demonstrations:
+
+- **Project Categories**: Organize projects by type, technology, or industry
+- **Project Galleries**: Image galleries with detailed project descriptions
+- **Client Testimonials**: Embedded testimonials and feedback
+- **Technology Tags**: Track technologies and tools used
+- **Case Studies**: Detailed project breakdowns with outcomes
+
+### Key Features
+
+- **Flexible Content**: StreamField-based content sections for rich project descriptions
+- **Category Filtering**: Organize and filter projects by categories
+- **Responsive Design**: Professional presentation across all devices
+- **SEO Optimized**: Built-in Wagtail SEO fields for better search visibility
+
+### Models
+
+- **ProjectCategory**: Project categories for organization
+- **PortfolioIndexPage**: Main portfolio landing page with category filtering
+- **ProjectPage**: Individual project pages with comprehensive project details
+
+### Management Commands
+
+- **setup_portfolio**: Independent setup command for creating portfolio structure
+- Production-safe deployment with data migration handling
+
+### URL Structure
+
+- `/portfolio/`: Main portfolio index page
+- `/portfolio/<project-slug>/`: Individual project pages
+
 ## Showcase System
 
 ### Overview
@@ -289,8 +326,9 @@ The project uses GitHub Actions for automated testing and quality checks:
 
 **Test Organization**:
 
-- `home/tests/test_models.py`: 11 focused tests for custom methods and business defaults
-- `communications/tests/test_models.py`: 14 focused tests for Twilio workflow logic
+- `home/tests/test_models.py`: Focused tests for custom methods and business defaults
+- `portfolio/tests.py`: Portfolio functionality tests for project showcase workflows
+- `communications/tests/test_models.py`: Focused tests for Twilio workflow logic
 - `showcase/tests.py`: 22 focused tests for content demonstration workflows and ZIP security
 
 **What We Test** (Business Logic Only):
@@ -312,7 +350,7 @@ The project uses GitHub Actions for automated testing and quality checks:
 **Results**:
 
 - **Before**: 180+ tests, 107 failing due to framework over-testing
-- **After**: 47 focused tests (11 home + 14 communications + 22 showcase), all passing
+- **After**: Focused tests covering all business logic across home, portfolio, communications, and showcase apps
 - **Benefits**: Faster execution, easier maintenance, reliable test results
 
 ## Important Files
@@ -330,6 +368,7 @@ The project uses GitHub Actions for automated testing and quality checks:
   - `conftest.py`: Shared test fixtures
 - **Testing**:
   - `home/tests/`: Homepage and related functionality tests
+  - `portfolio/tests.py`: Portfolio app tests for project showcase functionality
   - `blog/tests/`: Blog system tests
   - `showcase/tests.py`: Educational content showcase tests (22 tests)
   - `communications/tests/`: Twilio integration tests
@@ -359,7 +398,7 @@ The project uses GitHub Actions for automated testing and quality checks:
 6. **Portfolio Showcase**: Project galleries with case studies and testimonials
 7. **Contact System**: Forms with email integration and FAQ sections
 8. **Production CI/CD**: Comprehensive GitHub Actions pipeline with quality gates
-9. **Testing Suite**: 47 focused tests with 100% business logic coverage
+9. **Testing Suite**: Comprehensive tests with 100% business logic coverage across all apps
 
 ### 🚀 Ready for Launch
 
@@ -388,7 +427,8 @@ The project uses GitHub Actions for automated testing and quality checks:
 
 - **All core functionality is COMPLETE** - focus on content creation and deployment
 - **Educational showcase system FULLY IMPLEMENTED** with ZIP security, video embedding, and galleries
-- **47 focused tests covering all business logic** - no framework over-testing
+- **Portfolio system EXTRACTED into dedicated app** with improved architecture and maintainability
+- **Comprehensive test coverage** across all apps - no framework over-testing
 - **Do NOT recreate existing functionality** - models, views, templates all exist
 - **Use existing admin interface** for content management
 - **Focus on content population** rather than additional development
