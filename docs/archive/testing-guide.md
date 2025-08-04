@@ -19,12 +19,14 @@
 The test suite was comprehensively audited to remove framework over-testing:
 
 **Before Audit:**
+
 - 180+ tests with 107 failing due to framework over-testing
 - Tests for basic model creation, page constraints, URL routing
 - Duplicate testing of Django/Wagtail core functionality
 - High maintenance burden and brittle test failures
 
 **After Audit:**
+
 - ~70 focused tests covering only custom business logic
 - 25+ tests working perfectly with reliable passing
 - Focus on Twilio workflows, custom methods, business validation
@@ -71,6 +73,7 @@ uv run bandit -r .                     # Security linting
 ## What Was Removed vs. Kept
 
 **What Was Removed:**
+
 - `test_can_create_*` - Basic model instantiation (Django handles this)
 - Page hierarchy/constraint tests (Wagtail handles this)
 - Basic field validation (Django handles this)
@@ -78,6 +81,7 @@ uv run bandit -r .                     # Security linting
 - URL routing tests (Django handles this)
 
 **What Was Kept:**
+
 - Custom method logic (`get_recent_posts()`, `get_technologies_list()`)
 - Twilio integration workflows (SMS/voicemail business processes)
 - Custom default values and business-specific validation rules
