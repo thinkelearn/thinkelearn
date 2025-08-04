@@ -34,7 +34,7 @@ THINK eLearn is a production-ready educational technology platform combining Dja
 ```bash
 git clone https://github.com/think-elearn/thinkelearn
 cd thinkelearn
-./start.sh setup  # Complete setup with admin and pages
+make setup  # Complete setup with admin and pages
 ```
 
 Access at <http://localhost:8000>
@@ -75,6 +75,31 @@ npm run build-css                  # Terminal 2
 - Git
 
 ## Development Commands
+
+### Docker Development
+
+```bash
+# Quick start
+make            # Start development environment (default)
+make start      # Start all containers
+make setup      # Full setup with admin user and sample pages
+
+# Container management
+make stop       # Stop all containers
+make status     # Show container status
+make logs       # Show logs from all containers
+
+# Cleanup and maintenance
+make reset      # Clean up Docker resources (preserves database)
+make clean      # Full cleanup (⚠️  REMOVES DATABASE)
+make rebuild    # Rebuild containers from scratch
+
+# Alternative: Direct script usage
+./start.sh start    # Same commands available via script
+./start.sh --help   # Show all available options
+```
+
+### Traditional Development
 
 ```bash
 # Django management
