@@ -9,6 +9,21 @@ from wagtail.images.blocks import ImageChooserBlock
 from wagtail.models import Page
 
 
+class ProcessBlock(blocks.StructBlock):
+    title = blocks.CharBlock(max_length=255, help_text="Process section title")
+    content = blocks.RichTextBlock(help_text="Process description")
+    icon = blocks.CharBlock(
+        max_length=50,
+        default="fas fa-sync-alt",
+        help_text="FontAwesome icon class (e.g., 'fas fa-sync-alt', 'fas fa-rocket', 'fas fa-lightbulb')",
+    )
+
+    class Meta:
+        template = "home/blocks/process_block.html"
+        icon = "list-ul"
+        label = "Process Section"
+
+
 class HomePage(Page):
     # Hero Section
     hero_title = models.CharField(
@@ -497,14 +512,13 @@ class ProcessPage(Page):
         help_text="Hero background",
     )
 
-    # Process Section
-    process_title = models.CharField(
-        max_length=255,
-        default="Our Process",
-        help_text="Title for the process section",
-    )
-    process_content = RichTextField(
-        blank=True, help_text="Rich text content about the company process"
+    # Process Sections
+    process_sections = StreamField(
+        [
+            ("process", ProcessBlock()),
+        ],
+        blank=True,
+        help_text="Add multiple process sections as needed",
     )
 
     content_panels = Page.content_panels + [
@@ -516,13 +530,7 @@ class ProcessPage(Page):
             ],
             heading="Hero Section",
         ),
-        MultiFieldPanel(
-            [
-                FieldPanel("process_title"),
-                FieldPanel("process_content"),
-            ],
-            heading="Company Process",
-        ),
+        FieldPanel("process_sections"),
     ]
 
     parent_page_types = []

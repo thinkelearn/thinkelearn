@@ -32,17 +32,18 @@
 <!-- Divider -->
 <div class="py-4 bg-cyan-600 mx-auto container-padding"></div>
 
-<!-- Company Process Section -->
-{% if page.process_content %}
-<section class="section-padding-reduced-bottom bg-white">
-    <div class="max-w-4xl mx-auto container-padding">
-        <div class="text-center mb-12">
-            <h2 class="text-3xl lg:text-4xl font-heading font-bold text-primary-800 mb-6">
-                {{ page.process_title }}
-            </h2>
-        </div>
-        <div class="prose prose-lg mx-auto text-neutral-700">
-            {{ page.process_content|richtext }}
+<!-- Process Sections -->
+{% if page.process_sections %}
+<section class="section-padding bg-white">
+    <div class="max-w-6xl mx-auto container-padding">
+        <div class="space-y-8">
+            {% for block in page.process_sections %}
+                <div class="bg-gradient-to-r from-primary-50 to-neutral-50 rounded-xl p-8 lg:p-12 shadow-sm hover:shadow-md transition-shadow duration-300">
+                    <div class="max-w-4xl mx-auto">
+                        {% include_block block %}
+                    </div>
+                </div>
+            {% endfor %}
         </div>
     </div>
 </section>
