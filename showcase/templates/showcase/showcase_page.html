@@ -370,8 +370,10 @@
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         if (typeof GLightbox !== 'undefined') {
-            // Initialize GLightbox
-            GLightbox({
+if (typeof GLightbox !== 'undefined') {
+            // Initialize GLightbox with proper selector
+            const lightbox = GLightbox({
+                selector: 'a[data-glightbox]',
                 touchNavigation: true,
                 loop: true,
                 autoplayVideos: false,
@@ -402,6 +404,10 @@
                     }
                 }
             });
+
+            console.log('GLightbox initialized:', lightbox);
+        } else {
+            console.error('GLightbox not loaded');
         }
     });
 </script>
