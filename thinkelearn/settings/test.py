@@ -11,10 +11,15 @@ SECRET_KEY = "test-secret-key-not-for-production"  # nosec
 
 if os.environ.get("DATABASE_URL"):
     # Use PostgreSQL in CI/CD
+    from typing import Any
+
     import dj_database_url
 
-    DATABASES = {"default": dj_database_url.parse(os.environ.get("DATABASE_URL", ""))}  # type: ignore[dict-item]
-    DATABASES["default"]["TEST"] = {"NAME": "test_thinkelearn"}
+    db_config: dict[str, Any] = dj_database_url.parse(
+        os.environ.get("DATABASE_URL", "")
+    )
+    db_config["TEST"] = {"NAME": "test_thinkelearn"}
+    DATABASES = {"default": db_config}
 else:
     # Use SQLite for local testing
     DATABASES = {
