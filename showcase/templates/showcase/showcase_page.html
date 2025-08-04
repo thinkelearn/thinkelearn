@@ -3,6 +3,11 @@
 
 {% block body_class %}template-showcasepage{% endblock %}
 
+{% block extra_css %}
+{# GLightbox CSS for gallery functionality #}
+<link rel="stylesheet" type="text/css" href="{% static 'css/glightbox.min.css' %}" />
+{% endblock %}
+
 {% block content %}
 
 <!-- Hero Section -->
@@ -192,7 +197,7 @@
             </div>
 
             {% elif section.block_type == 'gallery_content' %}
-            <!-- Image Gallery -->
+            <!-- Image Gallery with Lightbox2 -->
             <div class="mb-16">
                 <div class="text-center mb-8">
                     <h2 class="text-3xl font-heading font-bold text-primary-800 mb-4">
@@ -207,16 +212,30 @@
 
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {% for item in section.value.images %}
-                    <div class="group cursor-pointer">
-                        <div class="aspect-w-4 aspect-h-3 rounded-lg overflow-hidden shadow-md">
+                    <div class="gallery-item group">
+                        {% image item.image width-1200 as large_image %}
+                        <a href="{{ large_image.url }}"
+                           data-glightbox="title: {% if item.caption %}{{ item.caption }}{% else %}{{ section.value.title }}{% endif %}; description: Gallery image {{ forloop.counter }}"
+                           class="block relative rounded-lg overflow-hidden shadow-md"
+                           style="aspect-ratio: 4/3;">
                             {% image item.image fill-400x300 class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" %}
-                        </div>
+                            <div class="gallery-zoom-icon">
+                                <i class="fas fa-search-plus"></i>
+                            </div>
+                        </a>
                         {% if item.caption %}
                         <p class="text-sm text-neutral-600 mt-2 text-center">{{ item.caption }}</p>
                         {% endif %}
                     </div>
                     {% endfor %}
                 </div>
+
+                {% if section.value.images|length > 1 %}
+                <p class="text-center text-sm text-neutral-500 mt-4">
+                    <i class="fas fa-info-circle mr-1"></i>
+                    Click any image to view in full size
+                </p>
+                {% endif %}
             </div>
 
             {% elif section.block_type == 'interactive_content' %}
@@ -342,3 +361,48 @@
 <div class="py-4 bg-cream-50 max-w-7xl mx-auto container-padding"></div>
 
 {% endblock content %}
+
+{% block extra_js %}
+{# GLightbox JavaScript for gallery functionality #}
+<script type="text/javascript" src="{% static 'js/glightbox.min.js' %}"></script>
+
+{# GLightbox initialization #}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        if (typeof GLightbox !== 'undefined') {
+            // Initialize GLightbox
+            GLightbox({
+                touchNavigation: true,
+                loop: true,
+                autoplayVideos: false,
+                descPosition: 'bottom',
+                height: '90vh',
+                width: '90vw'
+            });
+
+            // Handle clicks on gallery items
+            document.addEventListener('click', function(e) {
+                const galleryItem = e.target.closest('.gallery-item');
+                const clickedLink = e.target.closest('a[data-glightbox]');
+
+                // If clicked on gallery item but not directly on the link
+                if (galleryItem && !clickedLink) {
+                    const link = galleryItem.querySelector('a[data-glightbox]');
+                    if (link) {
+                        e.preventDefault();
+                        e.stopPropagation();
+
+                        // Trigger click on the actual link
+                        const clickEvent = new MouseEvent('click', {
+                            view: window,
+                            bubbles: true,
+                            cancelable: true
+                        });
+                        link.dispatchEvent(clickEvent);
+                    }
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}
