@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% load static wagtailcore_tags %}
+
+{% block body_class %}template-termspage{% endblock %}
+
+{% block title %}Terms and Conditions{% endblock %}
+
+{% block content %}
+
+<!-- Hero Section -->
+<section class="hero-gradient text-white section-padding overflow-hidden relative">
+    <div class="max-w-7xl mx-auto container-padding relative z-10">
+        <div class="text-center">
+            <h1 class="text-4xl lg:text-6xl font-heading font-bold mb-6 leading-tight">
+                Terms and Conditions
+            </h1>
+            <p class="text-xl lg:text-2xl mb-8 text-neutral-200 leading-relaxed max-w-3xl mx-auto">
+                Please read these terms carefully before using our website and services.
+            </p>
+        </div>
+    </div>
+</section>
+
+<!-- Terms and Conditions Content -->
+<section class="section-padding bg-white">
+    <div class="max-w-4xl mx-auto container-padding">
+        <div class="prose prose-lg max-w-none">
+
+            <!-- Header Information -->
+            <div class="bg-cyan-50 rounded-lg p-6 mb-8">
+                <h2 class="text-2xl font-heading font-bold text-primary-800 mb-4">Terms and Conditions</h2>
+                <div class="text-neutral-700">
+                    <p class="mb-4">These terms and conditions (the "Terms and Conditions") govern the use of <strong>thinkelearn.com</strong> (the "Site"). This Site is owned and operated by THINK eLearn Inc.. This Site is a portfolio.</p>
+                    <p class="mb-4">By using this Site, you indicate that you have read and understand these Terms and Conditions and agree to abide by them at all times.</p>
+                    <div class="bg-white rounded-lg p-4 border-l-4 border-cyan-500">
+                        <p class="mb-0"><strong>Effective Date:</strong> 4th day of August, 2025</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Intellectual Property Section -->
+            <div class="mb-8">
+                <h3 class="text-xl font-semibold text-primary-800 mb-4">Intellectual Property</h3>
+                <p>All content published and made available on our Site is the property of THINK eLearn Inc. and the Site's creators. This includes, but is not limited to images, text, logos, documents, downloadable files and anything that contributes to the composition of our Site.</p>
+            </div>
+
+            <!-- Acceptable Use Section -->
+            <div class="mb-8">
+                <h3 class="text-xl font-semibold text-primary-800 mb-4">Acceptable Use</h3>
+                <p class="mb-4">As a user of our Site, you agree to use our Site legally, not to use our Site for illegal purposes, and not to:</p>
+                <ul class="list-disc list-inside space-y-2 ml-4">
+                    <li>Violate the intellectual property rights of the Site owners or any third party to the Site.</li>
+                </ul>
+                <p class="mt-4">If we believe you are using our Site illegally or in a manner that violates these Terms and Conditions, we reserve the right to limit, suspend or terminate your access to our Site. We also reserve the right to take any legal steps necessary to prevent you from accessing our Site.</p>
+            </div>
+
+            <!-- Limitation of Liability Section -->
+            <div class="mb-8">
+                <h3 class="text-xl font-semibold text-primary-800 mb-4">Limitation of Liability</h3>
+                <p>THINK eLearn Inc. and our directors, officers, agents, employees, subsidiaries, and affiliates will not be liable for any actions, claims, losses, damages, liabilities and expenses including legal fees from your use of the Site.</p>
+            </div>
+
+            <!-- Indemnity Section -->
+            <div class="mb-8">
+                <h3 class="text-xl font-semibold text-primary-800 mb-4">Indemnity</h3>
+                <p>Except where prohibited by law, by using this Site you indemnify and hold harmless THINK eLearn Inc. and our directors, officers, agents, employees, subsidiaries, and affiliates from any actions, claims, losses, damages, liabilities and expenses including legal fees arising out of your use of our Site or your violation of these Terms and Conditions.</p>
+            </div>
+
+            <!-- Applicable Law Section -->
+            <div class="mb-8">
+                <h3 class="text-xl font-semibold text-primary-800 mb-4">Applicable Law</h3>
+                <p>These Terms and Conditions are governed by the laws of the Province of Ontario.</p>
+            </div>
+
+            <!-- Severability Section -->
+            <div class="mb-8">
+                <h3 class="text-xl font-semibold text-primary-800 mb-4">Severability</h3>
+                <p>If at any time any of the provisions set forth in these Terms and Conditions are found to be inconsistent or invalid under applicable laws, those provisions will be deemed void and will be removed from these Terms and Conditions. All other provisions will not be affected by the removal and the rest of these Terms and Conditions will still be considered valid.</p>
+            </div>
+
+            <!-- Changes Section -->
+            <div class="mb-8">
+                <h3 class="text-xl font-semibold text-primary-800 mb-4">Changes</h3>
+                <p>These Terms and Conditions may be amended from time to time in order to maintain compliance with the law and to reflect any changes to the way we operate our Site and the way we expect users to behave on our Site. We will notify users by email of changes to these Terms and Conditions or post a notice on our Site.</p>
+            </div>
+
+            <!-- Contact Details Section -->
+            <div class="mb-8">
+                <h3 class="text-xl font-semibold text-primary-800 mb-4">Contact Details</h3>
+                <p class="mb-4">Please contact us if you have any questions or concerns. Our contact details are as follows:</p>
+                <div class="bg-neutral-50 rounded-lg p-4 mb-4">
+                    <p class="mb-1">Phone: (289) 816-3749</p>
+                    <p class="mb-1">Email: info@thinkelearn.com</p>
+                    <p class="mb-1">Address: 28-2470 Headon Forest Dr., Burlington, ON L7M 3X3</p>
+                </div>
+                <p>You can also contact us through the feedback form available on our Site.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Divider -->
+<div class="py-4 bg-cream-50 max-w-7xl mx-auto container-padding"></div>
+
+<!-- Call to Action Section -->
+<section class="section-padding bg-cyan-600 text-white">
+    <div class="max-w-4xl mx-auto container-padding text-center">
+        <h2 class="text-3xl lg:text-4xl font-heading font-bold mb-6">
+            Questions About Our Terms?
+        </h2>
+        <p class="text-xl mb-8 text-cyan-100">
+            We're here to help clarify any questions you may have about our terms and conditions.
+        </p>
+        <div class="flex flex-col sm:flex-row gap-4 justify-center">
+            <a href="/contact/" class="btn bg-white text-cyan-700 hover:bg-cyan-50 shadow-lg">
+                Contact Us
+                <i class="fas fa-envelope ml-2"></i>
+            </a>
+            <a href="/" class="btn border-white text-white hover:bg-white hover:text-cyan-700">
+                Return Home
+                <i class="fas fa-home ml-2"></i>
+            </a>
+        </div>
+    </div>
+</section>
+
+<!-- Divider -->
+<div class="py-4 bg-cream-50 max-w-7xl mx-auto container-padding"></div>
+
+{% endblock content %}

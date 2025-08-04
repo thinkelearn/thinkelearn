@@ -15,6 +15,7 @@ urlpatterns = [
     path("documents/", include(wagtaildocs_urls)),
     path("search/", search_views.search, name="search"),
     path("privacy/", views.privacy_policy, name="privacy_policy"),
+    path("terms/", views.terms_and_conditions, name="terms_and_conditions"),
     path("communications/", include("communications.urls")),
     path("showcase/", include("showcase.urls")),
 ]
