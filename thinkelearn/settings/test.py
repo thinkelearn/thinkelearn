@@ -14,12 +14,16 @@ if os.environ.get("DATABASE_URL"):
     import dj_database_url
 
     DATABASES = {"default": dj_database_url.parse(os.environ.get("DATABASE_URL", ""))}  # type: ignore[dict-item]
+    DATABASES["default"]["TEST"] = {"NAME": "test_thinkelearn"}
 else:
     # Use SQLite for local testing
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.sqlite3",
             "NAME": ":memory:",
+            "TEST": {
+                "NAME": ":memory:",
+            },
         }
     }
 

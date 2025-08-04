@@ -131,7 +131,7 @@ DJANGO_SETTINGS_MODULE = "thinkelearn.settings.test"
 python_files = ["tests.py", "test_*.py", "*_tests.py"]
 python_classes = ["Test*", "*Tests"]
 python_functions = ["test_*"]
-testpaths = [".", "home/tests", "blog/tests", "communications/tests"]
+testpaths = ["home/tests", "blog/tests", "communications/tests", "showcase", "portfolio"]
 addopts = [
     "--verbose",
     "--tb=short",
@@ -142,6 +142,8 @@ addopts = [
     "--cov=home",
     "--cov=blog",
     "--cov=communications",
+    "--cov=showcase",
+    "--cov=portfolio",
     "--cov-report=term-missing",
     "--cov-report=html:htmlcov",
     "--cov-fail-under=50",
