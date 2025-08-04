@@ -96,7 +96,7 @@ start_containers() {
 
     # Start CSS build process
     print_status "Starting Tailwind CSS build process..."
-    docker-compose --profile css up -d css
+    docker-compose up -d css
 
     print_success "All containers started successfully!"
 
@@ -158,7 +158,7 @@ setup_environment() {
 # Function to stop containers
 stop_containers() {
     print_status "Stopping all containers..."
-    docker-compose --profile css down
+    docker-compose down
     print_success "All containers stopped"
 }
 
@@ -166,8 +166,8 @@ stop_containers() {
 reset_containers() {
     print_status "Resetting containers (preserving database)..."
 
-    # Stop all services including CSS profile, but keep volumes
-    docker-compose --profile css down --remove-orphans
+    # Stop all services but keep volumes
+    docker-compose down --remove-orphans
 
     print_status "Cleaning up Docker networks..."
     docker network prune -f
@@ -183,8 +183,8 @@ clean_containers() {
     print_warning "⚠️  WARNING: This will permanently delete your database and all data!"
     print_status "Stopping and cleaning up containers..."
 
-    # Stop all services including CSS profile AND remove volumes
-    docker-compose --profile css down --volumes --remove-orphans
+    # Stop all services AND remove volumes
+    docker-compose down --volumes --remove-orphans
 
     print_status "Cleaning up Docker networks..."
     docker network prune -f
@@ -201,11 +201,11 @@ rebuild_containers() {
 
     # Stop everything
     print_status "Stopping all containers..."
-    docker-compose --profile css down --volumes --remove-orphans
+    docker-compose down --volumes --remove-orphans
 
     # Remove images
     print_status "Removing existing images..."
-    docker-compose --profile css down --rmi all 2>/dev/null || true
+    docker-compose down --rmi all 2>/dev/null || true
 
     # Rebuild and start
     print_status "Rebuilding images..."
@@ -218,13 +218,13 @@ rebuild_containers() {
 # Function to show container status
 show_status() {
     print_status "Container status:"
-    docker-compose --profile css ps
+    docker-compose ps
 }
 
 # Function to show logs
 show_logs() {
     print_status "Showing logs from all containers (Ctrl+C to exit):"
-    docker-compose --profile css logs -f
+    docker-compose logs -f
 }
 
 # Main script logic
