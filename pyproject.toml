@@ -92,6 +92,7 @@ module = [
     "*.admin",
     "*.migrations.*",
     "*.tests.*",
+    "*.settings.*",
 ]
 ignore_errors = true
 
