@@ -186,7 +186,6 @@ class HomePage(Page):
     subpage_types = [
         "home.AboutPage",
         "home.ContactPage",
-        "portfolio.PortfolioIndexPage",
         "showcase.ShowcaseIndexPage",
         "blog.BlogIndexPage",
     ]
