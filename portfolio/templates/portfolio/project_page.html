@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% load static wagtailcore_tags wagtailimages_tags wagtailembeds_tags %}
 
-{% block body_class %}template-showcasepage{% endblock %}
+{% block body_class %}template-projectpage{% endblock %}
 
 {% block extra_css %}
 {# GLightbox CSS for gallery functionality #}
@@ -16,9 +16,9 @@
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div>
                 <div class="flex items-center space-x-4 mb-6">
-                    {% if page.showcase_date %}
+                    {% if page.project_date %}
                         <span class="text-sm bg-primary-700 px-3 py-1 rounded-full">
-                            {{ page.showcase_date|date:"F Y" }}
+                            {{ page.project_date|date:"F Y" }}
                         </span>
                     {% endif %}
                     {% if page.duration %}
@@ -151,7 +151,7 @@
                     </div>
 
                     {% if section.value.package_file %}
-                    <a href="{% url 'showcase:package_viewer' page.pk section.value.package_file.id %}"
+                    <a href="{% url 'portfolio:package_viewer' page.pk section.value.package_file.id %}"
                        target="_blank"
                        class="btn bg-secondary-500 text-white hover:bg-secondary-600 shadow-lg inline-flex items-center">
                         <i class="fas fa-external-link-alt mr-2"></i>
@@ -293,39 +293,39 @@
 </section>
 {% endif %}
 
-<!-- Related Showcases -->
-{% if related_showcases %}
+<!-- Related Projects -->
+{% if related_projects %}
 <section class="section-padding bg-neutral-50">
     <div class="max-w-7xl mx-auto container-padding">
         <div class="text-center mb-12">
             <h2 class="text-3xl font-heading font-bold text-primary-800 mb-4">
-                Related Examples
+                Related Projects
             </h2>
             <p class="text-lg text-neutral-600">
-                Explore more examples of our work
+                Explore more of our portfolio
             </p>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {% for showcase in related_showcases %}
+            {% for project in related_projects %}
             <article class="card-hover group bg-white rounded-lg shadow-md overflow-hidden">
-                {% if showcase.featured_image %}
+                {% if project.featured_image %}
                 <div class="aspect-w-16 aspect-h-9 overflow-hidden">
-                    <a href="{% pageurl showcase %}">
-                        {% image showcase.featured_image fill-400x225 class="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300" %}
+                    <a href="{% pageurl project %}">
+                        {% image project.featured_image fill-400x225 class="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300" %}
                     </a>
                 </div>
                 {% endif %}
 
                 <div class="p-6">
                     <h3 class="text-lg font-semibold mb-2 text-primary-800 group-hover:text-secondary-500 transition-colors">
-                        <a href="{% pageurl showcase %}">{{ showcase.title }}</a>
+                        <a href="{% pageurl project %}">{{ project.title }}</a>
                     </h3>
-                    {% if showcase.intro %}
-                    <p class="text-neutral-600 text-sm mb-4">{{ showcase.intro|truncatechars:120 }}</p>
+                    {% if project.intro %}
+                    <p class="text-neutral-600 text-sm mb-4">{{ project.intro|truncatechars:120 }}</p>
                     {% endif %}
-                    <a href="{% pageurl showcase %}" class="text-secondary-500 hover:text-secondary-600 font-medium text-sm">
-                        View Example →
+                    <a href="{% pageurl project %}" class="text-secondary-500 hover:text-secondary-600 font-medium text-sm">
+                        View Project →
                     </a>
                 </div>
             </article>
@@ -350,7 +350,7 @@
                 <i class="fas fa-arrow-right ml-2"></i>
             </a>
             <a href="{% pageurl page.get_parent %}" class="btn border-white text-white hover:bg-white hover:text-primary-800">
-                View More Examples
+                View More Projects
                 <i class="fas fa-grid-3x3 ml-2"></i>
             </a>
         </div>
