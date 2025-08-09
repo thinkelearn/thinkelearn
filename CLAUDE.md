@@ -356,6 +356,25 @@ The project uses GitHub Actions for automated testing and quality checks:
 
 **All core development is COMPLETE**. The platform is ready for immediate production deployment.
 
+### ⚠️ Railway Database Reset Required
+
+**Migration History Conflict**: The Railway production database contains migration history from the old portfolio app consolidation that conflicts with the current codebase:
+
+- **Production has**: `portfolio.0002_cleanup_and_create_portfolio` migration and old `home_portfolioindexpage` tables
+- **Current code has**: Only `portfolio.0001_initial` migration expecting `portfolio_portfolioindexpage` tables
+- **Result**: Migration conflicts causing deployment failures
+
+**Resolution**: Railway database must be reset to align migration history with current codebase. This will:
+- Remove all existing content (pages, images, users)
+- Create clean database schema matching current code
+- Enable successful deployment with unified portfolio system
+
+**Post-Reset Steps**:
+1. Deploy current codebase to Railway
+2. Run fresh migrations (`portfolio.0001_initial`)
+3. Recreate superuser account
+4. Repopulate content through Wagtail admin
+
 ### ✅ Implemented Features
 
 1. **Complete CMS**: All page models with StreamFields implemented
