@@ -80,18 +80,18 @@ def run_test():
         page = browser.new_page()
 
         try:
-            print("📖 Testing showcase pages...")
+            print("📖 Testing portfolio pages...")
 
-            # Navigate to showcase index
-            page.goto("http://localhost:8001/showcase/")
+            # Navigate to portfolio index
+            page.goto("http://localhost:8001/portfolio/")
             page.wait_for_load_state("networkidle")
 
             # Look specifically for Sample Gallery page
-            sample_gallery_link = page.locator('a[href*="/showcase/sample-gallery/"]')
+            sample_gallery_link = page.locator('a[href*="/portfolio/sample-gallery/"]')
 
             if sample_gallery_link.count() == 0:
                 print("ℹ️  No 'Sample Gallery' page found - test passed")
-                print("   💡 Create a showcase page titled 'Sample Gallery' with gallery content to test functionality")
+                print("   💡 Create a portfolio page titled 'Sample Gallery' with gallery content to test functionality")
                 return True
 
             print("📄 Found Sample Gallery page")

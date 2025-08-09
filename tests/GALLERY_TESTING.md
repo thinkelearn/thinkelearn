@@ -22,7 +22,7 @@ python tests/test_gallery.py
 
 ### What it tests
 
-- ✅ Looks specifically for a "Sample Gallery" showcase page
+- ✅ Looks specifically for a "Sample Gallery" portfolio page
 - ✅ GLightbox library loads on gallery pages
 - ✅ Gallery items don't navigate directly to image URLs
 - ✅ Lightbox opens when clicking gallery items
@@ -39,11 +39,11 @@ python tests/test_gallery.py
 
 To create the required test content:
 
-1. **Create a Showcase Page** titled exactly **"Sample Gallery"** through the admin
+1. **Create a Portfolio Page** titled exactly **"Sample Gallery"** through the admin
 2. **Add gallery content** using the gallery content block with multiple images
 3. **Run the test** to verify the lightbox functionality works
 
-The test specifically looks for `/showcase/sample-gallery/` URL path.
+The test specifically looks for `/portfolio/sample-gallery/` URL path.
 
 ## Integration with CI/CD
 
