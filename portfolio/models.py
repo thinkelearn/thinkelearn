@@ -232,17 +232,6 @@ class ProjectPage(Page):
         blank=True, help_text="Comma-separated list of technologies/tools used"
     )
 
-    # Client Work Differentiation
-    is_client_work = models.BooleanField(
-        default=False,
-        help_text="Check if this project represents work done for a specific client",
-    )
-    client_name = models.CharField(
-        max_length=200,
-        blank=True,
-        help_text="Name of the client (for client work projects only)",
-    )
-
     # Content Sections
     content_sections = StreamField(
         [
@@ -296,13 +285,6 @@ class ProjectPage(Page):
             ],
             heading="Basic Information",
         ),
-        MultiFieldPanel(
-            [
-                FieldPanel("is_client_work"),
-                FieldPanel("client_name"),
-            ],
-            heading="Client Work Information",
-        ),
         FieldPanel("intro"),
         FieldPanel("description"),
         FieldPanel("featured_image"),
@@ -325,10 +307,6 @@ class ProjectPage(Page):
         if self.technologies:
             return [tech.strip() for tech in self.technologies.split(",")]
         return []
-
-    def is_for_client(self):
-        """Helper method to check if this is client work"""
-        return self.is_client_work
 
     def get_packaged_content_url(self, document):
         """Generate URL for packaged content viewer"""
