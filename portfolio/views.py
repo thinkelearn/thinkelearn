@@ -38,7 +38,7 @@ def package_viewer(request, page_id, document_id):
 
     # Create extraction path based on document ID
     extract_path = os.path.join(
-        settings.MEDIA_ROOT, "showcase_extracted", str(document.id)
+        settings.MEDIA_ROOT, "portfolio_extracted", str(document.id)
     )
 
     # Extract if not already extracted or if ZIP is newer
@@ -112,7 +112,7 @@ def package_viewer(request, page_id, document_id):
 
     # Serve the content via URL
     content_url = (
-        f"{settings.MEDIA_URL}showcase_extracted/{document.id}/{entry_dir}{entry_file}"
+        f"{settings.MEDIA_URL}portfolio_extracted/{document.id}/{entry_dir}{entry_file}"
     )
 
     context = {
@@ -122,7 +122,7 @@ def package_viewer(request, page_id, document_id):
         "entry_file": entry_file,
     }
 
-    return render(request, "showcase/package_viewer.html", context)
+    return render(request, "portfolio/package_viewer.html", context)
 
 
 def serve_extracted_content(request, document_id, file_path):
@@ -131,7 +131,7 @@ def serve_extracted_content(request, document_id, file_path):
     """
     document = get_object_or_404(Document, pk=document_id)
     extract_path = os.path.join(
-        settings.MEDIA_ROOT, "showcase_extracted", str(document.id)
+        settings.MEDIA_ROOT, "portfolio_extracted", str(document.id)
     )
 
     # Normalize the file path to prevent path traversal
@@ -180,7 +180,7 @@ def serve_extracted_content(request, document_id, file_path):
             response["Access-Control-Allow-Origin"] = "*"
             response["Access-Control-Allow-Methods"] = "GET"
             response["Access-Control-Allow-Headers"] = "Content-Type"
-            # Allow iframe embedding for showcase content
+            # Allow iframe embedding for portfolio content
             response["X-Frame-Options"] = "SAMEORIGIN"
             # Remove content security policy restrictions that might block iframe content
             if "X-Content-Security-Policy" in response:
