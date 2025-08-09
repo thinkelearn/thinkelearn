@@ -17,7 +17,7 @@ urlpatterns = [
     path("privacy/", views.privacy_policy, name="privacy_policy"),
     path("terms/", views.terms_and_conditions, name="terms_and_conditions"),
     path("communications/", include("communications.urls")),
-    path("showcase/", include("showcase.urls")),
+    path("portfolio/", include("portfolio.urls")),
 ]
 
 
@@ -25,14 +25,14 @@ if settings.DEBUG:
     from django.conf.urls.static import static
     from django.contrib.staticfiles.urls import staticfiles_urlpatterns
 
-    from showcase.views import serve_extracted_content
+    from portfolio.views import serve_extracted_content
 
-    # Add specific URL pattern for extracted showcase content FIRST
+    # Add specific URL pattern for extracted portfolio content FIRST
     urlpatterns += [
         path(
-            "media/showcase_extracted/<int:document_id>/<path:file_path>",
+            "media/portfolio_extracted/<int:document_id>/<path:file_path>",
             serve_extracted_content,
-            name="showcase_extracted_content",
+            name="portfolio_extracted_content",
         ),
     ]
 

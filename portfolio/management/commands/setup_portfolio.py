@@ -1,15 +1,15 @@
 from django.core.management.base import BaseCommand
-from showcase.models import ShowcaseCategory, ShowcaseIndexPage
 from wagtail.rich_text import RichText
 
 from home.models import HomePage
+from portfolio.models import PortfolioCategory, PortfolioIndexPage
 
 
 class Command(BaseCommand):
-    help = "Set up initial showcase pages"
+    help = "Set up initial portfolio pages"
 
     def handle(self, *args, **options):
-        self.stdout.write("🎨 Setting up showcase pages...")
+        self.stdout.write("🎨 Setting up portfolio pages...")
 
         # Get the HomePage (site root)
         home_page = HomePage.objects.first()
@@ -23,7 +23,7 @@ class Command(BaseCommand):
 
         self.stdout.write(f"✅ Found HomePage: {home_page.title}")
 
-        # Create showcase categories
+        # Create portfolio categories
         categories_created = 0
         categories = [
             {
@@ -53,7 +53,7 @@ class Command(BaseCommand):
         ]
 
         for cat_data in categories:
-            category, created = ShowcaseCategory.objects.get_or_create(
+            category, created = PortfolioCategory.objects.get_or_create(
                 slug=cat_data["slug"],
                 defaults={
                     "name": cat_data["name"],
@@ -65,30 +65,30 @@ class Command(BaseCommand):
                 categories_created += 1
                 self.stdout.write(f"✅ Created category: {category.name}")
 
-        # Create Showcase Index page if it doesn't exist
+        # Create Portfolio Index page if it doesn't exist
         pages_created = 0
-        if not ShowcaseIndexPage.objects.exists():
-            showcase_index = ShowcaseIndexPage(
-                title="Showcase",
-                slug="showcase",
-                hero_title="Our Work Showcase",
-                hero_subtitle="Explore examples of our educational technology solutions and creative content.",
+        if not PortfolioIndexPage.objects.exists():
+            portfolio_index = PortfolioIndexPage(
+                title="Portfolio",
+                slug="portfolio",
+                hero_title="Our Portfolio",
+                hero_subtitle="Explore examples of our educational technology solutions and creative projects.",
                 intro=RichText(
-                    "<p>Welcome to our showcase of educational content and technology solutions. "
+                    "<p>Welcome to our portfolio of educational content and technology solutions. "
                     "Here you'll find interactive learning modules, engaging videos, and innovative "
                     "educational resources that demonstrate our capabilities.</p>"
                 ),
             )
-            home_page.add_child(instance=showcase_index)
-            showcase_index.save_revision().publish()
+            home_page.add_child(instance=portfolio_index)
+            portfolio_index.save_revision().publish()
             pages_created += 1
-            self.stdout.write(f"✅ Created: {showcase_index.title}")
+            self.stdout.write(f"✅ Created: {portfolio_index.title}")
 
         self.stdout.write(
             self.style.SUCCESS(
-                f"\n🎉 Showcase setup complete!"
+                f"\n🎉 Portfolio setup complete!"
                 f"\n📊 Categories created: {categories_created}"
                 f"\n📄 Pages created: {pages_created}"
-                f"\n🌐 Visit: http://localhost:8000/showcase/"
+                f"\n🌐 Visit: http://localhost:8000/portfolio/"
             )
         )

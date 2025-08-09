@@ -131,7 +131,7 @@ class InteractiveContentBlock(blocks.StructBlock):
 
 
 @register_snippet
-class ShowcaseCategory(models.Model):
+class PortfolioCategory(models.Model):
     name = models.CharField(max_length=255)
     slug = models.SlugField(unique=True, max_length=80)
     description = models.TextField(blank=True)
@@ -152,19 +152,19 @@ class ShowcaseCategory(models.Model):
         return self.name
 
     class Meta:
-        verbose_name_plural = "Showcase Categories"
+        verbose_name_plural = "Portfolio Categories"
 
 
-class ShowcaseIndexPage(Page):
+class PortfolioIndexPage(Page):
     intro = RichTextField(
-        blank=True, help_text="Introduction text for the showcase section"
+        blank=True, help_text="Introduction text for the portfolio section"
     )
 
     # Hero Section
     hero_title = models.CharField(
         max_length=255,
-        default="Our Work Showcase",
-        help_text="Main headline for the showcase page",
+        default="Our Portfolio",
+        help_text="Main headline for the portfolio page",
     )
     hero_subtitle = models.TextField(
         blank=True, help_text="Subtitle text below the main headline"
@@ -191,28 +191,28 @@ class ShowcaseIndexPage(Page):
     ]
 
     parent_page_types = []
-    subpage_types = ["showcase.ShowcasePage"]
+    subpage_types = ["portfolio.ProjectPage"]
 
     def get_context(self, request):
         context = super().get_context(request)
-        showcases = self.get_children().live().order_by("-first_published_at")
+        projects = self.get_children().live().order_by("-first_published_at")
 
         # Filter by category if provided
         category = request.GET.get("category")
         if category:
-            showcases = showcases.filter(showcasepage__categories__slug=category)
+            projects = projects.filter(projectpage__categories__slug=category)
 
-        context["showcases"] = showcases
-        context["categories"] = ShowcaseCategory.objects.all()
+        context["projects"] = projects
+        context["categories"] = PortfolioCategory.objects.all()
         return context
 
     class Meta:
-        verbose_name = "Showcase Index Page"
+        verbose_name = "Portfolio Index Page"
 
 
-class ShowcasePage(Page):
+class ProjectPage(Page):
     # Basic Info
-    showcase_date = models.DateField("Creation date", null=True, blank=True)
+    project_date = models.DateField("Creation date", null=True, blank=True)
     intro = models.CharField(max_length=250, help_text="Brief introduction/summary")
     description = RichTextField(blank=True, help_text="Detailed description")
 
@@ -223,11 +223,11 @@ class ShowcasePage(Page):
         blank=True,
         on_delete=models.SET_NULL,
         related_name="+",
-        help_text="Main featured image for this showcase",
+        help_text="Main featured image for this project",
     )
 
     # Categories and Tags
-    categories = ParentalManyToManyField("showcase.ShowcaseCategory", blank=True)
+    categories = ParentalManyToManyField("portfolio.PortfolioCategory", blank=True)
     technologies = models.TextField(
         blank=True, help_text="Comma-separated list of technologies/tools used"
     )
@@ -279,7 +279,7 @@ class ShowcasePage(Page):
     content_panels = Page.content_panels + [
         MultiFieldPanel(
             [
-                FieldPanel("showcase_date"),
+                FieldPanel("project_date"),
                 FieldPanel("categories", widget=forms.CheckboxSelectMultiple),
                 FieldPanel("technologies"),
             ],
@@ -299,7 +299,7 @@ class ShowcasePage(Page):
         ),
     ]
 
-    parent_page_types = ["showcase.ShowcaseIndexPage"]
+    parent_page_types = ["portfolio.PortfolioIndexPage"]
     subpage_types = []
 
     def get_technologies_list(self):
@@ -310,20 +310,20 @@ class ShowcasePage(Page):
 
     def get_packaged_content_url(self, document):
         """Generate URL for packaged content viewer"""
-        return reverse("showcase:package_viewer", args=[self.pk, document.pk])
+        return reverse("portfolio:package_viewer", args=[self.pk, document.pk])
 
     def get_context(self, request):
         context = super().get_context(request)
 
-        # Get related showcases (same categories)
-        related_showcases = ShowcasePage.objects.live().exclude(id=self.id)
+        # Get related projects (same categories)
+        related_projects = ProjectPage.objects.live().exclude(id=self.id)
         if self.categories.exists():
-            related_showcases = related_showcases.filter(
+            related_projects = related_projects.filter(
                 categories__in=self.categories.all()
             ).distinct()
 
-        context["related_showcases"] = related_showcases[:3]
+        context["related_projects"] = related_projects[:3]
         return context
 
     class Meta:
-        verbose_name = "Showcase Page"
+        verbose_name = "Project Page"

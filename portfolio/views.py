@@ -7,7 +7,7 @@ from django.shortcuts import get_object_or_404, render
 from django.views.decorators.clickjacking import xframe_options_exempt
 from wagtail.documents.models import Document
 
-from .models import ShowcasePage
+from .models import ProjectPage
 
 
 @xframe_options_exempt
@@ -16,7 +16,7 @@ def package_viewer(request, page_id, document_id):
     View for displaying packaged learning content (Rise, Storyline, etc.)
     Extracts ZIP files and serves the main index.html in an iframe
     """
-    page = get_object_or_404(ShowcasePage, pk=page_id)
+    page = get_object_or_404(ProjectPage, pk=page_id)
     document = get_object_or_404(Document, pk=document_id)
 
     # Check if document belongs to this page's content
