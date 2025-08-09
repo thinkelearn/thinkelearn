@@ -5,11 +5,11 @@ from unittest.mock import Mock, patch
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import RequestFactory, TestCase
 from django.urls import reverse
-from wagtail.documents import get_document_model
-from wagtail.models import Page
 
 # from wagtail_factories import PageFactory  # Not available, create manual factories
 from showcase.models import ShowcaseCategory, ShowcaseIndexPage, ShowcasePage
+from wagtail.documents import get_document_model
+from wagtail.models import Page
 
 Document = get_document_model()
 
@@ -291,9 +291,8 @@ class ShowcaseSecurityTest(TestCase):
 
     def test_zip_validation_in_block(self):
         """Test ZIP file validation in PackagedContentBlock"""
-        from wagtail.blocks import StructBlockValidationError
-
         from showcase.models import PackagedContentBlock
+        from wagtail.blocks import StructBlockValidationError
 
         # Create non-ZIP file
         fake_doc = Mock()
@@ -312,9 +311,8 @@ class ShowcaseStreamFieldTest(TestCase):
 
     def test_video_content_block_validation(self):
         """Test custom validation logic for video blocks"""
-        from wagtail.blocks import StructBlockValidationError
-
         from showcase.models import VideoContentBlock
+        from wagtail.blocks import StructBlockValidationError
 
         block = VideoContentBlock()
 
@@ -332,9 +330,8 @@ class ShowcaseStreamFieldTest(TestCase):
 
     def test_packaged_content_block_validation(self):
         """Test ZIP file validation in packaged content blocks"""
-        from wagtail.blocks import StructBlockValidationError
-
         from showcase.models import PackagedContentBlock
+        from wagtail.blocks import StructBlockValidationError
 
         block = PackagedContentBlock()
 

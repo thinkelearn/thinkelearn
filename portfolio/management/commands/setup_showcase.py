@@ -1,8 +1,8 @@
 from django.core.management.base import BaseCommand
+from showcase.models import ShowcaseCategory, ShowcaseIndexPage
 from wagtail.rich_text import RichText
 
 from home.models import HomePage
-from showcase.models import ShowcaseCategory, ShowcaseIndexPage
 
 
 class Command(BaseCommand):
