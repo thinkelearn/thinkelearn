@@ -15,9 +15,8 @@ THINK eLearn is a **production-ready Django/Wagtail educational technology platf
 - **Communications**: Twilio SMS and voicemail integration
 - **Apps**:
   - `home`: HomePage, AboutPage, ContactPage models
-  - `portfolio`: PortfolioIndexPage, ProjectPage, ProjectCategory models with client showcase functionality
+  - `portfolio`: PortfolioIndexPage, ProjectPage, PortfolioCategory models with unified client work and capability demonstration system
   - `blog`: Full BlogIndexPage and BlogPage with categories, tags, and pagination
-  - `showcase`: Advanced content demonstration system with ZIP package support, video embedding, and galleries
   - `communications`: Advanced Twilio SMS/voicemail system with admin workflow
   - `search`: Built-in Wagtail search functionality
 
@@ -66,12 +65,11 @@ uv run pytest
 # Run specific app tests
 uv run pytest home/tests
 uv run pytest portfolio/tests
-uv run pytest showcase/tests
 uv run pytest communications/tests
 
 # Run specific test
 uv run pytest home/tests/test_models.py::HomePageTest::test_homepage_defaults
-uv run pytest showcase/tests.py::ShowcasePageTest::test_get_technologies_list
+uv run pytest portfolio/tests.py::ProjectPageTest::test_get_technologies_list
 
 # Code quality checks
 uv run ruff check .          # Linting
@@ -150,8 +148,7 @@ Key dependencies:
 - **HomePage**: Landing page with hero, features, testimonials ✅
 - **AboutPage**: Company story, team, mission/values ✅
 - **BlogIndexPage & BlogPage**: Content marketing and articles ✅
-- **ShowcaseIndexPage & ShowcasePage**: Educational content demonstrations with ZIP packages, videos, galleries ✅
-- **PortfolioIndexPage & ProjectPage**: Client work and case studies ✅
+- **PortfolioIndexPage & ProjectPage**: Unified system for both client work and educational content demonstrations with ZIP packages, videos, galleries ✅
 - **ContactPage**: Contact form, locations, social links ✅
 - **ServicePage**: Future service offerings
 
@@ -162,8 +159,7 @@ Key dependencies:
 - `/search/`: Search functionality
 - `/documents/`: Document serving
 - `/blog/`: Blog section
-- `/showcase/`: Educational content examples
-- `/portfolio/`: Project showcase
+- `/portfolio/`: Unified portfolio showcasing both client work and educational content demonstrations
 - `/contact/`: Contact page
 - All other URLs handled by Wagtail's page serving
 
@@ -199,68 +195,41 @@ Key dependencies:
 
 ### Overview
 
-The portfolio system showcases client work, case studies, and project demonstrations:
+The unified portfolio system showcases both client work and educational content capabilities:
 
-- **Project Categories**: Organize projects by type, technology, or industry
-- **Project Galleries**: Image galleries with detailed project descriptions
-- **Client Testimonials**: Embedded testimonials and feedback
+- **Client Work Differentiation**: Boolean field to distinguish client projects from capability demonstrations
+- **Project Categories**: Organize projects by type, technology, or industry (Learning Modules, Video Content, Interactive Media, Visual Design)
+- **Flexible Content Types**: ZIP packages, videos, image galleries, interactive content, and rich text sections
 - **Technology Tags**: Track technologies and tools used
-- **Case Studies**: Detailed project breakdowns with outcomes
+- **Advanced Content**: ZIP package extraction with security measures, video embedding, interactive galleries
 
 ### Key Features
 
-- **Flexible Content**: StreamField-based content sections for rich project descriptions
-- **Category Filtering**: Organize and filter projects by categories
+- **Unified System**: Single interface for both client work and educational content demonstrations
+- **StreamField Content**: Flexible content blocks (PackagedContentBlock, VideoContentBlock, GalleryContentBlock, InteractiveContentBlock)
+- **ZIP Package Security**: Path traversal protection and secure file extraction to `/media/portfolio_extracted/`
+- **Category Filtering**: Organize and filter projects by categories with Font Awesome icons
+- **Client Work Fields**: `is_client_work` boolean and `client_name` for client project identification
+- **Professional Galleries**: GLightbox integration for image galleries with lightbox functionality
 - **Responsive Design**: Professional presentation across all devices
 - **SEO Optimized**: Built-in Wagtail SEO fields for better search visibility
 
 ### Models
 
-- **ProjectCategory**: Project categories for organization
+- **PortfolioCategory**: Content categories with Font Awesome icons (replaces both ProjectCategory and ShowcaseCategory)
 - **PortfolioIndexPage**: Main portfolio landing page with category filtering
-- **ProjectPage**: Individual project pages with comprehensive project details
+- **ProjectPage**: Individual project pages supporting both client work and educational demonstrations
 
 ### Management Commands
 
-- **setup_portfolio**: Independent setup command for creating portfolio structure
-- Production-safe deployment with data migration handling
+- **setup_portfolio**: Creates portfolio structure with default categories (Learning Modules, Video Content, Interactive Media, Visual Design)
 
 ### URL Structure
 
 - `/portfolio/`: Main portfolio index page
 - `/portfolio/<project-slug>/`: Individual project pages
-
-## Showcase System
-
-### Overview
-
-The showcase system demonstrates educational content capabilities through multiple content types:
-
-- **Packaged Learning Modules**: ZIP files containing Rise/Articulate/Captivate exports
-- **Video Content**: YouTube/Vimeo embeds or uploaded video files
-- **Image Galleries**: Collections of images with captions
-- **Interactive Content**: Downloadable animations, PDFs, and other resources
-- **Text Content**: Rich text sections with titles
-
-### Key Features
-
-- **ZIP Package Security**: Path traversal protection and secure file extraction
-- **Content Categories**: Organize examples by type (Videos, Interactive, etc.)
-- **Technology Tags**: Comma-separated list of tools/technologies used
-- **Related Examples**: Automatic suggestions based on shared categories
-- **Responsive Design**: Professional presentation across all devices
-
-### Models
-
-- **ShowcaseCategory**: Content categories with Font Awesome icons
-- **ShowcaseIndexPage**: Landing page with filtering by category
-- **ShowcasePage**: Individual showcase items with StreamField content sections
-
-### URL Structure
-
-- `/showcase/`: Main showcase index
-- `/showcase/package/<page_id>/<document_id>/`: ZIP package viewer
-- `/media/showcase_extracted/<document_id>/<file_path>`: Extracted content serving
+- `/portfolio/package/<page_id>/<document_id>/`: ZIP package viewer
+- `/media/portfolio_extracted/<document_id>/<file_path>`: Extracted content serving
 
 ### Testing
 
@@ -269,8 +238,9 @@ The showcase system demonstrates educational content capabilities through multip
 - Custom business methods (`get_technologies_list`, URL generation)
 - ZIP file validation and security measures
 - StreamField block validation
-- Category filtering and related showcases
+- Category filtering and related projects
 - End-to-end workflow integration
+- Client work differentiation functionality
 
 ## Development Workflow
 
@@ -327,16 +297,15 @@ The project uses GitHub Actions for automated testing and quality checks:
 **Test Organization**:
 
 - `home/tests/test_models.py`: Focused tests for custom methods and business defaults
-- `portfolio/tests.py`: Portfolio functionality tests for project showcase workflows
+- `portfolio/tests.py`: 22 focused tests for unified portfolio workflows covering both client work and educational content with ZIP security
 - `communications/tests/test_models.py`: Focused tests for Twilio workflow logic
-- `showcase/tests.py`: 22 focused tests for content demonstration workflows and ZIP security
 
 **What We Test** (Business Logic Only):
 
 - **Custom Methods**: `get_recent_posts()`, `get_technologies_list()`, custom context logic
 - **Twilio Workflows**: SMS/voicemail assignment, status tracking, complete customer workflows
 - **ZIP Security**: Path traversal protection, file validation, secure extraction
-- **Content Workflows**: Category filtering, related showcases, StreamField validation
+- **Content Workflows**: Category filtering, related projects, StreamField validation, client work differentiation
 - **Business Defaults**: Custom default values specific to business requirements
 - **Integration Logic**: Cross-app functionality and custom business processes
 
@@ -350,7 +319,7 @@ The project uses GitHub Actions for automated testing and quality checks:
 **Results**:
 
 - **Before**: 180+ tests, 107 failing due to framework over-testing
-- **After**: Focused tests covering all business logic across home, portfolio, communications, and showcase apps
+- **After**: Focused tests covering all business logic across home, portfolio, and communications apps
 - **Benefits**: Faster execution, easier maintenance, reliable test results
 
 ## Important Files
@@ -368,9 +337,8 @@ The project uses GitHub Actions for automated testing and quality checks:
   - `conftest.py`: Shared test fixtures
 - **Testing**:
   - `home/tests/`: Homepage and related functionality tests
-  - `portfolio/tests.py`: Portfolio app tests for project showcase functionality
+  - `portfolio/tests.py`: Portfolio app tests with 22 comprehensive tests covering client work, educational content, and ZIP security
   - `blog/tests/`: Blog system tests
-  - `showcase/tests.py`: Educational content showcase tests (22 tests)
   - `communications/tests/`: Twilio integration tests
   - `test_integration.py`: End-to-end integration tests
 - **Templates**: Follow Wagtail conventions in app-specific template directories
@@ -394,11 +362,10 @@ The project uses GitHub Actions for automated testing and quality checks:
 2. **Professional Design**: Tailwind CSS with custom brown/orange theme fully implemented
 3. **Advanced Communications**: Twilio SMS/voicemail integration with admin workflow
 4. **Full Blog System**: Categories, tags, pagination, related posts
-5. **Educational Showcase**: ZIP package handling, video embedding, galleries with security measures
-6. **Portfolio Showcase**: Project galleries with case studies and testimonials
-7. **Contact System**: Forms with email integration and FAQ sections
-8. **Production CI/CD**: Comprehensive GitHub Actions pipeline with quality gates
-9. **Testing Suite**: Comprehensive tests with 100% business logic coverage across all apps
+5. **Unified Portfolio System**: Consolidates client work and educational content with ZIP package handling, video embedding, galleries, and client work differentiation
+6. **Contact System**: Forms with email integration and FAQ sections
+7. **Production CI/CD**: Comprehensive GitHub Actions pipeline with quality gates
+8. **Testing Suite**: Comprehensive tests with 100% business logic coverage across all apps
 
 ### 🚀 Ready for Launch
 
@@ -426,8 +393,8 @@ The project uses GitHub Actions for automated testing and quality checks:
 **IMPORTANT**: This project is PRODUCTION-READY with comprehensive features implemented.
 
 - **All core functionality is COMPLETE** - focus on content creation and deployment
-- **Educational showcase system FULLY IMPLEMENTED** with ZIP security, video embedding, and galleries
-- **Portfolio system EXTRACTED into dedicated app** with improved architecture and maintainability
+- **Unified portfolio system FULLY IMPLEMENTED** consolidating client work and educational content with ZIP security, video embedding, and galleries
+- **Portfolio/showcase consolidation COMPLETE** with improved architecture and maintainability
 - **Comprehensive test coverage** across all apps - no framework over-testing
 - **Do NOT recreate existing functionality** - models, views, templates all exist
 - **Use existing admin interface** for content management

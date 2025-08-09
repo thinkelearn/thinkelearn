@@ -66,8 +66,7 @@ RUN python manage.py collectstatic --noinput --clear
 # Runtime command that executes when "docker run" is called, it does the
 # following:
 #   1. Migrate the database.
-#   2. Set up initial pages and showcase content.
-#   3. Start the application server.
+#   2. Start the application server.
 # WARNING:
 #   Migrating database at the same time as starting the server IS NOT THE BEST
 #   PRACTICE. The database should be migrated manually or using the release
