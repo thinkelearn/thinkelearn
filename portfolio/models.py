@@ -195,12 +195,14 @@ class PortfolioIndexPage(Page):
 
     def get_context(self, request):
         context = super().get_context(request)
-        projects = self.get_children().live().order_by("-first_published_at")
+        projects = (
+            ProjectPage.objects.child_of(self).live().order_by("-first_published_at")
+        )
 
         # Filter by category if provided
         category = request.GET.get("category")
         if category:
-            projects = projects.filter(projectpage__categories__slug=category)
+            projects = projects.filter(categories__slug=category)
 
         context["projects"] = projects
         context["categories"] = PortfolioCategory.objects.all()
