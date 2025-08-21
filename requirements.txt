@@ -8,8 +8,8 @@ anyascii==0.3.3
 asgiref==3.9.1
 attrs==25.3.0
 beautifulsoup4==4.13.4
-boto3==1.40.7
-botocore==1.40.7
+boto3==1.40.14
+botocore==1.40.14
 certifi==2025.8.3
 charset-normalizer==3.4.3
 defusedxml==0.7.1
@@ -41,14 +41,14 @@ propcache==0.3.2
 psycopg==3.2.9
 pyjwt==2.10.1
 python-dateutil==2.9.0.post0
-requests==2.32.4
+requests==2.32.5
 s3transfer==0.13.1
-sentry-sdk==2.34.1
+sentry-sdk==2.35.0
 six==1.17.0
 soupsieve==2.7
 sqlparse==0.5.3
 telepath==0.3.1
-twilio==9.7.0
+twilio==9.7.1
 typing-extensions==4.14.1
 tzdata==2025.2 ; sys_platform == 'win32'
 urllib3==2.5.0
