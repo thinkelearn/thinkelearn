@@ -8,27 +8,43 @@
 <!-- Hero Section -->
 <section class="hero-gradient text-white section-padding overflow-hidden relative">
     <div class="max-w-7xl mx-auto container-padding relative z-10">
-        <div class="text-center">
-            <h1 class="text-4xl lg:text-6xl font-heading font-bold mb-6 leading-tight">
-                {{ page.hero_title }}
-            </h1>
-            {% if page.hero_subtitle %}
-            <p class="text-xl lg:text-2xl mb-8 text-amber-100 max-w-3xl mx-auto leading-relaxed">
-                {{ page.hero_subtitle }}
-            </p>
-            {% endif %}
-            {% if page.intro %}
-            <div class="prose prose-lg prose-invert mx-auto">
-                {{ page.intro|richtext }}
+        <div class="{% if page.hero_image %}grid grid-cols-1 lg:grid-cols-2 gap-12 items-center{% else %}text-center{% endif %}">
+            <div class="{% if page.hero_image %}text-center lg:text-left{% else %}text-center{% endif %}">
+                <h1 class="text-4xl lg:text-6xl font-heading font-bold mb-6 leading-tight">
+                    {{ page.hero_title }}
+                </h1>
+                {% if page.hero_subtitle %}
+                <p class="text-xl lg:text-2xl mb-8 text-amber-100 {% if not page.hero_image %}max-w-3xl mx-auto{% endif %} leading-relaxed">
+                    {{ page.hero_subtitle }}
+                </p>
+                {% endif %}
+                {% if page.intro %}
+                <div class="prose prose-lg prose-invert {% if not page.hero_image %}mx-auto{% endif %}">
+                    {{ page.intro|richtext }}
+                </div>
+                {% endif %}
+            </div>
+            {% if page.hero_image %}
+            <div class="relative">
+                {% image page.hero_image fill-600x400 class="responsive-image shadow-2xl" %}
+                <div class="absolute inset-0 bg-gradient-to-t from-primary-900/20 to-transparent rounded-lg"></div>
             </div>
             {% endif %}
         </div>
+    </div>
+    <!-- Background decoration -->
+    <div class="absolute top-0 right-0 w-1/2 h-full opacity-10">
+        <svg class="w-full h-full" viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="200" cy="200" r="150" fill="currentColor" opacity="0.1"/>
+            <circle cx="300" cy="100" r="80" fill="currentColor" opacity="0.05"/>
+            <circle cx="100" cy="300" r="60" fill="currentColor" opacity="0.08"/>
+        </svg>
     </div>
 </section>
 
 <!-- Filter Section -->
 {% if categories %}
-<section class="section-padding bg-neutral-50 border-b">
+<section class="py-12 bg-cyan-600 border-b">
     <div class="max-w-7xl mx-auto container-padding">
         <div class="flex flex-wrap justify-center gap-4">
             <a href="{% pageurl page %}"
@@ -50,7 +66,7 @@
 {% endif %}
 
 <!-- Portfolio Grid -->
-<section class="section-padding bg-white">
+<section class="section-padding bg-cyan-50">
     <div class="max-w-7xl mx-auto container-padding">
 
         {% if projects %}
@@ -144,20 +160,20 @@
 </section>
 
 <!-- Call to Action Section -->
-<section class="section-padding bg-primary-800 text-white">
+<section class="section-padding bg-cyan-600 text-white">
     <div class="max-w-4xl mx-auto container-padding text-center">
         <h2 class="text-3xl lg:text-4xl font-heading font-bold mb-6">
             Inspired by What You've Seen?
         </h2>
-        <p class="text-xl mb-8 text-primary-100">
+        <p class="text-xl mb-8 text-cyan-100">
             Let's create something amazing together. Get in touch to discuss your educational content needs.
         </p>
         <div class="flex flex-col sm:flex-row gap-4 justify-center">
-            <a href="/contact/" class="btn bg-secondary-500 text-white hover:bg-secondary-600 shadow-lg">
+            <a href="/contact/" class="btn bg-white text-cyan-700 hover:bg-cyan-50 shadow-lg">
                 Start Your Project
                 <i class="fas fa-rocket ml-2"></i>
             </a>
-            <a href="/about/" class="btn border-white text-white hover:bg-white hover:text-primary-800">
+            <a href="/about/" class="btn border-white text-white hover:bg-white hover:text-cyan-700">
                 Learn About Us
                 <i class="fas fa-info-circle ml-2"></i>
             </a>
