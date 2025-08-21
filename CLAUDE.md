@@ -176,19 +176,20 @@ Key dependencies:
 
 - **Primary colors**: Warm brown theme (#361612 to #784421 variants) - Professional, educational feel
 - **Secondary colors**: Orange accent theme (#ff6600 variants) - Brand highlight color matching logo
+- **Accent colors**: Mint/cyan theme (cyan-50 to cyan-600) - Modern accent for sections and CTAs
 - **Neutral colors**: Warm gray theme (#1c1917 to #fafaf9 variants) - Better harmony with brown palette
 - **Typography**: Inter (body), Poppins (headings)
-- **Components**: Buttons, cards, forms with consistent styling using warm color palette
+- **Components**: Buttons, cards, forms with consistent styling using warm and mint color palettes
 - **Responsive**: Mobile-first approach with Tailwind breakpoints
 
 #### Color Usage Guidelines
 
 - **Headers/Navigation**: `text-primary-800` or `bg-primary-800` (dark brown)
-- **Buttons/CTAs**: `bg-secondary-500 hover:bg-secondary-600` (orange)
+- **Buttons/CTAs**: `bg-secondary-500 hover:bg-secondary-600` (orange) or `bg-cyan-600` (mint) for modern sections
 - **Links**: `text-secondary-500 hover:text-secondary-600` (orange)
 - **Body text**: `text-neutral-700` (warm dark gray)
-- **Light backgrounds**: `bg-neutral-50` (warm off-white)
-- **Section backgrounds**: `bg-primary-50` (very light brown tint)
+- **Light backgrounds**: `bg-neutral-50` (warm off-white) or `bg-cyan-50` (light mint)
+- **Section backgrounds**: `bg-primary-50` (very light brown tint) or `bg-cyan-600` (mint accent)
 - **Borders**: `border-neutral-200` or `border-primary-200` (warm grays)
 
 ## Portfolio System
@@ -211,6 +212,7 @@ The unified portfolio system showcases both client work and educational content 
 - **Category Filtering**: Organize and filter projects by categories with Font Awesome icons
 - **Client Work Fields**: `is_client_work` boolean and `client_name` for client project identification
 - **Professional Galleries**: GLightbox integration for image galleries with lightbox functionality
+- **Enhanced Index Page**: Hero image support with responsive layout, mint/cyan theme consistency, optimized spacing
 - **Responsive Design**: Professional presentation across all devices
 - **SEO Optimized**: Built-in Wagtail SEO fields for better search visibility
 
@@ -356,32 +358,13 @@ The project uses GitHub Actions for automated testing and quality checks:
 
 **All core development is COMPLETE**. The platform is ready for immediate production deployment.
 
-### ⚠️ Railway Database Reset Required
-
-**Migration History Conflict**: The Railway production database contains migration history from the old portfolio app consolidation that conflicts with the current codebase:
-
-- **Production has**: `portfolio.0002_cleanup_and_create_portfolio` migration and old `home_portfolioindexpage` tables
-- **Current code has**: Only `portfolio.0001_initial` migration expecting `portfolio_portfolioindexpage` tables
-- **Result**: Migration conflicts causing deployment failures
-
-**Resolution**: Railway database must be reset to align migration history with current codebase. This will:
-- Remove all existing content (pages, images, users)
-- Create clean database schema matching current code
-- Enable successful deployment with unified portfolio system
-
-**Post-Reset Steps**:
-1. Deploy current codebase to Railway
-2. Run fresh migrations (`portfolio.0001_initial`)
-3. Recreate superuser account
-4. Repopulate content through Wagtail admin
-
 ### ✅ Implemented Features
 
 1. **Complete CMS**: All page models with StreamFields implemented
-2. **Professional Design**: Tailwind CSS with custom brown/orange theme fully implemented
+2. **Professional Design**: Tailwind CSS with brown/orange primary theme and mint/cyan accent theme for modern consistency
 3. **Advanced Communications**: Twilio SMS/voicemail integration with admin workflow
 4. **Full Blog System**: Categories, tags, pagination, related posts
-5. **Unified Portfolio System**: Consolidates client work and educational content with ZIP package handling, video embedding, galleries, and client work differentiation
+5. **Unified Portfolio System**: Consolidates client work and educational content with ZIP package handling, video embedding, galleries, hero images, and optimized layout
 6. **Contact System**: Forms with email integration and FAQ sections
 7. **Production CI/CD**: Comprehensive GitHub Actions pipeline with quality gates
 8. **Testing Suite**: Comprehensive tests with 100% business logic coverage across all apps
