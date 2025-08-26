@@ -277,13 +277,24 @@
             {% elif section.block_type == 'text_content' %}
             <!-- Text Content -->
             <div class="mb-16">
-                {% if section.value.title %}
-                <h2 class="text-3xl font-heading font-bold text-primary-800 mb-8 text-center">
-                    {{ section.value.title }}
-                </h2>
-                {% endif %}
-                <div class="prose prose-lg prose-primary mx-auto">
-                    {{ section.value.content|richtext }}
+                <div class="bg-gradient-to-br from-neutral-50 to-white rounded-lg shadow-sm border border-neutral-200 overflow-hidden">
+                    {% if section.value.title %}
+                    <div class="bg-blue-800 text-white px-8 py-6">
+                        <h2 class="text-2xl font-heading font-bold flex items-center">
+                            <i class="fas fa-file-text text-blue-200 mr-3"></i>
+                            {{ section.value.title }}
+                        </h2>
+                    </div>
+                    {% endif %}
+
+                    <div class="px-8 py-8">
+                        <div class="prose prose-lg prose-primary max-w-none">
+                            {{ section.value.content|richtext }}
+                        </div>
+                    </div>
+
+                    <!-- Decorative bottom accent -->
+                    <div class="h-2 bg-gradient-to-r from-blue-600 to-blue-800"></div>
                 </div>
             </div>
             {% endif %}

@@ -86,6 +86,19 @@ module.exports = {
           700: '#d37316',
           800: '#c16312',
           900: '#af530e',
+        },
+        // Deep blue palette based on #055B82
+        blue: {
+          50: '#f0f8fc',
+          100: '#e1f1f9',
+          200: '#c3e3f3',
+          300: '#94d0eb',
+          400: '#5fb8df',
+          500: '#3ba0d3',
+          600: '#2d85b8',
+          700: '#266b95',
+          800: '#055b82', // Base color
+          900: '#044a6a',
         }
       },
       fontFamily: {
