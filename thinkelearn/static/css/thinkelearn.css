@@ -2614,6 +2614,21 @@ h6 {
   background-color: rgb(255 255 255 / 0.8);
 }
 
+.bg-neutral-500 {
+  --tw-bg-opacity: 1;
+  background-color: rgb(120 113 108 / var(--tw-bg-opacity, 1));
+}
+
+.bg-gray-500 {
+  --tw-bg-opacity: 1;
+  background-color: rgb(107 114 128 / var(--tw-bg-opacity, 1));
+}
+
+.bg-gray-300 {
+  --tw-bg-opacity: 1;
+  background-color: rgb(209 213 219 / var(--tw-bg-opacity, 1));
+}
+
 .bg-gradient-to-br {
   background-image: linear-gradient(to bottom right, var(--tw-gradient-stops));
 }
@@ -2902,11 +2917,6 @@ h6 {
   color: rgb(140 200 221 / var(--tw-text-opacity, 1));
 }
 
-.text-cyan-50 {
-  --tw-text-opacity: 1;
-  color: rgb(240 249 252 / var(--tw-text-opacity, 1));
-}
-
 .text-cyan-500 {
   --tw-text-opacity: 1;
   color: rgb(100 177 205 / var(--tw-text-opacity, 1));
@@ -2940,6 +2950,11 @@ h6 {
 .text-green-600 {
   --tw-text-opacity: 1;
   color: rgb(22 163 74 / var(--tw-text-opacity, 1));
+}
+
+.text-neutral-100 {
+  --tw-text-opacity: 1;
+  color: rgb(245 245 244 / var(--tw-text-opacity, 1));
 }
 
 .text-neutral-200 {
@@ -3030,6 +3045,11 @@ h6 {
 .text-yellow-500 {
   --tw-text-opacity: 1;
   color: rgb(234 179 8 / var(--tw-text-opacity, 1));
+}
+
+.text-cyan-50 {
+  --tw-text-opacity: 1;
+  color: rgb(240 249 252 / var(--tw-text-opacity, 1));
 }
 
 .underline {

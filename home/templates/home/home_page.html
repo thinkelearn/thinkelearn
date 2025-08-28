@@ -53,28 +53,28 @@
 {% if page.features %}
 <!-- Divider -->
 <div class="py-4 bg-cream-50 max-w-7xl mx-auto container-padding"></div>
-<section class="section-padding bg-cyan-50">
+<section class="section-padding bg-primary-400">
     <div class="max-w-7xl mx-auto container-padding">
         <div class="text-center mb-16">
-            <h2 class="text-3xl lg:text-4xl font-heading font-bold text-primary-800 mb-4">
+            <h2 class="text-3xl lg:text-4xl font-heading font-bold text-white mb-4">
                 {{ page.features_title }}
             </h2>
-            <p class="text-xl text-neutral-600 max-w-3xl mx-auto">
+            <p class="text-xl text-white max-w-3xl mx-auto">
                 {{ page.features_description }}
             </p>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {% for feature in page.features %}
-                <div class="bg-cyan-600 rounded-lg shadow-lg hover:shadow-xl transition-shadow duration-300 text-center">
+                <div class="card-hover text-center">
                     <div class="p-8">
                         {% if feature.value.icon %}
-                        <div class="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-6">
+                        <div class="w-16 h-16 bg-cream-200 rounded-full flex items-center justify-center mx-auto mb-6">
                             <i class="{{ feature.value.icon }} text-cyan-600 text-2xl"></i>
                         </div>
                         {% endif %}
-                        <h3 class="text-xl font-semibold mb-4 text-white">{{ feature.value.title }}</h3>
-                        <p class="text-cyan-50 leading-relaxed">{{ feature.value.description }}</p>
+                        <h3 class="text-xl font-semibold mb-4 text-primary-800">{{ feature.value.title }}</h3>
+                        <p class="text-neutral-600 leading-relaxed">{{ feature.value.description }}</p>
                     </div>
                 </div>
             {% endfor %}
