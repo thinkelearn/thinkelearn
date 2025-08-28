@@ -162,7 +162,7 @@ DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "")
 
 # Wagtail settings for production
 WAGTAILADMIN_BASE_URL = os.environ.get(
-    "WAGTAILADMIN_BASE_URL", "https://thinkelearn.com"
+    "WAGTAILADMIN_BASE_URL", "https://www.thinkelearn.com"
 )
 
 # Logging configuration
