@@ -82,6 +82,28 @@ MIDDLEWARE.insert(1, "whitenoise.middleware.WhiteNoiseMiddleware")  # noqa: F405
 # Whitenoise configuration
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
+# Whitenoise additional settings for better performance
+WHITENOISE_USE_FINDERS = False
+WHITENOISE_AUTOREFRESH = False
+WHITENOISE_MANIFEST_STRICT = False
+WHITENOISE_SKIP_COMPRESS_EXTENSIONS = [
+    "jpg",
+    "jpeg",
+    "png",
+    "gif",
+    "webp",
+    "zip",
+    "gz",
+    "tgz",
+    "bz2",
+    "tbz",
+    "xz",
+    "br",
+]
+
+# Static file optimization
+WHITENOISE_MAX_AGE = 31536000  # 1 year cache for static files
+
 # Media files (for user uploads) - AWS S3 Configuration
 if os.environ.get("AWS_STORAGE_BUCKET_NAME"):
     # AWS S3 settings

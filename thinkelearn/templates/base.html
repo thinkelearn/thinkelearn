@@ -37,25 +37,54 @@
     <base target="_blank">
     {% endif %}
 
-    {# Global stylesheets #}
-    <link rel="stylesheet" type="text/css" href="{% static 'css/thinkelearn.css' %}">
+    {# Critical CSS inlined for performance #}
+    <style>
+        /* Critical Above-the-Fold Styles */
+        html,body{margin:0;padding:0;font-family:Inter,-apple-system,BlinkMacSystemFont,sans-serif;line-height:1.5}
+        .h-full{height:100%}
+        .min-h-full{min-height:100%}
+        .bg-cream-50{background-color:#fafaf9}
+        .bg-primary-800{background-color:#1c1917}
+        .text-white{color:#fff}
+        .text-primary-800{color:#1c1917}
+        .text-secondary-500{color:#f97316}
+        .text-neutral-700{color:#404040}
+        .px-4{padding-left:1rem;padding-right:1rem}
+        .py-2{padding-top:0.5rem;padding-bottom:0.5rem}
+        .py-4{padding-top:1rem;padding-bottom:1rem}
+        .py-8{padding-top:2rem;padding-bottom:2rem}
+        .flex{display:flex}
+        .items-center{align-items:center}
+        .justify-between{justify-content:space-between}
+        .space-x-8>:not([hidden])~:not([hidden]){margin-left:2rem}
+        .font-medium{font-weight:500}
+        .font-bold{font-weight:700}
+        .text-2xl{font-size:1.5rem;line-height:2rem}
+        .text-4xl{font-size:2.25rem;line-height:2.5rem}
+        .text-lg{font-size:1.125rem;line-height:1.75rem}
+        .hidden{display:none}
+        @media (min-width:768px){.md\\:block{display:block}.md\\:hidden{display:none}}
+    </style>
+
+    {# Preconnect to external resources #}
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+
+    {# Load non-critical CSS asynchronously #}
+    <link rel="preload" href="{% static 'css/thinkelearn.css' %}" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="{% static 'css/thinkelearn.css' %}"></noscript>
+
+    {# Load Google Fonts asynchronously #}
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap"></noscript>
+
+    {# Load Font Awesome asynchronously #}
+    <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer">
+    <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer"></noscript>
 
     {% block extra_css %}{% endblock %}
 </head>
-
-<!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-G8EV443EEK"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-
-  gtag('config', 'G-G8EV443EEK');
-</script>
 
 <body class="h-full bg-cream-50 {% block body_class %}{% endblock %}">
     {% wagtailuserbar %}
@@ -86,6 +115,24 @@
                     mobileMenu.classList.toggle('hidden');
                 });
             }
+        });
+    </script>
+
+    <!-- Google Analytics - loaded after page content -->
+    <script>
+        window.addEventListener('load', function() {
+            // Load Google Analytics after page load
+            var script = document.createElement('script');
+            script.async = true;
+            script.src = 'https://www.googletagmanager.com/gtag/js?id=G-G8EV443EEK';
+            document.head.appendChild(script);
+
+            script.onload = function() {
+                window.dataLayer = window.dataLayer || [];
+                function gtag(){dataLayer.push(arguments);}
+                gtag('js', new Date());
+                gtag('config', 'G-G8EV443EEK');
+            };
         });
     </script>
 </body>
