@@ -44,10 +44,6 @@ cmds = [
     # Run database migrations
     "uv run python manage.py migrate --noinput",
 
-    # Set up initial pages
-    "uv run python manage.py setup_pages",
-    "uv run python manage.py setup_portfolio",
-
     # Run system checks
     "uv run python manage.py check --deploy",
 ]
