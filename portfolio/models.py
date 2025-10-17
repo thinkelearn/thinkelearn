@@ -60,6 +60,14 @@ class VideoContentBlock(blocks.StructBlock):
     embed_url = EmbedBlock(required=False, help_text="YouTube or Vimeo URL")
     video_file = DocumentChooserBlock(required=False, help_text="Uploaded video file")
     thumbnail = ImageChooserBlock(required=False, help_text="Custom thumbnail image")
+    aspect_ratio = blocks.ChoiceBlock(
+        choices=[
+            ("16:9", "Horizontal (16:9 - Standard YouTube)"),
+            ("9:16", "Vertical (9:16 - YouTube Shorts, TikTok, Reels)"),
+        ],
+        default="16:9",
+        help_text="Choose the video's aspect ratio for proper display",
+    )
 
     class Meta:
         icon = "media"
