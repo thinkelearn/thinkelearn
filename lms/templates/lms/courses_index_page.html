@@ -4,16 +4,38 @@
 {% block content %}
 <div class="min-h-screen bg-neutral-50">
     {# Hero Section #}
-    <div class="bg-gradient-to-r from-primary-800 to-primary-700 text-white py-20">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h1 class="text-4xl md:text-5xl font-bold mb-4">{{ page.title }}</h1>
-            {% if page.intro %}
-                <div class="text-lg text-primary-50 max-w-3xl prose prose-invert">
-                    {{ page.intro|richtext }}
-                </div>
-            {% endif %}
+    {% if page.hero_image %}
+        <div class="relative bg-neutral-900 overflow-hidden">
+            {# Hero Image with Overlay #}
+            {% image page.hero_image fill-1920x600 as hero %}
+            <div class="absolute inset-0">
+                <img src="{{ hero.url }}" alt="{{ page.title }}" class="w-full h-full object-cover opacity-40">
+            </div>
+            <div class="absolute inset-0 bg-gradient-to-r from-primary-900/90 to-primary-800/90"></div>
+
+            {# Hero Content #}
+            <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 md:py-32">
+                <h1 class="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6">{{ page.title }}</h1>
+                {% if page.intro %}
+                    <div class="text-lg md:text-xl text-primary-50 max-w-3xl prose prose-lg prose-invert">
+                        {{ page.intro|richtext }}
+                    </div>
+                {% endif %}
+            </div>
         </div>
-    </div>
+    {% else %}
+        {# Fallback gradient hero if no image #}
+        <div class="bg-gradient-to-r from-primary-800 to-primary-700 text-white py-20">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <h1 class="text-4xl md:text-5xl font-bold mb-4">{{ page.title }}</h1>
+                {% if page.intro %}
+                    <div class="text-lg text-primary-50 max-w-3xl prose prose-invert">
+                        {{ page.intro|richtext }}
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    {% endif %}
 
     {# Main Content #}
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -182,12 +204,24 @@
                 {% endfor %}
             </div>
         {% else %}
-            <div class="bg-white rounded-lg shadow-md p-12 text-center">
-                <svg class="w-16 h-16 mx-auto text-neutral-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                </svg>
-                <h3 class="text-xl font-semibold text-neutral-700 mb-2">No courses found</h3>
-                <p class="text-neutral-600">Try adjusting your search or filter criteria.</p>
+            <div class="bg-white rounded-lg shadow-lg p-16 text-center max-w-2xl mx-auto">
+                <div class="bg-cyan-100 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <svg class="w-12 h-12 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
+                    </svg>
+                </div>
+                <h3 class="text-2xl font-bold text-neutral-900 mb-3">No Courses Available Yet</h3>
+                {% if search_query or selected_category or selected_tag %}
+                    <p class="text-neutral-600 text-lg mb-6">No courses match your current filters. Try adjusting your search or filter criteria.</p>
+                    <a href="{{ page.url }}" class="inline-flex items-center px-6 py-3 bg-secondary-500 hover:bg-secondary-600 text-white font-medium rounded-md transition-colors duration-200">
+                        Clear Filters
+                    </a>
+                {% else %}
+                    <p class="text-neutral-600 text-lg mb-6">Our course catalog is being prepared. Check back soon for exciting learning opportunities!</p>
+                    <a href="/" class="inline-flex items-center px-6 py-3 bg-secondary-500 hover:bg-secondary-600 text-white font-medium rounded-md transition-colors duration-200">
+                        Return Home
+                    </a>
+                {% endif %}
             </div>
         {% endif %}
     </div>
