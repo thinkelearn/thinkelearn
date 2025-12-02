@@ -1,131 +1,126 @@
 {% extends "base.html" %}
-{% load wagtailcore_tags wagtailimages_tags %}
+{% load static wagtailcore_tags wagtailimages_tags %}
+
+{% block body_class %}template-coursesindexpage{% endblock %}
 
 {% block content %}
-<div class="min-h-screen bg-neutral-50">
-    {# Hero Section #}
-    {% if page.hero_image %}
-        <div class="relative bg-neutral-900 overflow-hidden">
-            {# Hero Image with Overlay #}
-            {% image page.hero_image fill-1920x600 as hero %}
-            <div class="absolute inset-0">
-                <img src="{{ hero.url }}" alt="{{ page.title }}" class="w-full h-full object-cover opacity-40">
-            </div>
-            <div class="absolute inset-0 bg-gradient-to-r from-primary-900/90 to-primary-800/90"></div>
-
-            {# Hero Content #}
-            <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 md:py-32">
-                <h1 class="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6">{{ page.title }}</h1>
+<!-- Hero Section -->
+<section class="hero-gradient text-white section-padding overflow-hidden relative">
+    <div class="max-w-7xl mx-auto container-padding relative z-10">
+        <div class="{% if page.hero_image %}grid grid-cols-1 lg:grid-cols-2 gap-12 items-center{% else %}text-center{% endif %}">
+            <div class="{% if page.hero_image %}text-center lg:text-left{% else %}text-center{% endif %}">
+                <h1 class="text-4xl lg:text-6xl font-heading font-bold mb-6 leading-tight">
+                    {{ page.title }}
+                </h1>
                 {% if page.intro %}
-                    <div class="text-lg md:text-xl text-primary-50 max-w-3xl prose prose-lg prose-invert">
-                        {{ page.intro|richtext }}
-                    </div>
+                <div class="prose prose-lg prose-invert {% if not page.hero_image %}mx-auto{% endif %}">
+                    {{ page.intro|richtext }}
+                </div>
                 {% endif %}
             </div>
-        </div>
-    {% else %}
-        {# Fallback gradient hero if no image #}
-        <div class="bg-gradient-to-r from-primary-800 to-primary-700 text-white py-20">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <h1 class="text-4xl md:text-5xl font-bold mb-4">{{ page.title }}</h1>
-                {% if page.intro %}
-                    <div class="text-lg text-primary-50 max-w-3xl prose prose-invert">
-                        {{ page.intro|richtext }}
-                    </div>
-                {% endif %}
+            {% if page.hero_image %}
+            <div class="relative">
+                {% image page.hero_image fill-600x400 class="responsive-image shadow-2xl" %}
+                <div class="absolute inset-0 bg-gradient-to-t from-primary-900/20 to-transparent rounded-lg"></div>
             </div>
+            {% endif %}
         </div>
-    {% endif %}
+    </div>
+    <!-- Background decoration -->
+    <div class="absolute top-0 right-0 w-1/2 h-full opacity-10">
+        <svg class="w-full h-full" viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="200" cy="200" r="150" fill="currentColor" opacity="0.1"/>
+            <circle cx="300" cy="100" r="80" fill="currentColor" opacity="0.05"/>
+            <circle cx="100" cy="300" r="60" fill="currentColor" opacity="0.08"/>
+        </svg>
+    </div>
+</section>
 
-    {# Main Content #}
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {# Filters and Search #}
-        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
-            <form method="get" class="space-y-4">
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {# Search #}
-                    <div class="md:col-span-2">
-                        <label for="q" class="block text-sm font-medium text-neutral-700 mb-1">Search Courses</label>
-                        <input
-                            type="text"
-                            name="q"
-                            id="q"
-                            value="{{ search_query|default:'' }}"
-                            placeholder="Search by title, description..."
-                            class="w-full px-4 py-2 border border-neutral-300 rounded-md focus:ring-secondary-500 focus:border-secondary-500"
-                        >
-                    </div>
+<!-- Category Filter Section -->
+{% if categories %}
+<section class="py-12 bg-cyan-600 border-b">
+    <div class="max-w-7xl mx-auto container-padding">
+        <div class="flex flex-wrap justify-center gap-4 mb-6">
+            <a href="{% pageurl page %}"
+               class="px-6 py-2 rounded-full border transition-colors {% if not request.GET.category and not request.GET.tag %}bg-secondary-500 text-white border-secondary-500{% else %}bg-white text-neutral-700 border-neutral-300 hover:border-secondary-500 hover:text-secondary-500{% endif %}">
+                View All
+            </a>
+            {% for category in categories %}
+                <a href="?category={{ category.slug }}"
+                   class="px-6 py-2 rounded-full border transition-colors flex items-center {% if request.GET.category == category.slug %}bg-secondary-500 text-white border-secondary-500{% else %}bg-white text-neutral-700 border-neutral-300 hover:border-secondary-500 hover:text-secondary-500{% endif %}">
+                    {% if category.icon %}
+                        <i class="{{ category.icon }} mr-2"></i>
+                    {% endif %}
+                    {{ category.name }}
+                </a>
+            {% endfor %}
+        </div>
 
-                    {# Category Filter #}
-                    <div>
-                        <label for="category" class="block text-sm font-medium text-neutral-700 mb-1">Category</label>
-                        <select
-                            name="category"
-                            id="category"
-                            class="w-full px-4 py-2 border border-neutral-300 rounded-md focus:ring-secondary-500 focus:border-secondary-500"
-                        >
-                            <option value="">All Categories</option>
-                            {% for category in categories %}
-                                <option value="{{ category.slug }}"{% if selected_category == category.slug %} selected{% endif %}>
-                                    {{ category.name }}
-                                </option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                </div>
-
-                <div class="flex items-center justify-between">
-                    <div class="flex flex-wrap gap-2">
-                        {% if tags %}
-                            <label class="text-sm font-medium text-neutral-700">Tags:</label>
-                            {% for tag in tags %}
-                                <a
-                                    href="?tag={{ tag.slug }}"
-                                    class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium
-                                           {% if selected_tag == tag.slug %}bg-secondary-500 text-white{% else %}bg-neutral-200 text-neutral-700 hover:bg-neutral-300{% endif %}
-                                           transition-colors duration-200"
-                                >
-                                    {{ tag.name }}
-                                </a>
-                            {% endfor %}
-                        {% endif %}
-                    </div>
-                    <div class="flex gap-2">
-                        <button
-                            type="submit"
-                            class="px-6 py-2 bg-secondary-500 hover:bg-secondary-600 text-white font-medium rounded-md transition-colors duration-200"
-                        >
-                            Apply Filters
-                        </button>
-                        <a
-                            href="{{ page.url }}"
-                            class="px-6 py-2 bg-neutral-200 hover:bg-neutral-300 text-neutral-700 font-medium rounded-md transition-colors duration-200"
-                        >
-                            Clear
-                        </a>
-                    </div>
-                </div>
+        <!-- Search Bar -->
+        <div class="max-w-2xl mx-auto">
+            <form method="get" class="flex gap-2">
+                <input
+                    type="text"
+                    name="q"
+                    value="{{ search_query|default:'' }}"
+                    placeholder="Search courses by title or description..."
+                    class="flex-1 px-6 py-3 rounded-full border-2 border-white/30 bg-white/10 text-white placeholder-white/70 focus:outline-none focus:border-white focus:bg-white/20 transition-all"
+                >
+                <button
+                    type="submit"
+                    class="px-8 py-3 bg-secondary-500 hover:bg-secondary-600 text-white font-medium rounded-full transition-colors duration-200 whitespace-nowrap"
+                >
+                    Search
+                </button>
             </form>
         </div>
+    </div>
+</section>
+{% endif %}
 
-        {# Courses Grid #}
+<!-- Tags Section (if you want to show tags separately) -->
+{% if tags and false %}
+<section class="py-8 bg-white border-b">
+    <div class="max-w-7xl mx-auto container-padding">
+        <div class="flex flex-wrap justify-center gap-3">
+            <span class="text-sm font-medium text-neutral-600 py-2">Filter by technology:</span>
+            {% for tag in tags %}
+                <a
+                    href="?tag={{ tag.slug }}"
+                    class="inline-flex items-center px-4 py-2 rounded-full text-sm font-medium border transition-colors
+                           {% if selected_tag == tag.slug %}bg-secondary-500 text-white border-secondary-500{% else %}bg-neutral-100 text-neutral-700 border-neutral-200 hover:border-secondary-500 hover:text-secondary-500{% endif %}"
+                >
+                    {{ tag.name }}
+                </a>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- Courses Grid -->
+<section class="section-padding bg-cyan-50">
+    <div class="max-w-7xl mx-auto container-padding">
         {% if courses %}
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 {% for course in courses %}
-                    <div class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-shadow duration-300">
+                    <article class="card-hover group bg-white rounded-lg shadow-md overflow-hidden">
                         {# Course Thumbnail #}
-                        <a href="{% pageurl course %}" class="block">
-                            {% if course.thumbnail %}
-                                {% image course.thumbnail fill-400x250 as thumb %}
-                                <img src="{{ thumb.url }}" alt="{{ course.title }}" class="w-full h-48 object-cover">
-                            {% else %}
-                                <div class="w-full h-48 bg-gradient-to-br from-primary-600 to-primary-800 flex items-center justify-center">
-                                    <svg class="w-16 h-16 text-white opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
-                                    </svg>
-                                </div>
-                            {% endif %}
-                        </a>
+                        {% if course.thumbnail %}
+                        <div class="aspect-w-16 aspect-h-9 overflow-hidden">
+                            <a href="{% pageurl course %}">
+                                {% image course.thumbnail fill-400x225 class="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300" %}
+                            </a>
+                        </div>
+                        {% else %}
+                        <div class="aspect-w-16 aspect-h-9 overflow-hidden">
+                            <a href="{% pageurl course %}" class="w-full h-48 bg-gradient-to-br from-primary-600 to-primary-800 flex items-center justify-center group-hover:from-primary-700 group-hover:to-primary-900 transition-all duration-300">
+                                <svg class="w-16 h-16 text-white opacity-50 group-hover:opacity-70 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
+                                </svg>
+                            </a>
+                        </div>
+                        {% endif %}
 
                         {# Course Info #}
                         <div class="p-6">
@@ -225,5 +220,5 @@
             </div>
         {% endif %}
     </div>
-</div>
+</section>
 {% endblock %}
