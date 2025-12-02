@@ -15,6 +15,7 @@ THINK eLearn is a **production-ready Django/Wagtail educational technology platf
 - **Communications**: Twilio SMS and voicemail integration
 - **Apps**:
   - `home`: HomePage, AboutPage, ContactPage models
+  - `lms`: Learning Management System with SCORM support, course catalog, prerequisites, reviews, and dashboard
   - `portfolio`: PortfolioIndexPage, ProjectPage, PortfolioCategory models with unified client work and capability demonstration system
   - `blog`: Full BlogIndexPage and BlogPage with categories, tags, and pagination
   - `communications`: Advanced Twilio SMS/voicemail system with admin workflow
@@ -52,6 +53,9 @@ uv add <package-name>
 # CSS build (Tailwind)
 npm run build-css          # Development with watch mode
 npm run build-css-prod     # Production build with minification
+
+# LMS setup
+python manage.py setup_lms --with-categories --with-tags  # Initialize LMS structure
 ```
 
 ### Testing
@@ -191,6 +195,76 @@ Key dependencies:
 - **Light backgrounds**: `bg-neutral-50` (warm off-white) or `bg-cyan-50` (light mint)
 - **Section backgrounds**: `bg-primary-50` (very light brown tint) or `bg-cyan-600` (mint accent)
 - **Borders**: `border-neutral-200` or `border-primary-200` (warm grays)
+
+## Learning Management System (LMS)
+
+### Overview
+
+THINK eLearn features a comprehensive Learning Management System built on wagtail-lms with extensive custom enhancements for delivering SCORM-based courses.
+
+### Key Features
+
+- **SCORM Compliance**: Full support for SCORM 1.2 and 2004 standards
+- **Course Catalog**: Searchable course library with categories, tags, and filtering
+- **Prerequisites**: Course dependency management with automatic validation
+- **Reviews & Ratings**: 5-star rating system with moderation
+- **Instructors**: Course instructor profiles with photos and bios
+- **Enrollment Management**: Enrollment limits and eligibility checks
+- **Progress Tracking**: Student dashboard with completion statistics
+- **Full-Screen Player**: Dedicated SCORM player with auto-save functionality
+
+### Models
+
+- **CourseCategory**: Organize courses by category with Font Awesome icons
+- **CourseTag**: Tag courses with technologies and topics
+- **CoursesIndexPage**: Course catalog landing page with filtering
+- **ExtendedCoursePage**: Enhanced course model extending wagtail-lms CoursePage with:
+  - Categories and tags
+  - Duration and difficulty levels
+  - Prerequisites (course dependencies)
+  - Learning objectives
+  - Related courses
+  - Enrollment limits
+  - Publishing controls
+  - Instructor assignments
+- **CourseInstructor**: Instructor information with photos and bios
+- **CourseReview**: Student ratings and reviews (1-5 stars with moderation)
+- **LearnerDashboardPage**: Student progress dashboard
+
+### Management Commands
+
+- **setup_lms**: Creates LMS structure with default categories and tags
+  ```bash
+  python manage.py setup_lms --with-categories --with-tags
+  ```
+
+### URL Structure
+
+- `/courses/`: Course catalog with filtering and search
+- `/courses/<course-slug>/`: Individual course pages
+- `/dashboard/`: Student dashboard (requires authentication)
+- `/lms/course/<id>/play/`: SCORM player
+- `/lms/scorm-content/<package>/<file>`: SCORM content serving
+
+### Templates
+
+- `lms/courses_index_page.html`: Course catalog with grid layout
+- `lms/extended_course_page.html`: Enhanced course detail page
+- `lms/learner_dashboard_page.html`: Student dashboard
+- `wagtail_lms/course_page.html`: Base course page (styled override)
+- `wagtail_lms/scorm_player.html`: Full-screen SCORM player (styled override)
+
+### Testing
+
+Comprehensive test coverage for:
+- Prerequisites validation logic
+- Enrollment limit enforcement
+- Rating calculations
+- Course filtering and search
+- Enrollment workflows
+- Dashboard statistics
+
+**See**: `docs/lms-implementation-status.md` for detailed implementation information
 
 ## Portfolio System
 
@@ -362,12 +436,13 @@ The project uses GitHub Actions for automated testing and quality checks:
 
 1. **Complete CMS**: All page models with StreamFields implemented
 2. **Professional Design**: Tailwind CSS with brown/orange primary theme and mint/cyan accent theme for modern consistency
-3. **Advanced Communications**: Twilio SMS/voicemail integration with admin workflow
-4. **Full Blog System**: Categories, tags, pagination, related posts
-5. **Unified Portfolio System**: Consolidates client work and educational content with ZIP package handling, video embedding, galleries, hero images, and optimized layout
-6. **Contact System**: Forms with email integration and FAQ sections
-7. **Production CI/CD**: Comprehensive GitHub Actions pipeline with quality gates
-8. **Testing Suite**: Comprehensive tests with 100% business logic coverage across all apps
+3. **Learning Management System**: Full SCORM-compliant LMS with course catalog, prerequisites, reviews, ratings, instructors, and student dashboard
+4. **Advanced Communications**: Twilio SMS/voicemail integration with admin workflow
+5. **Full Blog System**: Categories, tags, pagination, related posts
+6. **Unified Portfolio System**: Consolidates client work and educational content with ZIP package handling, video embedding, galleries, hero images, and optimized layout
+7. **Contact System**: Forms with email integration and FAQ sections
+8. **Production CI/CD**: Comprehensive GitHub Actions pipeline with quality gates
+9. **Testing Suite**: Comprehensive tests with 100% business logic coverage across all apps
 
 ### 🚀 Ready for Launch
 
