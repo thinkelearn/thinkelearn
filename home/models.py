@@ -188,6 +188,7 @@ class HomePage(Page):
         "home.ContactPage",
         "portfolio.PortfolioIndexPage",
         "blog.BlogIndexPage",
+        "wagtail_lms.CoursePage",
     ]
 
     class Meta:
