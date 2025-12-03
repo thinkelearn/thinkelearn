@@ -9,6 +9,8 @@ These models extend the base wagtail-lms functionality with additional features:
 - Enhanced metadata (duration, difficulty, etc.)
 """
 
+import logging
+
 from django import forms
 from django.contrib.auth.models import User
 from django.core.validators import MaxValueValidator, MinValueValidator
@@ -21,6 +23,8 @@ from wagtail.models import Orderable, Page
 from wagtail.search import index
 from wagtail.snippets.models import register_snippet
 from wagtail_lms.models import CourseEnrollment, CoursePage
+
+logger = logging.getLogger(__name__)
 
 
 @register_snippet
@@ -101,10 +105,11 @@ class CoursesIndexPage(Page):
     def get_context(self, request):
         context = super().get_context(request)
 
-        # Get all live courses
+        # Get all live courses with optimized queries
         courses = (
             ExtendedCoursePage.objects.live()
             .descendant_of(self)
+            .prefetch_related("categories", "tags")
             .order_by("-first_published_at")
         )
 
@@ -124,6 +129,7 @@ class CoursesIndexPage(Page):
             courses = courses.search(search_query)
 
         context["courses"] = courses
+        # Categories and tags are small datasets, no need for special optimization
         context["categories"] = CourseCategory.objects.all()
         context["tags"] = CourseTag.objects.all()
         context["selected_category"] = category
@@ -264,6 +270,13 @@ class ExtendedCoursePage(CoursePage):
         context["total_reviews"] = self.reviews.count()
         context["enrollment_count"] = self.get_enrollment_count()
 
+        # Prefetch recent reviews with user data for performance
+        context["recent_reviews"] = (
+            self.reviews.filter(is_approved=True)
+            .select_related("user")
+            .order_by("-created_at")[:5]
+        )
+
         # Check if user can enroll
         if request.user.is_authenticated:
             context["can_enroll"] = self.can_user_enroll(request.user)
@@ -272,8 +285,14 @@ class ExtendedCoursePage(CoursePage):
             context["can_enroll"] = False
             context["user_review"] = None
 
-        # Add related courses
-        context["related_courses"] = self.related_courses.live().public()[:3]
+        # Add related courses - filter for live and public with prefetch
+        related_course_ids = self.related_courses.values_list("id", flat=True)
+        context["related_courses"] = (
+            ExtendedCoursePage.objects.filter(id__in=related_course_ids)
+            .live()
+            .public()
+            .prefetch_related("categories", "tags")[:3]
+        )
 
         return context
 
@@ -302,8 +321,16 @@ class ExtendedCoursePage(CoursePage):
             try:
                 enrollment = CourseEnrollment.objects.get(user=user, course=prereq)
                 if not enrollment.completed_at:
+                    logger.debug(
+                        f"User {user.username} cannot enroll in {self.title}: "
+                        f"prerequisite {prereq.title} not completed"
+                    )
                     return False
             except CourseEnrollment.DoesNotExist:
+                logger.debug(
+                    f"User {user.username} cannot enroll in {self.title}: "
+                    f"not enrolled in prerequisite {prereq.title}"
+                )
                 return False
 
         return True
@@ -369,8 +396,11 @@ class CourseReview(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    # Moderation
-    is_approved = models.BooleanField(default=True)
+    # Moderation - reviews require approval by default for quality control
+    is_approved = models.BooleanField(
+        default=False,
+        help_text="Approve this review to make it visible to other users",
+    )
 
     class Meta:
         verbose_name = "Course Review"
