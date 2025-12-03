@@ -118,25 +118,23 @@ python manage.py setup_portfolio
 **Testing with Docker:**
 
 ```bash
-# Run all tests with pytest
-docker-compose exec web uv run pytest
+# Run all tests (Django test command - uv/pytest not available in Docker)
+docker-compose exec web python manage.py test
 
 # Run specific app tests
-docker-compose exec web uv run pytest home/tests
-docker-compose exec web uv run pytest portfolio/tests
-docker-compose exec web uv run pytest lms/tests
-docker-compose exec web uv run pytest communications/tests
+docker-compose exec web python manage.py test home
+docker-compose exec web python manage.py test portfolio
+docker-compose exec web python manage.py test lms
+docker-compose exec web python manage.py test communications
 
-# Run specific test
-docker-compose exec web uv run pytest home/tests/test_models.py::HomePageTest::test_homepage_defaults
-docker-compose exec web uv run pytest lms/tests.py::ExtendedCoursePageTest::test_can_user_enroll_prerequisites_completed
+# Run specific test class
+docker-compose exec web python manage.py test lms.tests.ExtendedCoursePageTest
 
-# Code quality checks
-docker-compose exec web uv run ruff check .          # Linting
-docker-compose exec web uv run ruff format .         # Code formatting
-docker-compose exec web uv run mypy .                # Type checking
-docker-compose exec web uv run safety check          # Security vulnerability check
-docker-compose exec web uv run bandit -r .           # Security linting
+# Run with verbosity
+docker-compose exec web python manage.py test --verbosity=2
+
+# Note: Code quality tools (ruff, mypy, etc.) are not available in Docker container
+# Run these locally with uv (see "Testing locally" section below)
 ```
 
 **Testing locally (without Docker):**

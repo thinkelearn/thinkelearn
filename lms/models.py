@@ -105,28 +105,28 @@ class CoursesIndexPage(Page):
     def get_context(self, request):
         context = super().get_context(request)
 
+        # Get filter/search parameters
+        category = request.GET.get("category")
+        tag = request.GET.get("tag")
+        search_query = request.GET.get("q")
+
         # Get all live courses with optimized queries
         courses = (
             ExtendedCoursePage.objects.live()
             .descendant_of(self)
-            .prefetch_related("categories", "tags")
+            .prefetch_related("categories", "tags", "reviews")
             .order_by("-first_published_at")
         )
 
-        # Filter by category if specified
-        category = request.GET.get("category")
-        if category:
-            courses = courses.filter(categories__slug=category)
-
-        # Filter by tag if specified
-        tag = request.GET.get("tag")
-        if tag:
-            courses = courses.filter(tags__slug=tag)
-
-        # Search
-        search_query = request.GET.get("q")
+        # Apply search first if specified (search returns SearchResults object)
         if search_query:
             courses = courses.search(search_query)
+
+        # Then apply filters (these work on both QuerySet and SearchResults)
+        if category:
+            courses = courses.filter(categories__slug=category)
+        if tag:
+            courses = courses.filter(tags__slug=tag)
 
         context["courses"] = courses
         # Categories and tags are small datasets, no need for special optimization

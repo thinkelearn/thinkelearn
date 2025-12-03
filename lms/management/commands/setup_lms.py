@@ -39,8 +39,8 @@ class Command(BaseCommand):
             )
             return
 
-        # Create CoursesIndexPage if it doesn't exist
-        courses_page = CoursesIndexPage.objects.first()
+        # Create CoursesIndexPage if it doesn't exist under this home page
+        courses_page = CoursesIndexPage.objects.child_of(home_page).first()
         if not courses_page:
             courses_page = CoursesIndexPage(
                 title="Courses",
@@ -59,8 +59,8 @@ class Command(BaseCommand):
                 )
             )
 
-        # Create LearnerDashboardPage if it doesn't exist
-        dashboard_page = LearnerDashboardPage.objects.first()
+        # Create LearnerDashboardPage if it doesn't exist under this home page
+        dashboard_page = LearnerDashboardPage.objects.child_of(home_page).first()
         if not dashboard_page:
             dashboard_page = LearnerDashboardPage(
                 title="My Dashboard",

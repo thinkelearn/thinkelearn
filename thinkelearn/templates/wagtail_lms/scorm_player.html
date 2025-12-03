@@ -242,17 +242,17 @@
         }
     }, SCORM_CONFIG.AUTO_SAVE_INTERVAL_MS);
 
-    // Handle page unload
+    // Handle page unload - use synchronous calls to ensure data is saved
     window.addEventListener('beforeunload', function(e) {
         if (API.initialized && !API.terminated) {
-            API.LMSCommit("");
-            API.LMSTerminate("");
-
-            // Show warning if there's unsaved data
-            if (API.saveInProgress) {
-                e.preventDefault();
-                e.returnValue = '';
-                return 'Your progress is being saved. Are you sure you want to leave?';
+            // Use synchronous calls for reliable save on page unload
+            // Note: Synchronous XHR is deprecated but necessary for beforeunload
+            try {
+                API.callAPI('Commit', [""], false);  // Synchronous commit
+                API.callAPI('Terminate', [""], false);  // Synchronous terminate
+                API.terminated = true;
+            } catch (error) {
+                console.error('Error saving SCORM data on unload:', error);
             }
         }
     });
