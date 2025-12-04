@@ -18,6 +18,7 @@ urlpatterns = [
     path("terms/", views.terms_and_conditions, name="terms_and_conditions"),
     path("communications/", include("communications.urls")),
     path("portfolio/", include("portfolio.urls")),
+    path("lms/", include("wagtail_lms.urls")),
 ]
 
 

@@ -1,0 +1,271 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="utf-8">
+    <title>{{ course.title }} - SCORM Player | THINK eLearn</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    {# Security headers - CSP should be configured at the web server/middleware level #}
+    {# Recommended CSP for SCORM content: #}
+    {# Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; frame-src 'self'; #}
+
+    {# Favicon #}
+    <link rel="icon" type="image/x-icon" href="{% static 'images/favicon.ico' %}">
+
+    {# Tailwind CSS #}
+    <link rel="stylesheet" href="{% static 'css/thinkelearn.css' %}">
+
+    <style>
+        /* Ensure full-screen layout */
+        html, body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body class="h-full">
+    <div class="flex flex-col h-full bg-neutral-900">
+        {# Header #}
+        <header class="bg-primary-800 text-white shadow-lg flex-shrink-0">
+            <div class="max-w-full px-4 sm:px-6 lg:px-8 py-3">
+                <div class="flex items-center justify-between flex-wrap gap-3">
+                    <div class="flex items-center space-x-4">
+                        <a href="{{ course.url }}"
+                           class="inline-flex items-center px-3 py-2 bg-primary-700 hover:bg-primary-600 text-white text-sm font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                            </svg>
+                            Back to Course
+                        </a>
+                        <h1 class="text-lg font-semibold truncate max-w-md">{{ course.title }}</h1>
+                    </div>
+                    <div class="flex items-center">
+                        <div class="flex items-center bg-primary-700 rounded-lg px-3 py-2">
+                            <svg class="w-5 h-5 mr-2 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            <span class="text-sm font-medium">Status:</span>
+                            <span id="scorm-status" class="ml-2 text-sm font-semibold text-cyan-300">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        {# SCORM Content Frame #}
+        <div class="flex-1 relative bg-white overflow-hidden">
+            <iframe
+                id="scorm-frame"
+                src="{{ launch_url }}"
+                class="absolute inset-0 w-full h-full border-0"
+                sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals"
+                allowfullscreen
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture">
+            </iframe>
+        </div>
+
+        {# Loading Overlay #}
+        <div id="loading-overlay" class="fixed inset-0 bg-neutral-900 bg-opacity-75 items-center justify-center z-50" style="display: none;">
+            <div class="bg-white rounded-lg p-8 max-w-sm mx-4 text-center shadow-2xl">
+                <div class="animate-spin rounded-full h-16 w-16 border-b-4 border-secondary-500 mx-auto mb-4"></div>
+                <p class="text-lg font-semibold text-neutral-800">Saving Progress...</p>
+                <p class="text-sm text-neutral-600 mt-2">Please wait while we save your work.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // SCORM API Implementation
+    // Configuration
+    const SCORM_CONFIG = {
+        AUTO_SAVE_INTERVAL_MS: 30000,  // Auto-save every 30 seconds
+    };
+
+    var API = {
+        initialized: false,
+        terminated: false,
+        saveInProgress: false,
+
+        LMSInitialize: function(parameter) {
+            if (this.initialized) {
+                return "false";
+            }
+
+            this.initialized = true;
+            this.callAPI('Initialize', [parameter]);
+            this.updateStatus('Initialized', 'success');
+            return "true";
+        },
+
+        LMSTerminate: function(parameter) {
+            if (!this.initialized || this.terminated) {
+                return "false";
+            }
+
+            this.terminated = true;
+            this.callAPI('Terminate', [parameter]);
+            this.updateStatus('Completed', 'success');
+            return "true";
+        },
+
+        LMSGetValue: function(element) {
+            if (!this.initialized || this.terminated) {
+                return "";
+            }
+
+            return this.callAPI('GetValue', [element], false);
+        },
+
+        LMSSetValue: function(element, value) {
+            if (!this.initialized || this.terminated) {
+                return "false";
+            }
+
+            this.callAPI('SetValue', [element, value]);
+
+            // Update status display for lesson status changes
+            if (element === 'cmi.core.lesson_status') {
+                this.updateStatus(value.charAt(0).toUpperCase() + value.slice(1), 'info');
+            }
+
+            return "true";
+        },
+
+        LMSCommit: function(parameter) {
+            if (!this.initialized || this.terminated) {
+                return "false";
+            }
+
+            this.saveInProgress = true;
+            this.showLoadingOverlay();
+
+            this.callAPI('Commit', [parameter], true, () => {
+                this.saveInProgress = false;
+                this.hideLoadingOverlay();
+                this.updateStatus('Saved', 'success');
+            });
+
+            return "true";
+        },
+
+        LMSGetLastError: function() {
+            return this.callAPI('GetLastError', [], false) || "0";
+        },
+
+        LMSGetErrorString: function(errorCode) {
+            return this.callAPI('GetErrorString', [errorCode], false) || "";
+        },
+
+        LMSGetDiagnostic: function(errorCode) {
+            return this.callAPI('GetDiagnostic', [errorCode], false) || "";
+        },
+
+        callAPI: function(method, parameters, async = true, callback = null) {
+            const data = {
+                method: method,
+                parameters: parameters || []
+            };
+
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', '{% url "wagtail_lms:scorm_api" attempt.id %}', async);
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            xhr.setRequestHeader('X-CSRFToken', '{{ csrf_token }}');
+
+            if (!async) {
+                xhr.send(JSON.stringify(data));
+                if (xhr.status === 200) {
+                    const response = JSON.parse(xhr.responseText);
+                    return response.result;
+                }
+                return "";
+            } else {
+                xhr.onreadystatechange = function() {
+                    if (xhr.readyState === 4) {
+                        if (xhr.status === 200) {
+                            const response = JSON.parse(xhr.responseText);
+                            console.log('SCORM API Response:', response);
+                            if (callback) callback(response);
+                        } else {
+                            console.error('SCORM API Error:', xhr.status);
+                            if (callback) callback(null);
+                        }
+                    }
+                };
+                xhr.send(JSON.stringify(data));
+            }
+        },
+
+        updateStatus: function(text, type = 'info') {
+            const statusEl = document.getElementById('scorm-status');
+            if (statusEl) {
+                statusEl.textContent = text;
+
+                // Update color based on type
+                statusEl.classList.remove('text-cyan-300', 'text-green-300', 'text-yellow-300');
+                if (type === 'success') {
+                    statusEl.classList.add('text-green-300');
+                } else if (type === 'warning') {
+                    statusEl.classList.add('text-yellow-300');
+                } else {
+                    statusEl.classList.add('text-cyan-300');
+                }
+            }
+        },
+
+        showLoadingOverlay: function() {
+            const overlay = document.getElementById('loading-overlay');
+            if (overlay) {
+                overlay.style.display = 'flex';
+            }
+        },
+
+        hideLoadingOverlay: function() {
+            const overlay = document.getElementById('loading-overlay');
+            if (overlay) {
+                overlay.style.display = 'none';
+            }
+        }
+    };
+
+    // Make API available to SCORM content
+    window.API = API;
+    window.API_1484_11 = API; // SCORM 2004 API
+
+    // Auto-save periodically
+    setInterval(function() {
+        if (API.initialized && !API.terminated && !API.saveInProgress) {
+            console.log('Auto-saving SCORM progress...');
+            API.LMSCommit("");
+        }
+    }, SCORM_CONFIG.AUTO_SAVE_INTERVAL_MS);
+
+    // Handle page unload - use synchronous calls to ensure data is saved
+    window.addEventListener('beforeunload', function(e) {
+        if (API.initialized && !API.terminated) {
+            // Use synchronous calls for reliable save on page unload
+            // Note: Synchronous XHR is deprecated but necessary for beforeunload
+            try {
+                API.callAPI('Commit', [""], false);  // Synchronous commit
+                API.callAPI('Terminate', [""], false);  // Synchronous terminate
+                API.terminated = true;
+            } catch (error) {
+                console.error('Error saving SCORM data on unload:', error);
+            }
+        }
+    });
+
+    // Handle visibility change (tab switching)
+    document.addEventListener('visibilitychange', function() {
+        if (document.hidden && API.initialized && !API.terminated && !API.saveInProgress) {
+            console.log('Tab hidden - saving progress...');
+            API.LMSCommit("");
+        }
+    });
+
+    console.log('SCORM API loaded and ready');
+    </script>
+</body>
+</html>

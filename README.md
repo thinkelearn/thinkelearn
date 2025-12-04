@@ -21,6 +21,7 @@ THINK eLearn is a production-ready educational technology platform combining Dja
 ## Features
 
 - **Content Management**: Flexible page creation via Wagtail CMS
+- **Learning Management System**: SCORM-compliant course delivery with progress tracking
 - **Blog System**: Categories, tags, and related posts
 - **Portfolio Showcase**: Project galleries with case studies
 - **Contact System**: Forms with Twilio SMS/voicemail integration
@@ -118,13 +119,99 @@ uv run ruff check .            # Code linting
 
 ## Admin Interfaces
 
-- **Wagtail Admin** (`/admin/`): Content management, pages, media
-- **Django Admin** (`/django-admin/`): User management, communications, system settings
+- **Wagtail Admin** (`/admin/`): Content management, pages, media, courses
+- **Django Admin** (`/django-admin/`): User management, communications, SCORM packages, system settings
+
+## Learning Management System (LMS)
+
+THINK eLearn includes a comprehensive LMS built on wagtail-lms with extensive custom enhancements.
+
+### LMS Features
+
+- **SCORM Support**: Full SCORM 1.2 and 2004 compliance
+- **Course Catalog**: Searchable course library with categories and tags
+- **Prerequisites**: Course dependency management
+- **Progress Tracking**: Student dashboard with completion statistics
+- **Reviews & Ratings**: 5-star rating system with moderation
+- **Instructors**: Course instructor profiles with photos and bios
+- **Enrollment Management**: Enrollment limits and validation
+- **Responsive Player**: Full-screen SCORM player with auto-save
+
+### Setting Up the LMS
+
+After initial project setup, run the LMS setup command:
+
+```bash
+# Docker
+docker-compose run --rm web python manage.py setup_lms --with-categories --with-tags
+
+# Traditional
+python manage.py setup_lms --with-categories --with-tags
+```
+
+This creates:
+- Courses index page at `/courses/`
+- Learner dashboard at `/dashboard/`
+- Default categories (Programming, Web Development, Data Science, Design, Business, Cybersecurity)
+- Default tags (Python, JavaScript, React, Machine Learning, etc.)
+
+### Creating Courses
+
+**1. Upload SCORM Package:**
+- Navigate to Django Admin → SCORM Packages → Add SCORM Package
+- Upload your .zip SCORM package
+- The system automatically extracts and parses the package
+
+**2. Create Course Page:**
+- Go to Wagtail Admin → Pages → Courses
+- Click "Add child page" → Choose "Course"
+- Fill in course details:
+  - Title, description, and learning objectives
+  - Select SCORM package
+  - Choose categories and tags
+  - Set difficulty level and duration
+  - Add prerequisites (if any)
+  - Set enrollment limit (optional)
+  - Add instructors
+- Publish the course
+
+**3. Students Can:**
+- Browse courses at `/courses/`
+- Filter by category, tag, or search
+- Enroll in courses
+- Track progress at `/dashboard/`
+- Rate and review completed courses
+
+### LMS Management
+
+**Course Categories & Tags:**
+- Manage via Wagtail Admin → Snippets
+- Use Font Awesome icons for categories (e.g., `fa-code`, `fa-database`)
+
+**Course Reviews:**
+- Moderate via Django Admin → Course Reviews
+- Approve/reject student reviews
+- Monitor ratings and feedback
+
+**Student Progress:**
+- View enrollment data in Django Admin → Course Enrollments
+- Track SCORM attempts and scores
+- Monitor completion rates
+
+### LMS URLs
+
+- `/courses/` - Course catalog
+- `/courses/{slug}/` - Individual course pages
+- `/dashboard/` - Student dashboard (requires login)
+- `/lms/course/{id}/play/` - SCORM player
+
+For detailed LMS implementation information, see [docs/lms-implementation-status.md](docs/lms-implementation-status.md).
 
 ## Documentation
 
 For detailed information, see the `/docs` directory:
 
+- **[LMS Implementation Guide](docs/lms-implementation-status.md)** - Complete LMS setup, features, and development status
 - **[Docker Development Guide](docs/docker-development.md)** - Container setup, pgAdmin, troubleshooting
 - **[Testing Guide](docs/testing-guide.md)** - Testing philosophy, commands, and best practices
 - **[CI/CD Guide](docs/ci-cd-guide.md)** - Deployment pipeline and Railway configuration
