@@ -1,3 +1,7 @@
+import time
+
+from django import forms
+from django.core.exceptions import ValidationError
 from django.db import models
 from modelcluster.fields import ParentalKey
 from wagtail import blocks
@@ -380,6 +384,9 @@ class ContactFormField(AbstractFormField):
 
 
 class ContactPage(AbstractEmailForm):
+    min_submit_delay_seconds = 3
+    max_links_allowed = 2
+
     # Hero Section
     hero_title = models.CharField(
         max_length=255,
@@ -488,6 +495,67 @@ class ContactPage(AbstractEmailForm):
 
     parent_page_types = []
     subpage_types = []
+
+    def get_form_kwargs(self, *args, **kwargs):
+        """Prime the form with a timestamp to detect rapid bot submissions."""
+        kwargs = super().get_form_kwargs(*args, **kwargs)
+        initial = kwargs.get("initial") or {}
+        initial.setdefault("timestamp", str(time.time()))
+        kwargs["initial"] = initial
+        return kwargs
+
+    def get_form_class(self):
+        base_form_class = super().get_form_class()
+        min_delay = self.min_submit_delay_seconds
+        link_threshold = self.max_links_allowed
+
+        class SpamProtectedForm(base_form_class):
+            honeypot = forms.CharField(
+                required=False,
+                widget=forms.HiddenInput,
+                label="Leave this field empty",
+            )
+            timestamp = forms.FloatField(
+                required=False,
+                widget=forms.HiddenInput,
+            )
+
+            def clean_honeypot(self):
+                value = self.cleaned_data.get("honeypot")
+                if value:
+                    raise ValidationError("Invalid submission.")
+                return value
+
+            def clean(self):
+                cleaned_data = super().clean()
+                submitted_at = cleaned_data.get("timestamp")
+                if submitted_at:
+                    try:
+                        submitted_at = float(submitted_at)
+                    except (TypeError, ValueError):
+                        submitted_at = None
+                if submitted_at and time.time() - submitted_at < min_delay:
+                    raise ValidationError(
+                        "Please wait a moment before submitting the form."
+                    )
+
+                message_values = [
+                    str(value)
+                    for value in cleaned_data.values()
+                    if isinstance(value, str)
+                ]
+                link_count = sum(
+                    value.lower().count("http://") + value.lower().count("https://")
+                    for value in message_values
+                )
+                if link_count > link_threshold:
+                    raise ValidationError(
+                        "Please remove links from your message so we can process it."
+                    )
+
+                return cleaned_data
+
+        return SpamProtectedForm
 
     class Meta:
         verbose_name = "Contact Page"
