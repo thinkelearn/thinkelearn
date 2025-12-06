@@ -158,6 +158,7 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "api")
 EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "noreply@thinkelearn.com")
+EMAIL_TIMEOUT = 60  # SMTP connection timeout in seconds (prevents worker timeout)
 
 # Wagtail settings for production
 WAGTAILADMIN_BASE_URL = os.environ.get(
