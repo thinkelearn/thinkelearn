@@ -1,7 +1,5 @@
 import os
 
-import dj_database_url
-
 from .base import *  # noqa: F403
 
 # SECURITY WARNING: don't run with debug turned on in production!
@@ -25,6 +23,8 @@ EMAIL_HOST_PASSWORD = ""  # nosec
 # Database configuration - use PostgreSQL by default in development
 # Fallback to SQLite only if DATABASE_URL is not set (traditional setup)
 if "DATABASE_URL" in os.environ:
+    import dj_database_url
+
     DATABASES = {"default": dj_database_url.parse(os.environ["DATABASE_URL"])}  # type: ignore[dict-item]
 else:
     # Default PostgreSQL configuration for development

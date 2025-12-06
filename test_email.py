@@ -23,9 +23,8 @@ def test_email():
     print(f"DEFAULT_FROM_EMAIL: {settings.DEFAULT_FROM_EMAIL}")
 
     if hasattr(settings, "MAILTRAP_API_TOKEN"):
-        print(
-            f"MAILTRAP_API_TOKEN: {'✅ Set' if settings.MAILTRAP_API_TOKEN else '❌ Not set'}"
-        )
+        api_token = getattr(settings, "MAILTRAP_API_TOKEN", None)
+        print(f"MAILTRAP_API_TOKEN: {'✅ Set' if api_token else '❌ Not set'}")
     else:
         print(f"EMAIL_HOST: {settings.EMAIL_HOST}")
         print(f"EMAIL_PORT: {settings.EMAIL_PORT}")

@@ -6,6 +6,7 @@ which is required for Railway's Free/Hobby/Trial plans that block SMTP ports.
 """
 
 import logging
+from collections.abc import Sequence
 
 import mailtrap as mt
 from django.conf import settings
@@ -32,7 +33,7 @@ class MailtrapAPIBackend(BaseEmailBackend):
                 raise ValueError("MAILTRAP_API_TOKEN setting is required")
             logger.warning("MAILTRAP_API_TOKEN not configured")
 
-    def send_messages(self, email_messages: list[EmailMessage]) -> int:
+    def send_messages(self, email_messages: Sequence[EmailMessage]) -> int:
         """
         Send one or more EmailMessage objects and return the number of email
         messages sent.
