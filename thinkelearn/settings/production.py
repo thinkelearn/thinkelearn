@@ -106,19 +106,19 @@ WHITENOISE_MAX_AGE = 31536000  # 1 year cache for static files
 
 # Media files (for user uploads) - AWS S3 Configuration
 if os.environ.get("AWS_STORAGE_BUCKET_NAME"):
-    # AWS S3 settings
     AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID")
     AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY")
     AWS_STORAGE_BUCKET_NAME = os.environ.get("AWS_STORAGE_BUCKET_NAME")
-    AWS_S3_REGION_NAME = os.environ.get("AWS_S3_REGION_NAME", "us-east-1")
-    AWS_S3_CUSTOM_DOMAIN = f"{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com"
-    AWS_DEFAULT_ACL = "public-read"
+    AWS_S3_REGION_NAME = os.environ.get("AWS_S3_REGION_NAME", "ca-central-1")
+    AWS_S3_CUSTOM_DOMAIN = None  # Required for presigned URLs to work
+    AWS_QUERYSTRING_AUTH = True  # Generate presigned URLs
+    AWS_QUERYSTRING_EXPIRE = 3600  # URLs valid for 1 hour (adjust as needed)
+    AWS_DEFAULT_ACL = None  # Don't set ACLs on objects
     AWS_S3_FILE_OVERWRITE = False
     AWS_S3_OBJECT_PARAMETERS = {
         "CacheControl": "max-age=86400",
     }
 
-    # Override STORAGES setting for S3
     STORAGES = {
         "default": {
             "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
@@ -127,7 +127,7 @@ if os.environ.get("AWS_STORAGE_BUCKET_NAME"):
             "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
         },
     }
-    MEDIA_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/"
+    # Don't set MEDIA_URL - django-storages generates full presigned URLs
 else:
     # Fallback to local storage (development or during Docker build)
     # Note: During Docker build, AWS vars aren't available yet - this is expected
