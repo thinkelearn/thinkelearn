@@ -188,8 +188,11 @@ docker run -p 8000:8000 thinkelearn
 # - DATABASE_URL (automatically set by Railway)
 # - SECRET_KEY
 # - ALLOWED_HOSTS
+# - MAILTRAP_API_TOKEN (required for email - Railway blocks SMTP)
+# - DEFAULT_FROM_EMAIL (optional, defaults to hello@thinkelearn.com)
 # - TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER
 # - VOICEMAIL_NOTIFICATION_EMAILS, SMS_NOTIFICATION_EMAILS
+# - AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_STORAGE_BUCKET_NAME (optional for S3)
 ```
 
 ## Dependencies
@@ -206,6 +209,7 @@ Key dependencies:
 - **psycopg**: PostgreSQL database adapter for production
 - **gunicorn**: WSGI HTTP server for production
 - **whitenoise**: Static file serving
+- **mailtrap**: Email delivery via HTTPS API (required for Railway)
 - **Tailwind CSS**: Utility-first CSS framework (via npm)
 
 ## Site Structure

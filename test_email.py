@@ -19,11 +19,19 @@ def test_email():
     print("=" * 60)
     print("Email Configuration Test")
     print("=" * 60)
-    print(f"EMAIL_HOST: {settings.EMAIL_HOST}")
-    print(f"EMAIL_PORT: {settings.EMAIL_PORT}")
-    print(f"EMAIL_HOST_USER: {settings.EMAIL_HOST_USER}")
-    print(f"EMAIL_USE_TLS: {settings.EMAIL_USE_TLS}")
+    print(f"EMAIL_BACKEND: {settings.EMAIL_BACKEND}")
     print(f"DEFAULT_FROM_EMAIL: {settings.DEFAULT_FROM_EMAIL}")
+
+    if hasattr(settings, "MAILTRAP_API_TOKEN"):
+        print(
+            f"MAILTRAP_API_TOKEN: {'✅ Set' if settings.MAILTRAP_API_TOKEN else '❌ Not set'}"
+        )
+    else:
+        print(f"EMAIL_HOST: {settings.EMAIL_HOST}")
+        print(f"EMAIL_PORT: {settings.EMAIL_PORT}")
+        print(f"EMAIL_HOST_USER: {settings.EMAIL_HOST_USER}")
+        print(f"EMAIL_USE_TLS: {settings.EMAIL_USE_TLS}")
+
     print("=" * 60)
 
     recipient = input("Enter recipient email address: ")

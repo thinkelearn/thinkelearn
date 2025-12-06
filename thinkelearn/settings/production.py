@@ -151,14 +151,21 @@ SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 
 # Email configuration (for contact forms and admin notifications)
-EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-EMAIL_HOST = os.environ.get("EMAIL_HOST", "live.smtp.mailtrap.io")
-EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587"))
-EMAIL_USE_TLS = True
-EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "api")
-EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
-DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "noreply@thinkelearn.com")
-EMAIL_TIMEOUT = 60  # SMTP connection timeout in seconds (prevents worker timeout)
+# Use Mailtrap API backend instead of SMTP (Railway blocks SMTP on Free/Hobby/Trial plans)
+EMAIL_BACKEND = "thinkelearn.backends.mailtrap.MailtrapAPIBackend"
+MAILTRAP_API_TOKEN = os.environ.get("MAILTRAP_API_TOKEN")
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "hello@thinkelearn.com")
+SERVER_EMAIL = DEFAULT_FROM_EMAIL  # For error emails
+
+# Fallback to SMTP if MAILTRAP_API_TOKEN not set (backward compatibility)
+if not MAILTRAP_API_TOKEN:
+    EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+    EMAIL_HOST = os.environ.get("EMAIL_HOST", "live.smtp.mailtrap.io")
+    EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587"))
+    EMAIL_USE_TLS = True
+    EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "api")
+    EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
+    EMAIL_TIMEOUT = 60  # SMTP connection timeout in seconds (prevents worker timeout)
 
 # Wagtail settings for production
 WAGTAILADMIN_BASE_URL = os.environ.get(

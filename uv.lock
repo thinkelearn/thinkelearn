@@ -941,6 +941,19 @@ wheels = [
 ]
 
 [[package]]
+name = "mailtrap"
+version = "2.4.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pydantic" },
+    { name = "requests" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/73/5c/0a67074bc819bfc8887bc165148c94a6c154e0ba536da7b4d2af6e011693/mailtrap-2.4.0.tar.gz", hash = "sha256:74c6a92befc1fea3ef8bcc79911d42e61c14d9b20ef435585c756693ad31808a", size = 24668 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/2d/45/d23889372946915be3d48c59fed65b782fc6db3c65807c3c8a9fbc5e8ba1/mailtrap-2.4.0-py3-none-any.whl", hash = "sha256:d4435bccb1225164fd99dd741d05cb1cf86ce518b16c4bd0baa8df79ecea87a3", size = 36034 },
+]
+
+[[package]]
 name = "markdown-it-py"
 version = "4.0.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1892,6 +1905,7 @@ dependencies = [
     { name = "dj-database-url" },
     { name = "django-storages", extra = ["s3"] },
     { name = "gunicorn" },
+    { name = "mailtrap" },
     { name = "psycopg" },
     { name = "sentry-sdk", extra = ["django"] },
     { name = "twilio" },
@@ -1930,6 +1944,7 @@ requires-dist = [
     { name = "django-stubs", marker = "extra == 'dev'", specifier = ">=5.2.1" },
     { name = "factory-boy", marker = "extra == 'test'", specifier = ">=3.3.3" },
     { name = "gunicorn", specifier = ">=23.0.0" },
+    { name = "mailtrap", specifier = ">=2.4.0" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.14.1" },
     { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=4.2.0" },
     { name = "psycopg", specifier = ">=3.2.9" },
@@ -1943,7 +1958,7 @@ requires-dist = [
     { name = "types-requests", marker = "extra == 'dev'", specifier = ">=2.32.0.20241211" },
     { name = "wagtail", specifier = ">=7.0.1" },
     { name = "wagtail-factories", marker = "extra == 'test'", specifier = ">=4.2.1" },
-    { name = "wagtail-lms", specifier = ">=0.2.0" },
+    { name = "wagtail-lms", specifier = ">=0.4.0" },
     { name = "whitenoise", specifier = ">=6.9.0" },
 ]
 provides-extras = ["dev", "test", "security"]
@@ -2117,15 +2132,15 @@ wheels = [
 
 [[package]]
 name = "wagtail-lms"
-version = "0.3.1"
+version = "0.4.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "django" },
     { name = "wagtail" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/9b/30/57fcc90880cf4a675c38a4f91a09fda2fdaec486740f48e17bd1374dd0df/wagtail_lms-0.3.1.tar.gz", hash = "sha256:2dea7410a9e187e767f19e369bc69d418d3e48c01ce8a1ec3c630ae37e5510bc", size = 15816 }
+sdist = { url = "https://files.pythonhosted.org/packages/58/7e/78b82bd39c80e5db27a56b2b145d2a9515cd5190d8cd78932b81ab7dd463/wagtail_lms-0.4.0.tar.gz", hash = "sha256:4551ac32e2423ead2476a9592066e9ad6fb5a93f0d49cf0e795ab87e810554e3", size = 15835 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/fe/76/0f151a37586316223de185412885101523a3cbcb50e5a04dd8fbcd948621/wagtail_lms-0.3.1-py3-none-any.whl", hash = "sha256:806131dc28e84b7d04d7d972f1506f8493b93b5b439e9c3bf23c4cac827cc1a9", size = 21404 },
+    { url = "https://files.pythonhosted.org/packages/67/db/3e29f1dfac2b1ef1c2f3f00a71f95c628a053732624638ee9ae3d20ce563/wagtail_lms-0.4.0-py3-none-any.whl", hash = "sha256:17942747b2b05512192c2da355e415f327c64de2de24f8f8e992dcad6b01da7c", size = 21522 },
 ]
 
 [[package]]

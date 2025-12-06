@@ -8,6 +8,7 @@ dependencies = [
     "dj-database-url>=3.0.0",
     "django-storages[s3]>=1.14.6",
     "gunicorn>=23.0.0",
+    "mailtrap>=2.4.0",
     "psycopg>=3.2.9",
     "sentry-sdk[django]>=2.31.0",
     "twilio>=9.6.3",
