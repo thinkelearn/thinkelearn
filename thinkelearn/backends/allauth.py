@@ -10,9 +10,7 @@ class WagtailLmsSocialAccountAdapter(DefaultSocialAccountAdapter):
             return
 
         email = (
-            sociallogin.account.extra_data.get("email")
-            or sociallogin.user.email
-            or ""
+            sociallogin.account.extra_data.get("email") or sociallogin.user.email or ""
         ).strip()
         if not email:
             return
