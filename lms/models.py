@@ -124,11 +124,7 @@ class EnrollmentRecord(models.Model):
         if amount is None:
             amount = product.base_price
 
-        status = (
-            cls.Status.ACTIVE
-            if amount == 0
-            else cls.Status.PENDING_PAYMENT
-        )
+        status = cls.Status.ACTIVE if amount == 0 else cls.Status.PENDING_PAYMENT
 
         enrollment, _created = cls.objects.update_or_create(
             user=user,
@@ -444,9 +440,10 @@ class ExtendedCoursePage(CoursePage):
     def can_user_enroll(self, user):
         """Check if user can enroll in this course"""
         product = getattr(self, "product", None)
-        if product and EnrollmentRecord.objects.filter(
-            user=user, product=product
-        ).exists():
+        if (
+            product
+            and EnrollmentRecord.objects.filter(user=user, product=product).exists()
+        ):
             return False
 
         # Check if already enrolled

@@ -52,7 +52,13 @@ class CourseProductAdmin(admin.ModelAdmin):
 class EnrollmentRecordAdmin(admin.ModelAdmin):
     """Admin interface for enrollment records"""
 
-    list_display = ("user", "product", "status", "pay_what_you_can_amount", "created_at")
+    list_display = (
+        "user",
+        "product",
+        "status",
+        "pay_what_you_can_amount",
+        "created_at",
+    )
     list_filter = ("status", "created_at")
     search_fields = ("user__username", "product__course__title")
     readonly_fields = ("created_at", "updated_at")
