@@ -17,6 +17,7 @@ urlpatterns = [
     path("privacy/", views.privacy_policy, name="privacy_policy"),
     path("terms/", views.terms_and_conditions, name="terms_and_conditions"),
     path("communications/", include("communications.urls")),
+    path("payments/", include("payments.urls")),
     path("portfolio/", include("portfolio.urls")),
     path("lms/", include("wagtail_lms.urls")),
 ]

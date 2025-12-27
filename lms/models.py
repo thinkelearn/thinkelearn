@@ -102,6 +102,8 @@ class EnrollmentRecord(models.Model):
         blank=True,
         help_text="Optional pay-what-you-can amount (0 for free enrollments)",
     )
+    stripe_checkout_session_id = models.CharField(max_length=255, blank=True)
+    stripe_payment_intent_id = models.CharField(max_length=255, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -148,19 +150,34 @@ class EnrollmentRecord(models.Model):
 
         return enrollment
 
-    def mark_paid(self):
+    def mark_paid(
+        self,
+        stripe_checkout_session_id: str | None = None,
+        stripe_payment_intent_id: str | None = None,
+    ):
         """Mark a pending enrollment as paid and activate it."""
-        if self.status == self.Status.ACTIVE:
-            return
+        update_fields = set()
 
-        if self.course_enrollment is None:
-            self.course_enrollment = CourseEnrollment.objects.create(
-                user=self.user,
-                course=self.product.course,
-            )
+        if stripe_checkout_session_id:
+            self.stripe_checkout_session_id = stripe_checkout_session_id
+            update_fields.add("stripe_checkout_session_id")
+        if stripe_payment_intent_id:
+            self.stripe_payment_intent_id = stripe_payment_intent_id
+            update_fields.add("stripe_payment_intent_id")
 
-        self.status = self.Status.ACTIVE
-        self.save(update_fields=["status", "course_enrollment"])
+        if self.status != self.Status.ACTIVE:
+            if self.course_enrollment is None:
+                self.course_enrollment = CourseEnrollment.objects.create(
+                    user=self.user,
+                    course=self.product.course,
+                )
+                update_fields.add("course_enrollment")
+
+            self.status = self.Status.ACTIVE
+            update_fields.add("status")
+
+        if update_fields:
+            self.save(update_fields=list(update_fields))
 
 
 @register_snippet

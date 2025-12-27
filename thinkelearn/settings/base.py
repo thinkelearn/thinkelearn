@@ -30,6 +30,7 @@ INSTALLED_APPS = [
     "communications",
     "portfolio",
     "lms",
+    "payments",
     "wagtail.contrib.forms",
     "wagtail.contrib.redirects",
     "wagtail.embeds",
@@ -205,6 +206,14 @@ WAGTAILDOCS_EXTENSIONS = [
 TWILIO_ACCOUNT_SID = os.environ.get("TWILIO_ACCOUNT_SID")
 TWILIO_AUTH_TOKEN = os.environ.get("TWILIO_AUTH_TOKEN")
 TWILIO_PHONE_NUMBER = os.environ.get("TWILIO_PHONE_NUMBER")
+
+# Stripe settings
+STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY")
+STRIPE_PUBLISHABLE_KEY = os.environ.get("STRIPE_PUBLISHABLE_KEY")
+STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET")
+STRIPE_CURRENCY = os.environ.get("STRIPE_CURRENCY", "usd")
+STRIPE_PAY_WHAT_YOU_CAN_MIN = os.environ.get("STRIPE_PAY_WHAT_YOU_CAN_MIN", "1.00")
+STRIPE_PAY_WHAT_YOU_CAN_MAX = os.environ.get("STRIPE_PAY_WHAT_YOU_CAN_MAX", "1000.00")
 
 # Communication notifications
 SITE_NAME = "THINK eLearn"
