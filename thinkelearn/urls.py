@@ -19,6 +19,7 @@ urlpatterns = [
     path("communications/", include("communications.urls")),
     path("portfolio/", include("portfolio.urls")),
     path("lms/", include("wagtail_lms.urls")),
+    path("accounts/", include("allauth.urls")),
 ]
 
 
