@@ -27,6 +27,142 @@ from wagtail_lms.models import CourseEnrollment, CoursePage
 logger = logging.getLogger(__name__)
 
 
+class CourseProduct(models.Model):
+    """Sellable course product linked to a course page."""
+
+    course = models.OneToOneField(
+        "lms.ExtendedCoursePage",
+        on_delete=models.CASCADE,
+        related_name="product",
+    )
+    base_price = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        help_text="Base price for the course (0 for free)",
+    )
+    is_active = models.BooleanField(
+        default=True,
+        help_text="Whether this product can be purchased or enrolled",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Course Product"
+        verbose_name_plural = "Course Products"
+
+    def __str__(self):
+        return f"{self.course.title} Product"
+
+    def enroll_user(self, user, amount=None):
+        """Create an enrollment record, handling free vs paid enrollments."""
+        if amount is None:
+            amount = self.base_price
+
+        enrollment = EnrollmentRecord.create_for_user(
+            user=user,
+            product=self,
+            pay_what_you_can_amount=amount,
+        )
+
+        return enrollment
+
+
+class EnrollmentRecord(models.Model):
+    """Enrollment record with payment status and optional pay-what-you-can amount."""
+
+    class Status(models.TextChoices):
+        ACTIVE = "active", "Active"
+        PENDING_PAYMENT = "pending_payment", "Pending Payment"
+        CANCELLED_REFUNDED = "cancelled_refunded", "Cancelled/Refunded"
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    product = models.ForeignKey(
+        CourseProduct,
+        on_delete=models.CASCADE,
+        related_name="enrollments",
+    )
+    course_enrollment = models.OneToOneField(
+        CourseEnrollment,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="enrollment_record",
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.PENDING_PAYMENT,
+    )
+    pay_what_you_can_amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Optional pay-what-you-can amount (0 for free enrollments)",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Enrollment Record"
+        verbose_name_plural = "Enrollment Records"
+        unique_together = ("user", "product")
+
+    def __str__(self):
+        return f"{self.user.username} - {self.product.course.title} ({self.status})"
+
+    @property
+    def course(self):
+        return self.product.course
+
+    @classmethod
+    def create_for_user(cls, user, product, pay_what_you_can_amount=None):
+        """Create or update an enrollment based on payment amount."""
+        amount = pay_what_you_can_amount
+        if amount is None:
+            amount = product.base_price
+
+        status = (
+            cls.Status.ACTIVE
+            if amount == 0
+            else cls.Status.PENDING_PAYMENT
+        )
+
+        enrollment, _created = cls.objects.update_or_create(
+            user=user,
+            product=product,
+            defaults={
+                "status": status,
+                "pay_what_you_can_amount": amount,
+            },
+        )
+
+        if status == cls.Status.ACTIVE and enrollment.course_enrollment is None:
+            enrollment.course_enrollment = CourseEnrollment.objects.create(
+                user=user,
+                course=product.course,
+            )
+            enrollment.save(update_fields=["course_enrollment"])
+
+        return enrollment
+
+    def mark_paid(self):
+        """Mark a pending enrollment as paid and activate it."""
+        if self.status == self.Status.ACTIVE:
+            return
+
+        if self.course_enrollment is None:
+            self.course_enrollment = CourseEnrollment.objects.create(
+                user=self.user,
+                course=self.product.course,
+            )
+
+        self.status = self.Status.ACTIVE
+        self.save(update_fields=["status", "course_enrollment"])
+
+
 @register_snippet
 class CourseCategory(models.Model):
     """Course categories for organizing courses"""
@@ -307,6 +443,12 @@ class ExtendedCoursePage(CoursePage):
 
     def can_user_enroll(self, user):
         """Check if user can enroll in this course"""
+        product = getattr(self, "product", None)
+        if product and EnrollmentRecord.objects.filter(
+            user=user, product=product
+        ).exists():
+            return False
+
         # Check if already enrolled
         if CourseEnrollment.objects.filter(user=user, course=self).exists():
             return False
