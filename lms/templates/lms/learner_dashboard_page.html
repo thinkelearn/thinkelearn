@@ -179,7 +179,7 @@
                 </svg>
                 <h3 class="text-2xl font-semibold text-neutral-800 mb-3">Login Required</h3>
                 <p class="text-neutral-600 mb-6">Please sign in to access your learning dashboard.</p>
-                <a href="{% url 'wagtailadmin_login' %}?next={{ request.path }}"
+                <a href="{% url 'account_login' %}?next={{ request.path }}"
                    class="inline-flex items-center px-6 py-3 bg-secondary-500 hover:bg-secondary-600 text-white font-medium rounded-md transition-colors duration-200">
                     Sign in
                 </a>
