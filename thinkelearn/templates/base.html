@@ -120,6 +120,9 @@
             const userMenuButton = document.getElementById('user-menu-button');
             const userMenuDropdown = document.getElementById('user-menu-dropdown');
             const userMenuIcon = document.getElementById('user-menu-icon');
+            const MENU_ITEM_SELECTOR = 'a[role="menuitem"]';
+            const CHEVRON_ROTATION_OPEN = '180deg';
+            const CHEVRON_ROTATION_CLOSED = '0deg';
 
             if (userMenuButton && userMenuDropdown) {
                 // Toggle dropdown on button click
@@ -136,7 +139,7 @@
 
                 // Close dropdown when clicking outside
                 document.addEventListener('click', function(e) {
-                    if (!userMenuButton.contains(e.target) && !userMenuDropdown.contains(e.target)) {
+                    if (e.target && !userMenuButton.contains(e.target) && !userMenuDropdown.contains(e.target)) {
                         closeUserMenu();
                     }
                 });
@@ -160,14 +163,14 @@
                             openUserMenu();
                         }
                         // Focus first menu item
-                        const firstMenuItem = userMenuDropdown.querySelector('a[role="menuitem"]');
+                        const firstMenuItem = userMenuDropdown.querySelector(MENU_ITEM_SELECTOR);
                         if (firstMenuItem) firstMenuItem.focus();
                     }
                 });
 
                 // Handle keyboard navigation within the dropdown
                 userMenuDropdown.addEventListener('keydown', function(e) {
-                    const menuItems = Array.from(userMenuDropdown.querySelectorAll('a[role="menuitem"]'));
+                    const menuItems = Array.from(userMenuDropdown.querySelectorAll(MENU_ITEM_SELECTOR));
                     const currentIndex = menuItems.indexOf(document.activeElement);
 
                     if (e.key === 'ArrowDown') {
@@ -192,7 +195,7 @@
                     userMenuDropdown.classList.remove('hidden');
                     userMenuButton.setAttribute('aria-expanded', 'true');
                     if (userMenuIcon) {
-                        userMenuIcon.style.transform = 'rotate(180deg)';
+                        userMenuIcon.style.transform = `rotate(${CHEVRON_ROTATION_OPEN})`;
                     }
                 }
 
@@ -200,7 +203,7 @@
                     userMenuDropdown.classList.add('hidden');
                     userMenuButton.setAttribute('aria-expanded', 'false');
                     if (userMenuIcon) {
-                        userMenuIcon.style.transform = 'rotate(0deg)';
+                        userMenuIcon.style.transform = `rotate(${CHEVRON_ROTATION_CLOSED})`;
                     }
                 }
             }
