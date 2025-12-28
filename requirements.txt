@@ -12,11 +12,13 @@ beautifulsoup4==4.14.3
 boto3==1.42.0
 botocore==1.41.6
 certifi==2025.11.12
+cffi==2.0.0 ; platform_python_implementation != 'PyPy'
 charset-normalizer==3.4.4
+cryptography==46.0.3
 defusedxml==0.7.1
 dj-database-url==3.0.1
 django==5.2.9
-django-allauth==0.65.1
+django-allauth==65.13.1
 django-filter==25.2
 django-modelcluster==6.4
 django-permissionedforms==0.1
@@ -37,6 +39,7 @@ laces==0.1.2
 mailtrap==2.4.0
 modelsearch==1.1.1
 multidict==6.7.0
+oauthlib==3.3.1
 openpyxl==3.1.5
 packaging==25.0
 pillow==12.0.0
@@ -44,6 +47,7 @@ pillow-heif==1.1.1
 propcache==0.4.1
 psycopg==3.3.0
 psycopg-binary==3.3.0 ; implementation_name != 'pypy'
+pycparser==2.23 ; implementation_name != 'PyPy' and platform_python_implementation != 'PyPy'
 pydantic==2.12.5
 pydantic-core==2.41.5
 pyjwt==2.10.1
