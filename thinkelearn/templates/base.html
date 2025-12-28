@@ -115,6 +115,95 @@
                     mobileMenu.classList.toggle('hidden');
                 });
             }
+
+            // User dropdown menu
+            const userMenuButton = document.getElementById('user-menu-button');
+            const userMenuDropdown = document.getElementById('user-menu-dropdown');
+            const userMenuIcon = document.getElementById('user-menu-icon');
+
+            if (userMenuButton && userMenuDropdown) {
+                // Toggle dropdown on button click
+                userMenuButton.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    const isExpanded = userMenuButton.getAttribute('aria-expanded') === 'true';
+                    
+                    if (isExpanded) {
+                        closeUserMenu();
+                    } else {
+                        openUserMenu();
+                    }
+                });
+
+                // Close dropdown when clicking outside
+                document.addEventListener('click', function(e) {
+                    if (!userMenuButton.contains(e.target) && !userMenuDropdown.contains(e.target)) {
+                        closeUserMenu();
+                    }
+                });
+
+                // Keyboard navigation
+                userMenuButton.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        const isExpanded = userMenuButton.getAttribute('aria-expanded') === 'true';
+                        if (isExpanded) {
+                            closeUserMenu();
+                        } else {
+                            openUserMenu();
+                        }
+                    } else if (e.key === 'Escape') {
+                        closeUserMenu();
+                        userMenuButton.focus();
+                    } else if (e.key === 'ArrowDown') {
+                        e.preventDefault();
+                        if (userMenuButton.getAttribute('aria-expanded') !== 'true') {
+                            openUserMenu();
+                        }
+                        // Focus first menu item
+                        const firstMenuItem = userMenuDropdown.querySelector('a[role="menuitem"]');
+                        if (firstMenuItem) firstMenuItem.focus();
+                    }
+                });
+
+                // Handle keyboard navigation within the dropdown
+                userMenuDropdown.addEventListener('keydown', function(e) {
+                    const menuItems = Array.from(userMenuDropdown.querySelectorAll('a[role="menuitem"]'));
+                    const currentIndex = menuItems.indexOf(document.activeElement);
+
+                    if (e.key === 'ArrowDown') {
+                        e.preventDefault();
+                        const nextIndex = currentIndex < menuItems.length - 1 ? currentIndex + 1 : 0;
+                        menuItems[nextIndex].focus();
+                    } else if (e.key === 'ArrowUp') {
+                        e.preventDefault();
+                        const prevIndex = currentIndex > 0 ? currentIndex - 1 : menuItems.length - 1;
+                        menuItems[prevIndex].focus();
+                    } else if (e.key === 'Escape') {
+                        e.preventDefault();
+                        closeUserMenu();
+                        userMenuButton.focus();
+                    } else if (e.key === 'Tab') {
+                        // Close menu when tabbing out
+                        closeUserMenu();
+                    }
+                });
+
+                function openUserMenu() {
+                    userMenuDropdown.classList.remove('hidden');
+                    userMenuButton.setAttribute('aria-expanded', 'true');
+                    if (userMenuIcon) {
+                        userMenuIcon.style.transform = 'rotate(180deg)';
+                    }
+                }
+
+                function closeUserMenu() {
+                    userMenuDropdown.classList.add('hidden');
+                    userMenuButton.setAttribute('aria-expanded', 'false');
+                    if (userMenuIcon) {
+                        userMenuIcon.style.transform = 'rotate(0deg)';
+                    }
+                }
+            }
         });
     </script>
 
