@@ -134,6 +134,7 @@ ACCOUNT_SIGNUP_FIELDS = ["email*", "password1*", "password2*"]  # No username fi
 ACCOUNT_EMAIL_VERIFICATION = "mandatory"
 ACCOUNT_UNIQUE_EMAIL = True
 ACCOUNT_USER_MODEL_USERNAME_FIELD = None  # Tell allauth to ignore username
+LOGIN_REDIRECT_URL = "/dashboard/"  # Redirect to dashboard after successful login
 ACCOUNT_LOGOUT_REDIRECT_URL = "/"
 SOCIALACCOUNT_EMAIL_VERIFICATION = "mandatory"
 SOCIALACCOUNT_ADAPTER = "thinkelearn.backends.allauth.SocialAccountAdapter"
