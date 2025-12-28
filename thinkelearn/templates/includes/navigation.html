@@ -9,14 +9,14 @@
                 {% if user.is_authenticated %}
                     <!-- Authenticated user menu (Desktop & Mobile) -->
                     <div class="relative group">
-                        <button class="flex items-center space-x-2 text-primary-700 hover:text-secondary-500 transition-colors font-medium">
+                        <button class="flex items-center space-x-2 text-primary-700 hover:text-secondary-500 transition-colors font-medium pb-2">
                             <i class="fa-solid fa-user-circle text-lg"></i>
                             <span class="hidden sm:inline">{{ user.email|default:user.username }}</span>
                             <i class="fa-solid fa-chevron-down text-xs"></i>
                         </button>
 
                         <!-- Dropdown menu -->
-                        <div class="hidden group-hover:block absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50">
+                        <div class="hidden group-hover:block absolute right-0 top-full w-48 bg-white rounded-md shadow-lg py-1 z-50">
                             <a href="/dashboard/" class="block px-4 py-2 text-neutral-700 hover:bg-neutral-100 transition-colors">
                                 <i class="fa-solid fa-tachometer-alt mr-2"></i>Dashboard
                             </a>
