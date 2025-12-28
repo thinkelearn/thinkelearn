@@ -138,6 +138,19 @@ ACCOUNT_LOGOUT_REDIRECT_URL = "/"
 SOCIALACCOUNT_EMAIL_VERIFICATION = "mandatory"
 SOCIALACCOUNT_ADAPTER = "thinkelearn.backends.allauth.SocialAccountAdapter"
 
+SOCIALACCOUNT_PROVIDERS = {
+    "google": {
+        "SCOPE": ["profile", "email"],
+        "AUTH_PARAMS": {"access_type": "online"},
+        "APP": {
+            # Use None to fail loudly if credentials are missing
+            "client_id": os.environ.get("GOOGLE_CLIENT_ID"),
+            "secret": os.environ.get("GOOGLE_CLIENT_SECRET"),
+            "key": None,
+        },
+    }
+}
+
 
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
@@ -246,16 +259,3 @@ SMS_NOTIFICATION_EMAILS = [
 
 # Site framework
 SITE_ID = 1
-
-SOCIALACCOUNT_PROVIDERS = {
-    "google": {
-        "SCOPE": ["profile", "email"],
-        "AUTH_PARAMS": {"access_type": "online"},
-        "APP": {
-            # Use None to fail loudly if credentials are missing
-            "client_id": os.environ.get("GOOGLE_CLIENT_ID"),
-            "secret": os.environ.get("GOOGLE_CLIENT_SECRET"),
-            "key": None,
-        },
-    }
-}
