@@ -127,12 +127,12 @@ AUTHENTICATION_BACKENDS = [
     "allauth.account.auth_backends.AuthenticationBackend",
 ]
 
-ACCOUNT_AUTHENTICATION_METHOD = "email"
-ACCOUNT_EMAIL_REQUIRED = True
+# django-allauth configuration (email-only, no username)
+ACCOUNT_LOGIN_METHODS = {"email"}  # Login with email only
+ACCOUNT_SIGNUP_FIELDS = ["email*", "password1*", "password2*"]  # No username field
 ACCOUNT_EMAIL_VERIFICATION = "mandatory"
 ACCOUNT_UNIQUE_EMAIL = True
-ACCOUNT_USERNAME_REQUIRED = False
-ACCOUNT_USER_MODEL_USERNAME_FIELD = None
+ACCOUNT_USER_MODEL_USERNAME_FIELD = None  # Tell allauth to ignore username
 ACCOUNT_LOGOUT_REDIRECT_URL = "/"
 SOCIALACCOUNT_EMAIL_VERIFICATION = "mandatory"
 SOCIALACCOUNT_ADAPTER = "thinkelearn.backends.allauth.WagtailLmsSocialAccountAdapter"
