@@ -2,8 +2,8 @@ from allauth.socialaccount.adapter import DefaultSocialAccountAdapter
 from django.contrib.auth import get_user_model
 
 
-class WagtailLmsSocialAccountAdapter(DefaultSocialAccountAdapter):
-    """Link verified social accounts to existing users for Wagtail LMS enrollments."""
+class SocialAccountAdapter(DefaultSocialAccountAdapter):
+    """Link verified social accounts to existing users by matching email addresses."""
 
     @staticmethod
     def _get_verified_email(sociallogin):
