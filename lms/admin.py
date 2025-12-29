@@ -42,8 +42,8 @@ class CourseReviewAdmin(admin.ModelAdmin):
 class CourseProductAdmin(admin.ModelAdmin):
     """Admin interface for course products"""
 
-    list_display = ("course", "base_price", "is_active", "updated_at")
-    list_filter = ("is_active",)
+    list_display = ("course", "pricing_type", "fixed_price", "is_active", "updated_at")
+    list_filter = ("pricing_type", "is_active", "currency")
     search_fields = ("course__title",)
     readonly_fields = ("created_at", "updated_at")
 
@@ -56,7 +56,7 @@ class EnrollmentRecordAdmin(admin.ModelAdmin):
         "user",
         "product",
         "status",
-        "pay_what_you_can_amount",
+        "amount_paid",
         "created_at",
     )
     list_filter = ("status", "created_at")

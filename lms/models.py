@@ -10,12 +10,15 @@ These models extend the base wagtail-lms functionality with additional features:
 """
 
 import logging
+import uuid
+from decimal import Decimal
 
 from django import forms
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import IntegrityError, models, transaction
+from django.utils import timezone
 from django.db.models import Avg
 from modelcluster.fields import ParentalKey, ParentalManyToManyField
 from wagtail.admin.panels import FieldPanel, InlinePanel, MultiFieldPanel
@@ -36,11 +39,55 @@ class CourseProduct(models.Model):
         on_delete=models.CASCADE,
         related_name="product",
     )
-    base_price = models.DecimalField(
+    pricing_type = models.CharField(
+        max_length=20,
+        choices=[
+            ("free", "Free"),
+            ("fixed", "Fixed Price"),
+            ("pwyc", "Pay What You Can"),
+        ],
+        default="pwyc",
+        help_text="Pricing model for this course",
+    )
+    fixed_price = models.DecimalField(
         max_digits=10,
         decimal_places=2,
         default=0,
-        help_text="Base price for the course (0 for free)",
+        help_text="Fixed price (used when pricing_type='fixed')",
+        validators=[MinValueValidator(0)],
+    )
+    suggested_price = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        help_text="Suggested PWYC amount (display only)",
+        validators=[MinValueValidator(0)],
+    )
+    min_price = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        help_text="Minimum PWYC amount (0 to allow free)",
+        validators=[MinValueValidator(0)],
+    )
+    max_price = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=1000,
+        help_text="Maximum PWYC amount",
+        validators=[MinValueValidator(0)],
+    )
+    currency = models.CharField(
+        max_length=3,
+        default="CAD",
+        choices=[
+            ("CAD", "Canadian Dollar"),
+        ],
+        help_text="Currency for pricing (CAD for launch)",
+    )
+    refund_window_days = models.IntegerField(
+        default=30,
+        help_text="Number of days customers can request refunds",
         validators=[MinValueValidator(0)],
     )
     is_active = models.BooleanField(
@@ -62,47 +109,52 @@ class CourseProduct(models.Model):
             f"{self.__class__.__name__}("
             f"id={self.id!r}, "
             f"course_id={getattr(self.course, 'id', None)!r}, "
-            f"base_price={self.base_price!r}, "
+            f"pricing_type={self.pricing_type!r}, "
+            f"fixed_price={self.fixed_price!r}, "
+            f"currency={self.currency!r}, "
             f"is_active={self.is_active!r})"
         )
 
-    def enroll_user(self, user, amount=None):
-        """
-        Create an enrollment record, handling free vs paid enrollments.
+    def validate_amount(self, amount: Decimal) -> tuple[bool, str]:
+        """Validate payment amount based on pricing type."""
+        if self.pricing_type == "free":
+            is_valid = amount == 0
+            msg = (
+                "This course is free"
+                if is_valid
+                else "Amount must be 0 for free courses"
+            )
+            return (is_valid, msg)
 
-        Args:
-            user: The user to enroll
-            amount: Payment amount (defaults to base_price if None)
+        if self.pricing_type == "fixed":
+            is_valid = amount == self.fixed_price
+            msg = "" if is_valid else f"Price must be {self.fixed_price} {self.currency}"
+            return (is_valid, msg)
 
-        Returns:
-            EnrollmentRecord instance
+        if self.pricing_type == "pwyc":
+            if amount < self.min_price:
+                return (False, f"Minimum amount: {self.min_price} {self.currency}")
+            if amount > self.max_price:
+                return (False, f"Maximum amount: {self.max_price} {self.currency}")
+            return (True, "")
 
-        Raises:
-            ValidationError: If product is inactive or user cannot enroll
-        """
-        # Check if product is active
-        if not self.is_active:
-            raise ValidationError("This course product is not currently available.")
+        return (False, "Invalid pricing type")
 
-        if amount is None:
-            amount = self.base_price
-
-        enrollment = EnrollmentRecord.create_for_user(
-            user=user,
-            product=self,
-            pay_what_you_can_amount=amount,
-        )
-
-        return enrollment
+    def is_refund_eligible(self, enrollment_date) -> bool:
+        """Check if enrollment is still within refund window."""
+        delta = timezone.now() - enrollment_date
+        return delta.days <= self.refund_window_days
 
 
 class EnrollmentRecord(models.Model):
-    """Enrollment record with payment status and optional pay-what-you-can amount."""
+    """Tracks enrollment attempts with payment status."""
 
     class Status(models.TextChoices):
-        ACTIVE = "active", "Active"
         PENDING_PAYMENT = "pending_payment", "Pending Payment"
-        CANCELLED_REFUNDED = "cancelled_refunded", "Cancelled/Refunded"
+        ACTIVE = "active", "Active"
+        PAYMENT_FAILED = "payment_failed", "Payment Failed"
+        CANCELLED = "cancelled", "Cancelled"
+        REFUNDED = "refunded", "Refunded"
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     product = models.ForeignKey(
@@ -122,13 +174,28 @@ class EnrollmentRecord(models.Model):
         choices=Status.choices,
         default=Status.PENDING_PAYMENT,
     )
-    pay_what_you_can_amount = models.DecimalField(
+    amount_paid = models.DecimalField(
         max_digits=10,
         decimal_places=2,
-        null=True,
-        blank=True,
-        help_text="Optional pay-what-you-can amount (0 for free enrollments)",
+        default=0,
+        help_text="Actual amount paid (0 for free enrollments)",
         validators=[MinValueValidator(0)],
+    )
+    stripe_checkout_session_id = models.CharField(
+        max_length=255,
+        blank=True,
+        db_index=True,
+    )
+    stripe_payment_intent_id = models.CharField(
+        max_length=255,
+        blank=True,
+        db_index=True,
+    )
+    idempotency_key = models.CharField(
+        max_length=255,
+        unique=True,
+        default=uuid.uuid4,
+        help_text="Prevents duplicate enrollments",
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -136,11 +203,10 @@ class EnrollmentRecord(models.Model):
     class Meta:
         verbose_name = "Enrollment Record"
         verbose_name_plural = "Enrollment Records"
-        constraints = [
-            models.UniqueConstraint(
-                fields=["user", "product"],
-                name="unique_user_product_enrollment",
-            ),
+        unique_together = ("user", "product")
+        indexes = [
+            models.Index(fields=["status", "created_at"]),
+            models.Index(fields=["user", "status"]),
         ]
 
     def __str__(self):
@@ -153,7 +219,7 @@ class EnrollmentRecord(models.Model):
             f"product_id={self.product_id!r} "
             f"status={self.status!r} "
             f"course_enrollment_id={self.course_enrollment_id!r} "
-            f"pay_what_you_can_amount={self.pay_what_you_can_amount!r}>"
+            f"amount_paid={self.amount_paid!r}>"
         )
 
     @property
@@ -167,7 +233,7 @@ class EnrollmentRecord(models.Model):
 
     @classmethod
     @transaction.atomic
-    def create_for_user(cls, user, product, pay_what_you_can_amount=None):
+    def create_for_user(cls, user, product, amount=None, idempotency_key=None):
         """
         Create a new enrollment for a user.
 
@@ -183,7 +249,8 @@ class EnrollmentRecord(models.Model):
         Args:
             user: The user to enroll
             product: The CourseProduct to enroll in
-            pay_what_you_can_amount: Optional payment amount (defaults to product.base_price)
+            amount: Optional payment amount (defaults to product price for fixed/free)
+            idempotency_key: Optional idempotency key for enrollment creation
 
         Returns:
             EnrollmentRecord instance
@@ -192,26 +259,27 @@ class EnrollmentRecord(models.Model):
             ValidationError: If amount is negative, user already has enrollment,
                            or user doesn't meet course prerequisites/limits
         """
-        # Validate amount is non-negative
-        amount = pay_what_you_can_amount
-        if amount is None:
-            amount = product.base_price
+        if not product.is_active:
+            raise ValidationError("This course product is not currently available.")
 
-        if amount < 0:
-            raise ValidationError("Payment amount cannot be negative.")
+        if amount is None:
+            if product.pricing_type == "fixed":
+                amount = product.fixed_price
+            elif product.pricing_type == "free":
+                amount = Decimal("0")
+            else:
+                amount = product.suggested_price
+
+        is_valid, message = product.validate_amount(amount)
+        if not is_valid:
+            raise ValidationError(message)
 
         # Check if enrollment already exists (any status)
         existing = cls.objects.filter(user=user, product=product).first()
         if existing:
-            if existing.status == cls.Status.CANCELLED_REFUNDED:
-                raise ValidationError(
-                    "You have a cancelled/refunded enrollment for this course. "
-                    "Please contact support to re-enroll."
-                )
-            else:
-                raise ValidationError(
-                    f"You already have an enrollment for this course (status: {existing.status})."
-                )
+            raise ValidationError(
+                f"You already have an enrollment for this course (status: {existing.status})."
+            )
 
         # Validate user can enroll (prerequisites, limits, etc.)
         if not product.course.can_user_enroll(user):
@@ -228,7 +296,8 @@ class EnrollmentRecord(models.Model):
             user=user,
             product=product,
             status=status,
-            pay_what_you_can_amount=amount,
+            amount_paid=amount,
+            idempotency_key=idempotency_key or str(uuid.uuid4()),
         )
 
         # For free enrollments, create CourseEnrollment immediately
@@ -280,22 +349,43 @@ class EnrollmentRecord(models.Model):
         this is a no-op.
 
         Raises:
-            ValidationError: If enrollment is CANCELLED_REFUNDED
+            ValidationError: If enrollment is cancelled or refunded
         """
         if self.status == self.Status.ACTIVE:
             return  # Already active
 
-        if self.status == self.Status.CANCELLED_REFUNDED:
+        if self.status in {self.Status.CANCELLED, self.Status.REFUNDED}:
             raise ValidationError(
-                "Cannot mark a cancelled/refunded enrollment as paid. "
-                "Create a new enrollment instead."
+                "Cannot mark a cancelled/refunded enrollment as paid."
             )
 
         # Create course enrollment if needed
         self._create_course_enrollment()
 
         # Update status
-        self.status = self.Status.ACTIVE
+        self.transition_to(self.Status.ACTIVE)
+
+    def transition_to(self, new_status):
+        """Transition enrollment to a new status, enforcing valid transitions."""
+        transitions = {
+            self.Status.PENDING_PAYMENT: {
+                self.Status.ACTIVE,
+                self.Status.PAYMENT_FAILED,
+                self.Status.CANCELLED,
+            },
+            self.Status.ACTIVE: {self.Status.REFUNDED},
+            self.Status.PAYMENT_FAILED: {self.Status.CANCELLED},
+            self.Status.CANCELLED: set(),
+            self.Status.REFUNDED: set(),
+        }
+
+        allowed = transitions.get(self.status, set())
+        if new_status not in allowed and new_status != self.status:
+            raise ValidationError(
+                f"Invalid status transition from {self.status} to {new_status}."
+            )
+
+        self.status = new_status
         self.save(update_fields=["status"])
 
 
@@ -587,7 +677,7 @@ class ExtendedCoursePage(CoursePage):
         - Enrollment limit hasn't been reached
         - All prerequisite courses are completed
 
-        Note: Users with CANCELLED_REFUNDED enrollments cannot automatically
+        Note: Users with cancelled or refunded enrollments cannot automatically
         re-enroll and must contact support for manual re-enrollment.
 
         Returns:
