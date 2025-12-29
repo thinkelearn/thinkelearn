@@ -31,6 +31,138 @@ Split settings configuration:
 - `thinkelearn/settings/production.py`: Production settings (DEBUG=False)
 - Default: Development settings loaded by `manage.py`
 
+## Authentication & User Management
+
+The platform uses **django-allauth** for comprehensive authentication with email-only login (no usernames) and Google OAuth integration.
+
+### Features
+
+- **Email-Only Authentication**: Users sign up and log in with email (no username required)
+- **Google OAuth**: One-click login with verified Google accounts
+- **Auto-Account Linking**: Social logins automatically link to existing accounts by matching verified email addresses
+- **Mandatory Email Verification**: All email addresses must be verified before access
+- **Spam Protection**: Honeypot field (`phone_number`) catches naive bots without user friction
+- **Password Management**: Reset, change, and set password functionality
+- **Social Account Management**: Users can connect/disconnect multiple Google accounts
+
+### Configuration
+
+**Key Settings** (`thinkelearn/settings/base.py`):
+
+```python
+ACCOUNT_LOGIN_METHODS = {"email"}  # Email-only (no username)
+ACCOUNT_EMAIL_VERIFICATION = "mandatory"  # Require email verification
+ACCOUNT_SIGNUP_FORM_HONEYPOT_FIELD = "phone_number"  # Spam bot detection
+LOGIN_REDIRECT_URL = "/dashboard/"  # Post-login destination
+SOCIALACCOUNT_ADAPTER = "thinkelearn.backends.allauth.SocialAccountAdapter"
+```
+
+**Environment Variables** (required for Google OAuth):
+
+- `GOOGLE_CLIENT_ID`: Google OAuth client ID
+- `GOOGLE_CLIENT_SECRET`: Google OAuth client secret
+
+**Setup Google OAuth Credentials**:
+
+1. Create project at <https://console.cloud.google.com>
+2. Configure OAuth consent screen (External, app name, support email)
+3. Create OAuth 2.0 Client ID credentials (Web application)
+4. Add authorized redirect URIs:
+   - `http://localhost:8000/accounts/google/login/callback/`
+   - `http://127.0.0.1:8000/accounts/google/login/callback/`
+   - Production: `https://yourdomain.com/accounts/google/login/callback/`
+5. Add credentials to `.env` file
+
+### Authentication Flow
+
+**New User Signup**:
+
+1. User visits `/accounts/signup/`
+2. Enters email and password (honeypot field hidden)
+3. Email verification sent (mandatory)
+4. User clicks verification link in email
+5. Redirected to `/dashboard/`
+
+**Google OAuth**:
+
+1. User clicks "Continue with Google"
+2. Redirects to Google for authentication
+3. Google verifies identity and email
+4. `SocialAccountAdapter` checks for existing user with matching email
+5. If found: Links Google account to existing user
+6. If not found: Creates new user with verified email
+7. Redirects to `/dashboard/` (or `?next` parameter destination)
+
+### Security Features
+
+**Multi-Layer Spam Defense**:
+
+- Honeypot field catches 60-80% of naive bots
+- Email verification prevents disposable email abuse
+- Google OAuth provides verified email addresses
+- Future: Cloudflare protection (Turnstile, rate limiting, bot management)
+
+**Account Linking Security**:
+
+- Only verified emails are auto-linked
+- Case-insensitive email matching
+- Existing social logins are never overwritten
+- Full test coverage for adapter logic (14 tests)
+
+### URL Structure
+
+- `/accounts/login/` - Email/password login
+- `/accounts/signup/` - New account registration
+- `/accounts/logout/` - Sign out
+- `/accounts/password/reset/` - Forgot password flow
+- `/accounts/password/change/` - Change existing password
+- `/accounts/password/set/` - Set password (for OAuth-only users)
+- `/accounts/email/` - Email address management
+- `/accounts/3rdparty/` - Social account connections
+- `/accounts/google/login/` - Google OAuth entry point
+
+### Custom Components
+
+**Backend** (`thinkelearn/backends/allauth.py`):
+
+- `SocialAccountAdapter`: Auto-links social accounts to existing users by verified email
+- Tested with 14 comprehensive unit tests
+
+**Templates** (all styled with Tailwind CSS):
+
+- `account/login.html` - Login form with Google OAuth button
+- `account/signup.html` - Registration form with Google OAuth button
+- `account/email.html` - Email address management
+- `account/password_change.html` - Change password
+- `account/password_set.html` - Set password (OAuth users)
+- `socialaccount/login.html` - Google OAuth redirect page
+- `socialaccount/connections.html` - Social account management
+- `includes/navigation.html` - User dropdown with authentication links
+
+**Navigation**:
+
+- Authenticated users see dropdown with email, Dashboard, Account Settings, Sign Out
+- Anonymous users see Sign In / Sign Up links
+- Dropdown uses JavaScript for keyboard accessibility (Enter, Space, Escape, Arrow keys)
+
+### Testing
+
+**Test Suite** (`thinkelearn/tests/test_social_adapter.py`):
+
+- 14 tests covering email verification and auto-linking logic
+- 100% coverage of SocialAccountAdapter business logic
+- Tests for case-insensitive matching, whitespace handling, edge cases
+
+**Run Tests**:
+
+```bash
+# Docker
+docker-compose exec web python manage.py test thinkelearn.tests.test_social_adapter
+
+# Local
+uv run pytest thinkelearn/tests/test_social_adapter.py -v
+```
+
 ## Key Commands
 
 ### Development (Docker - RECOMMENDED)
@@ -168,6 +300,7 @@ uv run bandit -r .           # Security linting
 - **Result:** Faster, more reliable tests focusing on what actually matters
 
 **Test Coverage:**
+
 - 32 comprehensive tests for LMS (100% coverage on lms/models.py)
 - Focus on prerequisites validation, enrollment limits, ratings, completion tracking
 - Overall project coverage: 55%+
@@ -206,6 +339,7 @@ The project uses `uv` for dependency management:
 Key dependencies:
 
 - **Django/Wagtail**: CMS and web framework
+- **django-allauth**: Authentication with email-only login and Google OAuth
 - **psycopg**: PostgreSQL database adapter for production
 - **gunicorn**: WSGI HTTP server for production
 - **whitenoise**: Static file serving
@@ -339,11 +473,13 @@ THINK eLearn features a comprehensive Learning Management System built on wagtai
 - **Related Courses**: Live/public filtering with query optimization
 
 **Performance Optimizations**:
+
 - `select_related("user")` for review queries (line 272)
 - `prefetch_related("categories", "tags")` for course listings (lines 108, 283)
 - Optimized dashboard queries with `select_related("course")` (line 423)
 
 **Security Enhancements**:
+
 - Reviews require manual approval by default (`is_approved=False`)
 - SCORM iframe sandboxing with restricted permissions
 - CSP recommendations documented for server configuration
@@ -535,6 +671,11 @@ The project uses GitHub Actions for automated testing and quality checks:
 - **Static files**: Collected and served via whitenoise
 - **Performance**: CSS minification, image optimization, caching strategies
 - **SEO**: Wagtail's built-in SEO fields, structured data, meta tags
+- **Authentication**:
+  - Google OAuth credentials: Set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` environment variables
+  - Update Google OAuth redirect URIs to production domain (both `yourdomain.com` and `www.yourdomain.com`)
+  - Email verification emails sent via Mailtrap API (Railway blocks SMTP port 25)
+  - Honeypot spam protection enabled (`phone_number` field)
 
 ## Current Status: PRODUCTION-READY ✅
 
@@ -544,13 +685,14 @@ The project uses GitHub Actions for automated testing and quality checks:
 
 1. **Complete CMS**: All page models with StreamFields implemented
 2. **Professional Design**: Tailwind CSS with brown/orange primary theme and mint/cyan accent theme for modern consistency
-3. **Learning Management System**: Full SCORM-compliant LMS with course catalog, prerequisites, reviews, ratings, instructors, and student dashboard
-4. **Advanced Communications**: Twilio SMS/voicemail integration with admin workflow
-5. **Full Blog System**: Categories, tags, pagination, related posts
-6. **Unified Portfolio System**: Consolidates client work and educational content with ZIP package handling, video embedding, galleries, hero images, and optimized layout
-7. **Contact System**: Forms with email integration and FAQ sections
-8. **Production CI/CD**: Comprehensive GitHub Actions pipeline with quality gates
-9. **Testing Suite**: Comprehensive tests with 100% business logic coverage across all apps
+3. **Authentication & User Management**: Email-only login with Google OAuth, auto-account linking, honeypot spam protection, and accessible navigation
+4. **Learning Management System**: Full SCORM-compliant LMS with course catalog, prerequisites, reviews, ratings, instructors, and student dashboard
+5. **Advanced Communications**: Twilio SMS/voicemail integration with admin workflow
+6. **Full Blog System**: Categories, tags, pagination, related posts
+7. **Unified Portfolio System**: Consolidates client work and educational content with ZIP package handling, video embedding, galleries, hero images, and optimized layout
+8. **Contact System**: Forms with email integration and FAQ sections
+9. **Production CI/CD**: Comprehensive GitHub Actions pipeline with quality gates
+10. **Testing Suite**: Comprehensive tests with 100% business logic coverage across all apps
 
 ### 🚀 Ready for Launch
 
