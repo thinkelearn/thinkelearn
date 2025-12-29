@@ -2085,6 +2085,10 @@ input[type="checkbox"]:focus {
   margin-top: 2rem;
 }
 
+.mt-3 {
+  margin-top: 0.75rem;
+}
+
 .block {
   display: block;
 }
@@ -3094,6 +3098,10 @@ input[type="checkbox"]:focus {
 
 .text-center {
   text-align: center;
+}
+
+.text-right {
+  text-align: right;
 }
 
 .font-heading {

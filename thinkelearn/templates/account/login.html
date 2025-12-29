@@ -69,6 +69,12 @@
             </button>
         </form>
 
+        <div class="mt-3 text-right text-sm">
+            <a href="{% url 'account_reset_password' %}" class="text-secondary-600 hover:text-secondary-500">
+                {% trans "Forgot your password?" %}
+            </a>
+        </div>
+
         <div class="text-center text-sm text-neutral-600 mt-6">
             {% trans "New here?" %}
             {% if redirect_field_value %}
