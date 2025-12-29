@@ -136,7 +136,12 @@ class EnrollmentRecord(models.Model):
     class Meta:
         verbose_name = "Enrollment Record"
         verbose_name_plural = "Enrollment Records"
-        unique_together = ("user", "product")
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "product"],
+                name="unique_user_product_enrollment",
+            ),
+        ]
 
     def __str__(self):
         return f"{self.user.username} - {self.product.course.title} ({self.status})"
@@ -696,7 +701,12 @@ class CourseReview(models.Model):
     class Meta:
         verbose_name = "Course Review"
         verbose_name_plural = "Course Reviews"
-        unique_together = ("course", "user")
+        constraints = [
+            models.UniqueConstraint(
+                fields=["course", "user"],
+                name="unique_course_user_review",
+            ),
+        ]
         ordering = ["-created_at"]
 
     def __str__(self):
