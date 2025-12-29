@@ -12,7 +12,7 @@ These models extend the base wagtail-lms functionality with additional features:
 import logging
 
 from django import forms
-from django.contrib.auth.models import User
+from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import IntegrityError, models, transaction
@@ -104,7 +104,7 @@ class EnrollmentRecord(models.Model):
         PENDING_PAYMENT = "pending_payment", "Pending Payment"
         CANCELLED_REFUNDED = "cancelled_refunded", "Cancelled/Refunded"
 
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     product = models.ForeignKey(
         CourseProduct,
         on_delete=models.CASCADE,
@@ -684,7 +684,7 @@ class CourseReview(models.Model):
     course = models.ForeignKey(
         ExtendedCoursePage, on_delete=models.CASCADE, related_name="reviews"
     )
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     rating = models.PositiveIntegerField(
         validators=[MinValueValidator(1), MaxValueValidator(5)]
     )
