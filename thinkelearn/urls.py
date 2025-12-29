@@ -19,6 +19,9 @@ urlpatterns = [
     path("communications/", include("communications.urls")),
     path("portfolio/", include("portfolio.urls")),
     path("lms/", include("wagtail_lms.urls")),
+    # django-allauth authentication URLs - must be before Wagtail catch-all
+    # Reserved path: avoid other "accounts/" URL patterns to prevent conflicts
+    path("accounts/", include("allauth.urls")),
 ]
 
 

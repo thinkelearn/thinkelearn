@@ -45,6 +45,11 @@ INSTALLED_APPS = [
     "modelcluster",
     "taggit",
     "django_filters",
+    # allauth apps before Django contrib apps for proper template resolution
+    "allauth",
+    "allauth.account",
+    "allauth.socialaccount",
+    "allauth.socialaccount.providers.google",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -59,6 +64,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "allauth.account.middleware.AccountMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "django.middleware.security.SecurityMiddleware",
@@ -116,6 +122,34 @@ AUTH_PASSWORD_VALIDATORS = [
         "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
     },
 ]
+
+AUTHENTICATION_BACKENDS = [
+    "django.contrib.auth.backends.ModelBackend",
+    "allauth.account.auth_backends.AuthenticationBackend",
+]
+
+# django-allauth configuration (email-only, no username)
+ACCOUNT_LOGIN_METHODS = {"email"}  # Login with email only
+ACCOUNT_SIGNUP_FIELDS = ["email*", "password1*", "password2*"]  # No username field
+ACCOUNT_EMAIL_VERIFICATION = "mandatory"
+ACCOUNT_UNIQUE_EMAIL = True
+ACCOUNT_USER_MODEL_USERNAME_FIELD = None  # Tell allauth to ignore username
+LOGIN_REDIRECT_URL = "/dashboard/"  # Redirect to dashboard after successful login
+ACCOUNT_LOGOUT_REDIRECT_URL = "/"
+SOCIALACCOUNT_ADAPTER = "thinkelearn.backends.allauth.SocialAccountAdapter"
+
+SOCIALACCOUNT_PROVIDERS = {
+    "google": {
+        "SCOPE": ["profile", "email"],
+        "AUTH_PARAMS": {"access_type": "online"},
+        "APP": {
+            # Use None to fail loudly if credentials are missing
+            "client_id": os.environ.get("GOOGLE_CLIENT_ID"),
+            "secret": os.environ.get("GOOGLE_CLIENT_SECRET"),
+            "key": None,
+        },
+    }
+}
 
 
 # Internationalization
