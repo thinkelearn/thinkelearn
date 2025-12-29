@@ -667,6 +667,81 @@ class CourseProductTest(TestCase):
         old_enrollment_date = timezone.now() - timedelta(days=40)
         self.assertFalse(product.is_refund_eligible(old_enrollment_date))
 
+    def test_clean_fixed_price_must_be_positive(self):
+        """Test fixed-price courses must have price > 0"""
+        product = CourseProduct(
+            course=self.course,
+            pricing_type=CourseProduct.PricingType.FIXED,
+            fixed_price=Decimal("0"),
+        )
+        with self.assertRaises(ValidationError) as cm:
+            product.clean()
+        self.assertIn("fixed_price", cm.exception.message_dict)
+
+    def test_clean_free_course_fixed_price_zero(self):
+        """Test free courses should have fixed_price = 0"""
+        product = CourseProduct(
+            course=self.course,
+            pricing_type=CourseProduct.PricingType.FREE,
+            fixed_price=Decimal("50.00"),
+        )
+        with self.assertRaises(ValidationError) as cm:
+            product.clean()
+        self.assertIn("fixed_price", cm.exception.message_dict)
+
+    def test_clean_pwyc_min_max_validation(self):
+        """Test PWYC courses must have min <= max"""
+        product = CourseProduct(
+            course=self.course,
+            pricing_type=CourseProduct.PricingType.PWYC,
+            min_price=Decimal("100.00"),
+            max_price=Decimal("50.00"),
+        )
+        with self.assertRaises(ValidationError) as cm:
+            product.clean()
+        self.assertIn("min_price", cm.exception.message_dict)
+        self.assertIn("max_price", cm.exception.message_dict)
+
+    def test_clean_pwyc_suggested_in_range(self):
+        """Test PWYC suggested price must be within min/max"""
+        product = CourseProduct(
+            course=self.course,
+            pricing_type=CourseProduct.PricingType.PWYC,
+            min_price=Decimal("10.00"),
+            max_price=Decimal("50.00"),
+            suggested_price=Decimal("100.00"),
+        )
+        with self.assertRaises(ValidationError) as cm:
+            product.clean()
+        self.assertIn("suggested_price", cm.exception.message_dict)
+
+    def test_format_price_free(self):
+        """Test format_price for free courses"""
+        product = CourseProduct.objects.create(
+            course=self.course,
+            pricing_type=CourseProduct.PricingType.FREE,
+        )
+        self.assertEqual(product.format_price(), "Free")
+
+    def test_format_price_fixed(self):
+        """Test format_price for fixed-price courses"""
+        product = CourseProduct.objects.create(
+            course=self.course,
+            pricing_type=CourseProduct.PricingType.FIXED,
+            fixed_price=Decimal("49.99"),
+        )
+        self.assertEqual(product.format_price(), "$49.99 CAD")
+
+    def test_format_price_pwyc(self):
+        """Test format_price for PWYC courses"""
+        product = CourseProduct.objects.create(
+            course=self.course,
+            pricing_type=CourseProduct.PricingType.PWYC,
+            min_price=Decimal("10.00"),
+            max_price=Decimal("50.00"),
+        )
+        self.assertEqual(product.format_price(), "$10.00 - $50.00 CAD")
+
 
 class EnrollmentRecordTest(TestCase):
     """Test EnrollmentRecord model and business logic"""
@@ -791,6 +866,33 @@ class EnrollmentRecordTest(TestCase):
 
         self.assertEqual(enrollment.status, EnrollmentRecord.Status.PENDING_PAYMENT)
         self.assertEqual(enrollment.amount_paid, Decimal("25.00"))
+
+    def test_create_for_user_pwyc_requires_amount(self):
+        """Test PWYC enrollment requires explicit amount"""
+        pwyc_course = ExtendedCoursePage(
+            title="PWYC Course",
+            slug="pwyc-course-2",
+            difficulty="beginner",
+            is_published=True,
+        )
+        self.courses_index.add_child(instance=pwyc_course)
+        pwyc_course.save_revision().publish()
+
+        pwyc_product = CourseProduct.objects.create(
+            course=pwyc_course,
+            pricing_type=CourseProduct.PricingType.PWYC,
+            min_price=Decimal("10.00"),
+            max_price=Decimal("100.00"),
+        )
+
+        # Should raise ValidationError when amount is None for PWYC
+        with self.assertRaises(ValidationError) as cm:
+            EnrollmentRecord.create_for_user(
+                user=self.user,
+                product=pwyc_product,
+                amount=None,
+            )
+        self.assertIn("Amount is required", str(cm.exception))
 
     def test_create_for_user_invalid_amount(self):
         """Test cannot create enrollment with invalid amount"""
@@ -997,3 +1099,92 @@ class EnrollmentRecordTest(TestCase):
 
         with self.assertRaises(ValidationError):
             enrollment.transition_to(EnrollmentRecord.Status.PENDING_PAYMENT)
+
+    def test_transition_to_all_valid_transitions(self):
+        """Test all valid state transitions"""
+        # PENDING_PAYMENT → ACTIVE
+        enrollment1 = EnrollmentRecord.create_for_user(
+            user=self.user, product=self.product, amount=Decimal("99.99")
+        )
+        enrollment1.transition_to(EnrollmentRecord.Status.ACTIVE)
+        self.assertEqual(enrollment1.status, EnrollmentRecord.Status.ACTIVE)
+
+        # PENDING_PAYMENT → PAYMENT_FAILED
+        user2 = User.objects.create_user(username="user2", email="user2@test.com")
+        enrollment2 = EnrollmentRecord.create_for_user(
+            user=user2, product=self.product, amount=Decimal("99.99")
+        )
+        enrollment2.transition_to(EnrollmentRecord.Status.PAYMENT_FAILED)
+        self.assertEqual(enrollment2.status, EnrollmentRecord.Status.PAYMENT_FAILED)
+
+        # PENDING_PAYMENT → CANCELLED
+        user3 = User.objects.create_user(username="user3", email="user3@test.com")
+        enrollment3 = EnrollmentRecord.create_for_user(
+            user=user3, product=self.product, amount=Decimal("99.99")
+        )
+        enrollment3.transition_to(EnrollmentRecord.Status.CANCELLED)
+        self.assertEqual(enrollment3.status, EnrollmentRecord.Status.CANCELLED)
+
+        # ACTIVE → REFUNDED
+        enrollment1.transition_to(EnrollmentRecord.Status.REFUNDED)
+        self.assertEqual(enrollment1.status, EnrollmentRecord.Status.REFUNDED)
+
+        # PAYMENT_FAILED → CANCELLED
+        enrollment2.transition_to(EnrollmentRecord.Status.CANCELLED)
+        self.assertEqual(enrollment2.status, EnrollmentRecord.Status.CANCELLED)
+
+    def test_transition_to_noop_same_status(self):
+        """Test transitioning to same status is a no-op"""
+        enrollment = EnrollmentRecord.create_for_user(
+            user=self.user, product=self.product, amount=Decimal("99.99")
+        )
+        enrollment.transition_to(EnrollmentRecord.Status.PENDING_PAYMENT)
+        self.assertEqual(enrollment.status, EnrollmentRecord.Status.PENDING_PAYMENT)
+
+        enrollment.transition_to(EnrollmentRecord.Status.ACTIVE)
+        enrollment.transition_to(EnrollmentRecord.Status.ACTIVE)
+        self.assertEqual(enrollment.status, EnrollmentRecord.Status.ACTIVE)
+
+    def test_transition_to_terminal_states(self):
+        """Test cancelled and refunded are terminal states"""
+        # Cancelled is terminal
+        user2 = User.objects.create_user(username="user2", email="user2@test.com")
+        enrollment1 = EnrollmentRecord.create_for_user(
+            user=user2, product=self.product, amount=Decimal("99.99")
+        )
+        enrollment1.transition_to(EnrollmentRecord.Status.CANCELLED)
+
+        with self.assertRaises(ValidationError) as cm:
+            enrollment1.transition_to(EnrollmentRecord.Status.ACTIVE)
+        self.assertIn("Invalid status transition", str(cm.exception))
+
+        # Refunded is terminal
+        user3 = User.objects.create_user(username="user3", email="user3@test.com")
+        enrollment2 = EnrollmentRecord.create_for_user(
+            user=user3, product=self.product, amount=Decimal("99.99")
+        )
+        enrollment2.transition_to(EnrollmentRecord.Status.ACTIVE)
+        enrollment2.transition_to(EnrollmentRecord.Status.REFUNDED)
+
+        with self.assertRaises(ValidationError) as cm:
+            enrollment2.transition_to(EnrollmentRecord.Status.ACTIVE)
+        self.assertIn("Invalid status transition", str(cm.exception))
+
+    def test_transition_to_invalid_from_active(self):
+        """Test active can only transition to refunded"""
+        enrollment = EnrollmentRecord.create_for_user(
+            user=self.user, product=self.product, amount=Decimal("99.99")
+        )
+        enrollment.transition_to(EnrollmentRecord.Status.ACTIVE)
+
+        # Cannot go back to pending
+        with self.assertRaises(ValidationError):
+            enrollment.transition_to(EnrollmentRecord.Status.PENDING_PAYMENT)
+
+        # Cannot go to payment_failed
+        with self.assertRaises(ValidationError):
+            enrollment.transition_to(EnrollmentRecord.Status.PAYMENT_FAILED)
+
+        # Cannot go to cancelled
+        with self.assertRaises(ValidationError):
+            enrollment.transition_to(EnrollmentRecord.Status.CANCELLED)

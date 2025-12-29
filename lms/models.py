@@ -18,8 +18,8 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import IntegrityError, models, transaction
-from django.utils import timezone
 from django.db.models import Avg
+from django.utils import timezone
 from modelcluster.fields import ParentalKey, ParentalManyToManyField
 from wagtail.admin.panels import FieldPanel, InlinePanel, MultiFieldPanel
 from wagtail.fields import RichTextField
@@ -34,6 +34,18 @@ logger = logging.getLogger(__name__)
 class CourseProduct(models.Model):
     """Sellable course product linked to a course page."""
 
+    class PricingType(models.TextChoices):
+        """Pricing type options for courses."""
+
+        FREE = "free", "Free"
+        FIXED = "fixed", "Fixed Price"
+        PWYC = "pwyc", "Pay What You Can"
+
+    class Currency(models.TextChoices):
+        """Currency options for pricing."""
+
+        CAD = "CAD", "Canadian Dollar"
+
     course = models.OneToOneField(
         "lms.ExtendedCoursePage",
         on_delete=models.CASCADE,
@@ -41,12 +53,8 @@ class CourseProduct(models.Model):
     )
     pricing_type = models.CharField(
         max_length=20,
-        choices=[
-            ("free", "Free"),
-            ("fixed", "Fixed Price"),
-            ("pwyc", "Pay What You Can"),
-        ],
-        default="pwyc",
+        choices=PricingType,
+        default=PricingType.PWYC,
         help_text="Pricing model for this course",
     )
     fixed_price = models.DecimalField(
@@ -79,16 +87,14 @@ class CourseProduct(models.Model):
     )
     currency = models.CharField(
         max_length=3,
-        default="CAD",
-        choices=[
-            ("CAD", "Canadian Dollar"),
-        ],
+        choices=Currency,
+        default=Currency.CAD,
         help_text="Currency for pricing (CAD for launch)",
     )
     refund_window_days = models.IntegerField(
         default=30,
-        help_text="Number of days customers can request refunds",
-        validators=[MinValueValidator(0)],
+        help_text="Number of days customers can request refunds (max 365 days)",
+        validators=[MinValueValidator(0), MaxValueValidator(365)],
     )
     is_active = models.BooleanField(
         default=True,
@@ -115,9 +121,49 @@ class CourseProduct(models.Model):
             f"is_active={self.is_active!r})"
         )
 
+    def clean(self):
+        """Validate pricing configuration consistency."""
+        super().clean()
+
+        # Fixed-price courses must have price > 0
+        if self.pricing_type == self.PricingType.FIXED and self.fixed_price == 0:
+            raise ValidationError(
+                {
+                    "fixed_price": "Fixed-price courses must have a price greater than 0. "
+                    'Use pricing_type="free" for free courses.'
+                }
+            )
+
+        # Free courses should have fixed_price = 0
+        if self.pricing_type == self.PricingType.FREE and self.fixed_price != 0:
+            raise ValidationError(
+                {"fixed_price": "Free courses must have fixed_price set to 0."}
+            )
+
+        # PWYC courses must have min <= max
+        if self.pricing_type == self.PricingType.PWYC:
+            if self.min_price > self.max_price:
+                raise ValidationError(
+                    {
+                        "min_price": "Minimum price cannot exceed maximum price.",
+                        "max_price": "Maximum price cannot be less than minimum price.",
+                    }
+                )
+
+            # Suggested price should be within range
+            if (
+                self.suggested_price < self.min_price
+                or self.suggested_price > self.max_price
+            ):
+                raise ValidationError(
+                    {
+                        "suggested_price": f"Suggested price must be between {self.min_price} and {self.max_price}."
+                    }
+                )
+
     def validate_amount(self, amount: Decimal) -> tuple[bool, str]:
         """Validate payment amount based on pricing type."""
-        if self.pricing_type == "free":
+        if self.pricing_type == self.PricingType.FREE:
             is_valid = amount == 0
             msg = (
                 "This course is free"
@@ -126,12 +172,14 @@ class CourseProduct(models.Model):
             )
             return (is_valid, msg)
 
-        if self.pricing_type == "fixed":
+        if self.pricing_type == self.PricingType.FIXED:
             is_valid = amount == self.fixed_price
-            msg = "" if is_valid else f"Price must be {self.fixed_price} {self.currency}"
+            msg = (
+                "" if is_valid else f"Price must be {self.fixed_price} {self.currency}"
+            )
             return (is_valid, msg)
 
-        if self.pricing_type == "pwyc":
+        if self.pricing_type == self.PricingType.PWYC:
             if amount < self.min_price:
                 return (False, f"Minimum amount: {self.min_price} {self.currency}")
             if amount > self.max_price:
@@ -144,6 +192,27 @@ class CourseProduct(models.Model):
         """Check if enrollment is still within refund window."""
         delta = timezone.now() - enrollment_date
         return delta.days <= self.refund_window_days
+
+    def format_price(self) -> str:
+        """
+        Return formatted price string for display.
+
+        Returns:
+            String representation of the price with currency, e.g.:
+            - "Free" for free courses
+            - "$49.99 CAD" for fixed-price courses
+            - "$10.00 - $50.00 CAD" for PWYC courses
+        """
+        if self.pricing_type == self.PricingType.FREE:
+            return "Free"
+
+        if self.pricing_type == self.PricingType.FIXED:
+            return f"${self.fixed_price:.2f} {self.currency}"
+
+        if self.pricing_type == self.PricingType.PWYC:
+            return f"${self.min_price:.2f} - ${self.max_price:.2f} {self.currency}"
+
+        return "Price unavailable"
 
 
 class EnrollmentRecord(models.Model):
@@ -171,7 +240,7 @@ class EnrollmentRecord(models.Model):
     )
     status = models.CharField(
         max_length=20,
-        choices=Status.choices,
+        choices=Status,
         default=Status.PENDING_PAYMENT,
     )
     amount_paid = models.DecimalField(
@@ -203,7 +272,12 @@ class EnrollmentRecord(models.Model):
     class Meta:
         verbose_name = "Enrollment Record"
         verbose_name_plural = "Enrollment Records"
-        unique_together = ("user", "product")
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "product"],
+                name="unique_user_product_enrolment",
+            ),
+        ]
         indexes = [
             models.Index(fields=["status", "created_at"]),
             models.Index(fields=["user", "status"]),
@@ -249,26 +323,33 @@ class EnrollmentRecord(models.Model):
         Args:
             user: The user to enroll
             product: The CourseProduct to enroll in
-            amount: Optional payment amount (defaults to product price for fixed/free)
+            amount: Optional payment amount. Required for PWYC courses. For fixed-price
+                   courses, defaults to fixed_price. For free courses, defaults to 0.
             idempotency_key: Optional idempotency key for enrollment creation
 
         Returns:
             EnrollmentRecord instance
 
         Raises:
-            ValidationError: If amount is negative, user already has enrollment,
+            ValidationError: If amount is missing for PWYC, user already has enrollment,
                            or user doesn't meet course prerequisites/limits
         """
         if not product.is_active:
             raise ValidationError("This course product is not currently available.")
 
+        # Determine amount based on pricing type
         if amount is None:
-            if product.pricing_type == "fixed":
+            if product.pricing_type == CourseProduct.PricingType.FIXED:
                 amount = product.fixed_price
-            elif product.pricing_type == "free":
+            elif product.pricing_type == CourseProduct.PricingType.FREE:
                 amount = Decimal("0")
+            elif product.pricing_type == CourseProduct.PricingType.PWYC:
+                raise ValidationError(
+                    "Amount is required for pay-what-you-can courses. "
+                    f"Please provide an amount between {product.min_price} and {product.max_price} {product.currency}."
+                )
             else:
-                amount = product.suggested_price
+                raise ValidationError(f"Unknown pricing type: {product.pricing_type}")
 
         is_valid, message = product.validate_amount(amount)
         if not is_valid:
@@ -366,7 +447,27 @@ class EnrollmentRecord(models.Model):
         self.transition_to(self.Status.ACTIVE)
 
     def transition_to(self, new_status):
-        """Transition enrollment to a new status, enforcing valid transitions."""
+        """
+        Transition enrollment to a new status, enforcing valid transitions.
+
+        This method implements a state machine to ensure enrollments only transition
+        through valid states. Valid transitions are:
+        - PENDING_PAYMENT → ACTIVE, PAYMENT_FAILED, or CANCELLED
+        - ACTIVE → REFUNDED
+        - PAYMENT_FAILED → CANCELLED
+        - CANCELLED and REFUNDED are terminal states (no further transitions)
+
+        Args:
+            new_status: The target Status to transition to
+
+        Raises:
+            ValidationError: If the transition is not allowed from the current status
+
+        Examples:
+            >>> enrollment.status = Status.PENDING_PAYMENT
+            >>> enrollment.transition_to(Status.ACTIVE)  # Valid
+            >>> enrollment.transition_to(Status.REFUNDED)  # Raises ValidationError
+        """
         transitions = {
             self.Status.PENDING_PAYMENT: {
                 self.Status.ACTIVE,
@@ -523,16 +624,17 @@ class ExtendedCoursePage(CoursePage):
         help_text="Estimated duration in hours",
     )
 
-    DIFFICULTY_CHOICES = [
-        ("beginner", "Beginner"),
-        ("intermediate", "Intermediate"),
-        ("advanced", "Advanced"),
-    ]
+    class Difficulty(models.TextChoices):
+        """Difficulty levels for courses."""
+
+        BEGINNER = "beginner", "Beginner"
+        INTERMEDIATE = "intermediate", "Intermediate"
+        ADVANCED = "advanced", "Advanced"
 
     difficulty = models.CharField(
         max_length=20,
-        choices=DIFFICULTY_CHOICES,
-        default="beginner",
+        choices=Difficulty,
+        default=Difficulty.BEGINNER,
     )
 
     prerequisites_description = RichTextField(
