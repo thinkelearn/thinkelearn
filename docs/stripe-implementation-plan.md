@@ -43,29 +43,12 @@ This document outlines a comprehensive plan to implement Stripe payment processi
 - Robust prerequisites and enrollment limit validation
 - Well-established patterns for model design
 
-**Gaps:**
+**Pre-Phase 1 Gaps (Now Addressed):**
 
-- No payment processing capability
-- No concept of "products" or pricing
-- No payment state tracking
-- No integration with payment providers
-
-### Issues with PR #21
-
-**Critical Issues:**
-
-1. Zero test coverage (839 lines untested)
-2. Security vulnerabilities (race conditions, missing auth checks)
-3. Data integrity issues (no transactions, orphaned records)
-4. Business logic bugs (rejects free enrollments, wrong status mappings)
-5. Missing production features (idempotency, audit logging, monitoring)
-
-**Good Aspects:**
-
-- Reasonable model structure (CourseProduct, EnrollmentRecord, Payment)
-- Separate payments app (good separation of concerns)
-- Pay-what-you-can validation logic
-- Stripe webhook handling framework
+- ~~No payment processing capability~~ ✅ Implemented in Phase 1
+- ~~No concept of "products" or pricing~~ ✅ CourseProduct model with 3 pricing types
+- ~~No payment state tracking~~ ✅ EnrollmentRecord with state machine
+- ~~No integration with payment providers~~ ⏳ Stripe integration in Phase 2
 
 ---
 
@@ -131,6 +114,7 @@ All models have been implemented with comprehensive validation, test coverage (9
 - **Admin interface**: Full CRUD with 3 bulk actions (cancel, refund, mark failed)
 
 **Key Enhancements:**
+
 - PWYC courses require explicit amount (raises ValidationError if omitted)
 - Separate status values for different failure scenarios
 - Comprehensive docstrings with state transition examples
@@ -160,12 +144,12 @@ All models have been implemented with comprehensive validation, test coverage (9
 
 ### 1. API Key Management
 
-**Problem in PR #21:** Global `stripe.api_key` causes race conditions
+**Requirement:** Thread-safe API key handling for multi-worker deployment
 
-**Solution:**
+**Implementation:**
 
 ```python
-# DON'T: Global state (PR #21 approach)
+# DON'T: Global state (not thread-safe)
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
 # DO: Per-request API key
@@ -175,7 +159,7 @@ stripe.checkout.Session.create(
 )
 ```
 
-**Implementation:**
+**Approach:**
 
 - Create `StripeClient` wrapper class
 - All Stripe calls use per-request API key
@@ -183,9 +167,9 @@ stripe.checkout.Session.create(
 
 ### 2. Authorization Checks
 
-**Problem in PR #21:** Users can create payments for other users' enrollments
+**Requirement:** Verify user ownership before payment processing
 
-**Solution:**
+**Implementation:**
 
 ```python
 def create_checkout_session(request):
@@ -204,9 +188,9 @@ def create_checkout_session(request):
 
 ### 3. Enrollment Eligibility Validation
 
-**Problem in PR #21:** No validation of prerequisites, enrollment limits
+**Requirement:** Validate prerequisites and enrollment limits before payment
 
-**Solution:**
+**Implementation:**
 
 ```python
 # Before creating payment, validate eligibility
@@ -893,7 +877,6 @@ python manage.py migrate payments zero  # Remove payments app
 **Code Quality:**
 
 - [ ] 100% test coverage on business logic
-- [ ] All Copilot comments from PR #21 addressed
 - [ ] Zero critical security vulnerabilities
 - [ ] Code review approved by 2+ reviewers
 
@@ -1132,7 +1115,7 @@ The following features are **not included in the 6-week implementation** but are
 
 ### Multi-Currency Support
 
-4. **Additional Currencies**
+1. **Additional Currencies**
    - USD, EUR, GBP support (model already supports)
    - Per-product currency selection
    - **Effort:** ~2 days (mostly configuration)
@@ -1140,14 +1123,14 @@ The following features are **not included in the 6-week implementation** but are
 
 ### Revenue Management
 
-5. **Revenue Sharing / Instructor Payouts**
+1. **Revenue Sharing / Instructor Payouts**
    - Stripe Connect integration
    - Track instructor revenue shares
    - Automated payout scheduling
    - **Effort:** ~2-3 weeks
    - **When:** Third-party course hosting begins
 
-6. **Advanced Tax Handling**
+2. **Advanced Tax Handling**
    - Stripe Tax integration for automated tax calculation
    - Multi-jurisdiction tax compliance
    - **Effort:** ~1 week
@@ -1155,13 +1138,13 @@ The following features are **not included in the 6-week implementation** but are
 
 ### Administrative Features
 
-7. **Refund Management Dashboard**
+1. **Refund Management Dashboard**
    - Admin UI for reviewing refund requests
    - Refund analytics and reporting
    - **Effort:** ~3 days
    - **When:** Refund volume warrants manual review
 
-8. **Payment Analytics**
+2. **Payment Analytics**
    - Revenue dashboards, cohort analysis
    - Conversion funnel tracking
    - **Effort:** ~1 week
@@ -1222,9 +1205,8 @@ The following features are **not included in the 6-week implementation** but are
 
 1. ✅ ~~Review this plan with stakeholders~~ - COMPLETE
 2. ✅ ~~Answer open questions~~ - COMPLETE
-3. **Assign resources** - Ready to proceed
-4. **Begin Phase 1: Tax research + models + tests** - Week 1
-5. PR #21 closed - Superseded by this implementation plan
+3. ✅ **Phase 1: Foundation & Models** - COMPLETE (PR #26)
+4. **Phase 2: Payment Flow - Checkout Session** - In Progress
 
 ---
 
