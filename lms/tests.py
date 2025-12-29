@@ -868,8 +868,8 @@ class EnrollmentRecordTest(TestCase):
         with self.assertRaises(IntegrityError):
             EnrollmentRecord.objects.create(user=self.user, product=self.product)
 
-    def test_can_user_enroll_excludes_cancelled_refunded(self):
-        """Test can_user_enroll allows re-enrollment after refund"""
+    def test_can_user_enroll_blocks_cancelled_refunded(self):
+        """Test can_user_enroll blocks users with cancelled/refunded enrollment"""
         # Create cancelled/refunded enrollment
         EnrollmentRecord.objects.create(
             user=self.user,
@@ -877,10 +877,10 @@ class EnrollmentRecordTest(TestCase):
             status=EnrollmentRecord.Status.CANCELLED_REFUNDED,
         )
 
-        # Should be able to check enrollment eligibility
-        # (actual re-enrollment requires going through proper process)
+        # Users with cancelled/refunded enrollments cannot re-enroll automatically
+        # They must contact support for manual re-enrollment
         can_enroll = self.course.can_user_enroll(self.user)
-        self.assertTrue(can_enroll)
+        self.assertFalse(can_enroll)
 
     def test_can_user_enroll_blocks_active_enrollment(self):
         """Test can_user_enroll blocks users with active enrollment"""

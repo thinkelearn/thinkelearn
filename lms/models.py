@@ -41,6 +41,7 @@ class CourseProduct(models.Model):
         decimal_places=2,
         default=0,
         help_text="Base price for the course (0 for free)",
+        validators=[MinValueValidator(0)],
     )
     is_active = models.BooleanField(
         default=True,
@@ -127,6 +128,7 @@ class EnrollmentRecord(models.Model):
         null=True,
         blank=True,
         help_text="Optional pay-what-you-can amount (0 for free enrollments)",
+        validators=[MinValueValidator(0)],
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -159,6 +161,7 @@ class EnrollmentRecord(models.Model):
         return self.product.course
 
     @classmethod
+    @transaction.atomic
     def create_for_user(cls, user, product, pay_what_you_can_amount=None):
         """
         Create a new enrollment for a user.
@@ -574,27 +577,25 @@ class ExtendedCoursePage(CoursePage):
         Check if user can enroll in this course.
 
         This checks:
-        - User doesn't have an active or pending enrollment record
+        - User doesn't have any enrollment record (active, pending, or cancelled)
         - User is not already enrolled via CourseEnrollment
         - Enrollment limit hasn't been reached
         - All prerequisite courses are completed
 
-        Note: Users with CANCELLED_REFUNDED enrollments CAN re-enroll,
-        but they must go through the proper re-enrollment process.
+        Note: Users with CANCELLED_REFUNDED enrollments cannot automatically
+        re-enroll and must contact support for manual re-enrollment.
 
         Returns:
             bool: True if user can enroll, False otherwise
         """
-        # Check for existing enrollment record (exclude cancelled/refunded)
+        # Check for any existing enrollment record (including cancelled/refunded)
         product = getattr(self, "product", None)
         if product:
-            has_active_enrollment = (
-                EnrollmentRecord.objects.filter(user=user, product=product)
-                .exclude(status=EnrollmentRecord.Status.CANCELLED_REFUNDED)
-                .exists()
-            )
+            has_enrollment = EnrollmentRecord.objects.filter(
+                user=user, product=product
+            ).exists()
 
-            if has_active_enrollment:
+            if has_enrollment:
                 return False
 
         # Check if already enrolled directly via CourseEnrollment
