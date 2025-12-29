@@ -30,6 +30,7 @@ INSTALLED_APPS = [
     "communications",
     "portfolio",
     "lms",
+    "payments",
     "wagtail.contrib.forms",
     "wagtail.contrib.redirects",
     "wagtail.embeds",
