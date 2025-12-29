@@ -13,8 +13,9 @@ import logging
 
 from django import forms
 from django.contrib.auth.models import User
+from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
-from django.db import models
+from django.db import IntegrityError, models, transaction
 from django.db.models import Avg
 from modelcluster.fields import ParentalKey, ParentalManyToManyField
 from wagtail.admin.panels import FieldPanel, InlinePanel, MultiFieldPanel
@@ -55,8 +56,33 @@ class CourseProduct(models.Model):
     def __str__(self):
         return f"{self.course.title} Product"
 
+    def __repr__(self):
+        return (
+            f"{self.__class__.__name__}("
+            f"id={self.id!r}, "
+            f"course_id={getattr(self.course, 'id', None)!r}, "
+            f"base_price={self.base_price!r}, "
+            f"is_active={self.is_active!r})"
+        )
+
     def enroll_user(self, user, amount=None):
-        """Create an enrollment record, handling free vs paid enrollments."""
+        """
+        Create an enrollment record, handling free vs paid enrollments.
+
+        Args:
+            user: The user to enroll
+            amount: Payment amount (defaults to base_price if None)
+
+        Returns:
+            EnrollmentRecord instance
+
+        Raises:
+            ValidationError: If product is inactive or user cannot enroll
+        """
+        # Check if product is active
+        if not self.is_active:
+            raise ValidationError("This course product is not currently available.")
+
         if amount is None:
             amount = self.base_price
 
@@ -113,50 +139,156 @@ class EnrollmentRecord(models.Model):
     def __str__(self):
         return f"{self.user.username} - {self.product.course.title} ({self.status})"
 
+    def __repr__(self):
+        return (
+            f"<EnrollmentRecord id={self.id!r} "
+            f"user_id={self.user_id!r} "
+            f"product_id={self.product_id!r} "
+            f"status={self.status!r} "
+            f"course_enrollment_id={self.course_enrollment_id!r} "
+            f"pay_what_you_can_amount={self.pay_what_you_can_amount!r}>"
+        )
+
     @property
     def course(self):
+        """
+        Convenient access to the related course for this enrollment.
+
+        This is a shortcut for accessing ``self.product.course``.
+        """
         return self.product.course
 
     @classmethod
     def create_for_user(cls, user, product, pay_what_you_can_amount=None):
-        """Create or update an enrollment based on payment amount."""
+        """
+        Create a new enrollment for a user.
+
+        This method creates a new enrollment record and will NOT update existing
+        enrollments. If an enrollment already exists (active, pending, or cancelled),
+        this method will raise a ValidationError to prevent unintended state changes.
+
+        For free enrollments (amount=0), this automatically creates the corresponding
+        CourseEnrollment and sets status to ACTIVE. For paid enrollments (amount>0),
+        the status is set to PENDING_PAYMENT and CourseEnrollment is created only
+        after calling mark_paid().
+
+        Args:
+            user: The user to enroll
+            product: The CourseProduct to enroll in
+            pay_what_you_can_amount: Optional payment amount (defaults to product.base_price)
+
+        Returns:
+            EnrollmentRecord instance
+
+        Raises:
+            ValidationError: If amount is negative, user already has enrollment,
+                           or user doesn't meet course prerequisites/limits
+        """
+        # Validate amount is non-negative
         amount = pay_what_you_can_amount
         if amount is None:
             amount = product.base_price
 
+        if amount < 0:
+            raise ValidationError("Payment amount cannot be negative.")
+
+        # Check if enrollment already exists (any status)
+        existing = cls.objects.filter(user=user, product=product).first()
+        if existing:
+            if existing.status == cls.Status.CANCELLED_REFUNDED:
+                raise ValidationError(
+                    "You have a cancelled/refunded enrollment for this course. "
+                    "Please contact support to re-enroll."
+                )
+            else:
+                raise ValidationError(
+                    f"You already have an enrollment for this course (status: {existing.status})."
+                )
+
+        # Validate user can enroll (prerequisites, limits, etc.)
+        if not product.course.can_user_enroll(user):
+            raise ValidationError(
+                "You do not meet the requirements to enroll in this course. "
+                "Please check prerequisites and enrollment availability."
+            )
+
+        # Determine status based on amount
         status = cls.Status.ACTIVE if amount == 0 else cls.Status.PENDING_PAYMENT
 
-        enrollment, _created = cls.objects.update_or_create(
+        # Create enrollment record
+        enrollment = cls.objects.create(
             user=user,
             product=product,
-            defaults={
-                "status": status,
-                "pay_what_you_can_amount": amount,
-            },
+            status=status,
+            pay_what_you_can_amount=amount,
         )
 
-        if status == cls.Status.ACTIVE and enrollment.course_enrollment is None:
-            enrollment.course_enrollment = CourseEnrollment.objects.create(
-                user=user,
-                course=product.course,
-            )
-            enrollment.save(update_fields=["course_enrollment"])
+        # For free enrollments, create CourseEnrollment immediately
+        if status == cls.Status.ACTIVE:
+            enrollment._create_course_enrollment()
 
         return enrollment
 
-    def mark_paid(self):
-        """Mark a pending enrollment as paid and activate it."""
-        if self.status == self.Status.ACTIVE:
-            return
+    @transaction.atomic
+    def _create_course_enrollment(self):
+        """
+        Internal method to create CourseEnrollment with race condition protection.
 
-        if self.course_enrollment is None:
-            self.course_enrollment = CourseEnrollment.objects.create(
+        Uses database transaction and get_or_create to prevent duplicate
+        CourseEnrollment records in concurrent scenarios.
+        """
+        if self.course_enrollment is not None:
+            return  # Already has enrollment
+
+        try:
+            # Use get_or_create to handle race conditions
+            course_enroll, created = CourseEnrollment.objects.get_or_create(
                 user=self.user,
                 course=self.product.course,
             )
 
+            self.course_enrollment = course_enroll
+            self.save(update_fields=["course_enrollment"])
+
+            if not created:
+                logger.warning(
+                    f"CourseEnrollment already existed for user={self.user.pk} "
+                    f"course={self.product.course.pk} when creating enrollment record"
+                )
+
+        except IntegrityError as e:
+            logger.error(
+                f"IntegrityError creating CourseEnrollment for enrollment {self.pk}: {e}"
+            )
+            raise
+
+    @transaction.atomic
+    def mark_paid(self):
+        """
+        Mark a pending enrollment as paid and activate it.
+
+        This method transitions a PENDING_PAYMENT enrollment to ACTIVE and creates
+        the corresponding CourseEnrollment. If the enrollment is already ACTIVE,
+        this is a no-op.
+
+        Raises:
+            ValidationError: If enrollment is CANCELLED_REFUNDED
+        """
+        if self.status == self.Status.ACTIVE:
+            return  # Already active
+
+        if self.status == self.Status.CANCELLED_REFUNDED:
+            raise ValidationError(
+                "Cannot mark a cancelled/refunded enrollment as paid. "
+                "Create a new enrollment instead."
+            )
+
+        # Create course enrollment if needed
+        self._create_course_enrollment()
+
+        # Update status
         self.status = self.Status.ACTIVE
-        self.save(update_fields=["status", "course_enrollment"])
+        self.save(update_fields=["status"])
 
 
 @register_snippet
@@ -438,15 +570,34 @@ class ExtendedCoursePage(CoursePage):
         return CourseEnrollment.objects.filter(course=self).count()
 
     def can_user_enroll(self, user):
-        """Check if user can enroll in this course"""
-        product = getattr(self, "product", None)
-        if (
-            product
-            and EnrollmentRecord.objects.filter(user=user, product=product).exists()
-        ):
-            return False
+        """
+        Check if user can enroll in this course.
 
-        # Check if already enrolled
+        This checks:
+        - User doesn't have an active or pending enrollment record
+        - User is not already enrolled via CourseEnrollment
+        - Enrollment limit hasn't been reached
+        - All prerequisite courses are completed
+
+        Note: Users with CANCELLED_REFUNDED enrollments CAN re-enroll,
+        but they must go through the proper re-enrollment process.
+
+        Returns:
+            bool: True if user can enroll, False otherwise
+        """
+        # Check for existing enrollment record (exclude cancelled/refunded)
+        product = getattr(self, "product", None)
+        if product:
+            has_active_enrollment = (
+                EnrollmentRecord.objects.filter(user=user, product=product)
+                .exclude(status=EnrollmentRecord.Status.CANCELLED_REFUNDED)
+                .exists()
+            )
+
+            if has_active_enrollment:
+                return False
+
+        # Check if already enrolled directly via CourseEnrollment
         if CourseEnrollment.objects.filter(user=user, course=self).exists():
             return False
 

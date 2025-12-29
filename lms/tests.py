@@ -1,16 +1,22 @@
+from decimal import Decimal
 from unittest.mock import Mock
 
 from django.contrib.auth.models import User
+from django.core.exceptions import ValidationError
+from django.db import IntegrityError
 from django.test import RequestFactory, TestCase
+from django.utils import timezone
 from wagtail.models import Page
 from wagtail_lms.models import CourseEnrollment
 
 from lms.models import (
     CourseCategory,
     CourseInstructor,
+    CourseProduct,
     CourseReview,
     CoursesIndexPage,
     CourseTag,
+    EnrollmentRecord,
     ExtendedCoursePage,
     LearnerDashboardPage,
 )
@@ -262,7 +268,6 @@ class ExtendedCoursePageTest(TestCase):
 
     def test_can_user_enroll_prerequisites_completed(self):
         """Test can enroll when prerequisites are completed"""
-        from django.utils import timezone
 
         prereq_course = ExtendedCoursePage(
             title="Prerequisite Course", slug="prereq-course"
@@ -281,7 +286,6 @@ class ExtendedCoursePageTest(TestCase):
 
     def test_can_user_enroll_multiple_prerequisites(self):
         """Test prerequisites validation with multiple required courses"""
-        from django.utils import timezone
 
         prereq1 = ExtendedCoursePage(title="Prereq 1", slug="prereq-1")
         prereq2 = ExtendedCoursePage(title="Prereq 2", slug="prereq-2")
@@ -315,7 +319,6 @@ class ExtendedCoursePageTest(TestCase):
 
     def test_get_completion_rate_with_enrollments(self):
         """Test completion rate calculation"""
-        from django.utils import timezone
 
         user1 = User.objects.create_user(username="user1", password="pass")
         user2 = User.objects.create_user(username="user2", password="pass")
@@ -494,7 +497,6 @@ class LearnerDashboardPageTest(TestCase):
 
     def test_get_context_with_enrollments(self):
         """Test dashboard context with active and completed enrollments"""
-        from django.utils import timezone
 
         course1 = ExtendedCoursePage(title="Course 1", slug="course-1")
         course2 = ExtendedCoursePage(title="Course 2", slug="course-2")
@@ -523,7 +525,6 @@ class LearnerDashboardPageTest(TestCase):
 
     def test_get_context_completion_percentage_calculation(self):
         """Test completion percentage is calculated correctly"""
-        from django.utils import timezone
 
         # Create 5 courses
         for i in range(5):
@@ -546,3 +547,357 @@ class LearnerDashboardPageTest(TestCase):
         self.assertEqual(context["total_courses"], 5)
         self.assertEqual(context["completed_courses"], 3)
         self.assertEqual(context["completion_percentage"], 60.0)
+
+
+class CourseProductTest(TestCase):
+    """Test CourseProduct model and business logic"""
+
+    def setUp(self):
+        self.root_page = Page.add_root(title="Root")
+        self.courses_index = CoursesIndexPage(title="Courses", slug="courses")
+        self.root_page.add_child(instance=self.courses_index)
+
+        self.course = ExtendedCoursePage(
+            title="Test Course",
+            slug="test-course",
+            difficulty="beginner",
+            is_published=True,
+        )
+        self.courses_index.add_child(instance=self.course)
+        self.course.save_revision().publish()
+
+        self.user = User.objects.create_user(
+            username="testuser", email="test@example.com", password="testpass123"
+        )
+
+    def test_product_str_representation(self):
+        """Test string representation"""
+        product = CourseProduct.objects.create(
+            course=self.course, base_price=Decimal("99.99")
+        )
+        self.assertEqual(str(product), "Test Course Product")
+
+    def test_product_repr_representation(self):
+        """Test __repr__ for debugging"""
+        product = CourseProduct.objects.create(
+            course=self.course, base_price=Decimal("49.99"), is_active=True
+        )
+        repr_str = repr(product)
+        self.assertIn("CourseProduct", repr_str)
+        self.assertIn(f"id={product.id!r}", repr_str)
+        self.assertIn("base_price=Decimal('49.99')", repr_str)
+        self.assertIn("is_active=True", repr_str)
+
+    def test_product_default_values(self):
+        """Test default values for product"""
+        product = CourseProduct.objects.create(course=self.course)
+        self.assertEqual(product.base_price, Decimal("0"))
+        self.assertTrue(product.is_active)
+
+    def test_enroll_user_free_course(self):
+        """Test enrolling user in free course"""
+        product = CourseProduct.objects.create(
+            course=self.course, base_price=Decimal("0"), is_active=True
+        )
+
+        enrollment = product.enroll_user(self.user)
+
+        self.assertEqual(enrollment.user, self.user)
+        self.assertEqual(enrollment.product, product)
+        self.assertEqual(enrollment.status, EnrollmentRecord.Status.ACTIVE)
+        self.assertIsNotNone(enrollment.course_enrollment)
+
+    def test_enroll_user_paid_course(self):
+        """Test enrolling user in paid course"""
+        product = CourseProduct.objects.create(
+            course=self.course, base_price=Decimal("99.99"), is_active=True
+        )
+
+        enrollment = product.enroll_user(self.user)
+
+        self.assertEqual(enrollment.status, EnrollmentRecord.Status.PENDING_PAYMENT)
+        self.assertIsNone(enrollment.course_enrollment)
+
+    def test_enroll_user_inactive_product(self):
+        """Test cannot enroll in inactive product"""
+        product = CourseProduct.objects.create(
+            course=self.course, base_price=Decimal("0"), is_active=False
+        )
+
+        with self.assertRaises(ValidationError) as cm:
+            product.enroll_user(self.user)
+
+        self.assertIn("not currently available", str(cm.exception))
+
+    def test_enroll_user_custom_amount(self):
+        """Test enrolling with custom pay-what-you-can amount"""
+        product = CourseProduct.objects.create(
+            course=self.course, base_price=Decimal("99.99"), is_active=True
+        )
+
+        enrollment = product.enroll_user(self.user, amount=Decimal("25.00"))
+
+        self.assertEqual(enrollment.pay_what_you_can_amount, Decimal("25.00"))
+        self.assertEqual(enrollment.status, EnrollmentRecord.Status.PENDING_PAYMENT)
+
+
+class EnrollmentRecordTest(TestCase):
+    """Test EnrollmentRecord model and business logic"""
+
+    def setUp(self):
+        self.root_page = Page.add_root(title="Root")
+        self.courses_index = CoursesIndexPage(title="Courses", slug="courses")
+        self.root_page.add_child(instance=self.courses_index)
+
+        self.course = ExtendedCoursePage(
+            title="Test Course",
+            slug="test-course",
+            difficulty="beginner",
+            is_published=True,
+        )
+        self.courses_index.add_child(instance=self.course)
+        self.course.save_revision().publish()
+
+        self.product = CourseProduct.objects.create(
+            course=self.course, base_price=Decimal("99.99"), is_active=True
+        )
+
+        self.user = User.objects.create_user(
+            username="testuser", email="test@example.com", password="testpass123"
+        )
+
+    def test_enrollment_str_representation(self):
+        """Test string representation"""
+        enrollment = EnrollmentRecord.objects.create(
+            user=self.user,
+            product=self.product,
+            status=EnrollmentRecord.Status.ACTIVE,
+            pay_what_you_can_amount=Decimal("99.99"),
+        )
+        expected = f"{self.user.username} - {self.course.title} (active)"
+        self.assertEqual(str(enrollment), expected)
+
+    def test_enrollment_repr_representation(self):
+        """Test __repr__ for debugging"""
+        enrollment = EnrollmentRecord.objects.create(
+            user=self.user,
+            product=self.product,
+            status=EnrollmentRecord.Status.PENDING_PAYMENT,
+            pay_what_you_can_amount=Decimal("50.00"),
+        )
+        repr_str = repr(enrollment)
+        self.assertIn("EnrollmentRecord", repr_str)
+        self.assertIn(f"id={enrollment.id!r}", repr_str)
+        self.assertIn(f"user_id={self.user.id!r}", repr_str)
+        self.assertIn(f"product_id={self.product.id!r}", repr_str)
+
+    def test_course_property(self):
+        """Test course property convenience accessor"""
+        enrollment = EnrollmentRecord.objects.create(
+            user=self.user, product=self.product
+        )
+        self.assertEqual(enrollment.course, self.course)
+
+    def test_create_for_user_free_enrollment(self):
+        """Test creating free enrollment (amount=0)"""
+        enrollment = EnrollmentRecord.create_for_user(
+            user=self.user, product=self.product, pay_what_you_can_amount=Decimal("0")
+        )
+
+        self.assertEqual(enrollment.status, EnrollmentRecord.Status.ACTIVE)
+        self.assertEqual(enrollment.pay_what_you_can_amount, Decimal("0"))
+        self.assertIsNotNone(enrollment.course_enrollment)
+        self.assertEqual(enrollment.course_enrollment.user, self.user)
+        self.assertEqual(enrollment.course_enrollment.course, self.course)
+
+    def test_create_for_user_paid_enrollment(self):
+        """Test creating paid enrollment (amount>0)"""
+        enrollment = EnrollmentRecord.create_for_user(
+            user=self.user,
+            product=self.product,
+            pay_what_you_can_amount=Decimal("49.99"),
+        )
+
+        self.assertEqual(enrollment.status, EnrollmentRecord.Status.PENDING_PAYMENT)
+        self.assertEqual(enrollment.pay_what_you_can_amount, Decimal("49.99"))
+        self.assertIsNone(enrollment.course_enrollment)
+
+    def test_create_for_user_default_amount(self):
+        """Test enrollment uses base_price when amount not specified"""
+        enrollment = EnrollmentRecord.create_for_user(
+            user=self.user, product=self.product
+        )
+
+        self.assertEqual(enrollment.pay_what_you_can_amount, self.product.base_price)
+
+    def test_create_for_user_negative_amount(self):
+        """Test cannot create enrollment with negative amount"""
+        with self.assertRaises(ValidationError) as cm:
+            EnrollmentRecord.create_for_user(
+                user=self.user,
+                product=self.product,
+                pay_what_you_can_amount=Decimal("-10.00"),
+            )
+
+        self.assertIn("cannot be negative", str(cm.exception))
+
+    def test_create_for_user_duplicate_prevention(self):
+        """Test cannot create duplicate enrollment for same user/product"""
+        # Create first enrollment
+        EnrollmentRecord.create_for_user(
+            user=self.user, product=self.product, pay_what_you_can_amount=Decimal("0")
+        )
+
+        # Try to create second enrollment
+        with self.assertRaises(ValidationError) as cm:
+            EnrollmentRecord.create_for_user(
+                user=self.user,
+                product=self.product,
+                pay_what_you_can_amount=Decimal("0"),
+            )
+
+        self.assertIn("already have an enrollment", str(cm.exception))
+
+    def test_create_for_user_cancelled_refunded_prevention(self):
+        """Test cannot re-enroll if cancelled/refunded enrollment exists"""
+        # Create cancelled enrollment
+        EnrollmentRecord.objects.create(
+            user=self.user,
+            product=self.product,
+            status=EnrollmentRecord.Status.CANCELLED_REFUNDED,
+        )
+
+        # Try to create new enrollment
+        with self.assertRaises(ValidationError) as cm:
+            EnrollmentRecord.create_for_user(
+                user=self.user,
+                product=self.product,
+                pay_what_you_can_amount=Decimal("0"),
+            )
+
+        self.assertIn("cancelled/refunded enrollment", str(cm.exception))
+
+    def test_create_for_user_validates_prerequisites(self):
+        """Test enrollment validates prerequisites"""
+        # Create prerequisite course
+        prereq = ExtendedCoursePage(title="Prereq", slug="prereq")
+        self.courses_index.add_child(instance=prereq)
+        prereq.save_revision().publish()
+
+        self.course.prerequisite_courses.add(prereq)
+
+        # Try to enroll without completing prerequisite
+        with self.assertRaises(ValidationError) as cm:
+            EnrollmentRecord.create_for_user(
+                user=self.user,
+                product=self.product,
+                pay_what_you_can_amount=Decimal("0"),
+            )
+
+        self.assertIn("do not meet the requirements", str(cm.exception))
+
+    def test_create_for_user_validates_enrollment_limit(self):
+        """Test enrollment validates enrollment limit"""
+        self.course.enrollment_limit = 1
+        self.course.save()
+
+        # Create one enrollment
+        other_user = User.objects.create_user(username="other", password="pass")
+        CourseEnrollment.objects.create(user=other_user, course=self.course)
+
+        # Try to enroll when limit reached
+        with self.assertRaises(ValidationError) as cm:
+            EnrollmentRecord.create_for_user(
+                user=self.user,
+                product=self.product,
+                pay_what_you_can_amount=Decimal("0"),
+            )
+
+        self.assertIn("do not meet the requirements", str(cm.exception))
+
+    def test_mark_paid_activates_enrollment(self):
+        """Test mark_paid transitions pending to active"""
+        enrollment = EnrollmentRecord.create_for_user(
+            user=self.user,
+            product=self.product,
+            pay_what_you_can_amount=Decimal("99.99"),
+        )
+
+        self.assertEqual(enrollment.status, EnrollmentRecord.Status.PENDING_PAYMENT)
+        self.assertIsNone(enrollment.course_enrollment)
+
+        enrollment.mark_paid()
+
+        self.assertEqual(enrollment.status, EnrollmentRecord.Status.ACTIVE)
+        self.assertIsNotNone(enrollment.course_enrollment)
+
+    def test_mark_paid_idempotent(self):
+        """Test mark_paid is idempotent (safe to call multiple times)"""
+        enrollment = EnrollmentRecord.create_for_user(
+            user=self.user, product=self.product, pay_what_you_can_amount=Decimal("0")
+        )
+
+        # Already active
+        self.assertEqual(enrollment.status, EnrollmentRecord.Status.ACTIVE)
+        course_enroll_id = enrollment.course_enrollment.id
+
+        # Call mark_paid again
+        enrollment.mark_paid()
+
+        # Should still be active with same enrollment
+        self.assertEqual(enrollment.status, EnrollmentRecord.Status.ACTIVE)
+        self.assertEqual(enrollment.course_enrollment.id, course_enroll_id)
+
+    def test_mark_paid_cancelled_refunded_error(self):
+        """Test cannot mark cancelled/refunded enrollment as paid"""
+        enrollment = EnrollmentRecord.objects.create(
+            user=self.user,
+            product=self.product,
+            status=EnrollmentRecord.Status.CANCELLED_REFUNDED,
+        )
+
+        with self.assertRaises(ValidationError) as cm:
+            enrollment.mark_paid()
+
+        self.assertIn("cancelled/refunded", str(cm.exception))
+
+    def test_unique_together_constraint(self):
+        """Test database enforces unique user/product constraint"""
+        EnrollmentRecord.objects.create(user=self.user, product=self.product)
+
+        with self.assertRaises(IntegrityError):
+            EnrollmentRecord.objects.create(user=self.user, product=self.product)
+
+    def test_can_user_enroll_excludes_cancelled_refunded(self):
+        """Test can_user_enroll allows re-enrollment after refund"""
+        # Create cancelled/refunded enrollment
+        EnrollmentRecord.objects.create(
+            user=self.user,
+            product=self.product,
+            status=EnrollmentRecord.Status.CANCELLED_REFUNDED,
+        )
+
+        # Should be able to check enrollment eligibility
+        # (actual re-enrollment requires going through proper process)
+        can_enroll = self.course.can_user_enroll(self.user)
+        self.assertTrue(can_enroll)
+
+    def test_can_user_enroll_blocks_active_enrollment(self):
+        """Test can_user_enroll blocks users with active enrollment"""
+        EnrollmentRecord.create_for_user(
+            user=self.user, product=self.product, pay_what_you_can_amount=Decimal("0")
+        )
+
+        can_enroll = self.course.can_user_enroll(self.user)
+        self.assertFalse(can_enroll)
+
+    def test_can_user_enroll_blocks_pending_enrollment(self):
+        """Test can_user_enroll blocks users with pending payment"""
+        EnrollmentRecord.create_for_user(
+            user=self.user,
+            product=self.product,
+            pay_what_you_can_amount=Decimal("50.00"),
+        )
+
+        can_enroll = self.course.can_user_enroll(self.user)
+        self.assertFalse(can_enroll)
