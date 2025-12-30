@@ -3,16 +3,19 @@ import json
 import logging
 from decimal import Decimal, InvalidOperation
 
+import stripe
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import URLValidator
 from django.db import IntegrityError, transaction
 from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
 from lms.models import CourseProduct, EnrollmentRecord
-from payments.models import Payment
+from payments.models import Payment, WebhookEvent
 from payments.stripe_client import StripeClient, StripeClientError
+from payments.webhooks import dispatch_event
 
 logger = logging.getLogger(__name__)
 
@@ -365,3 +368,96 @@ def create_checkout_session(request):
         },
         status=201,
     )
+
+
+@csrf_exempt
+@require_POST
+def stripe_webhook(request):
+    """Process Stripe webhook events with signature verification and idempotency."""
+    payload = request.body
+    signature = request.headers.get("stripe-signature")
+
+    if not signature:
+        logger.warning("Stripe webhook missing signature header")
+        return JsonResponse({"error": "Missing Stripe signature."}, status=400)
+
+    # Get webhook secret (tests mock construct_event so empty value is acceptable)
+    # Production deployment checks ensure this is configured (see payments/checks.py)
+    webhook_secret = getattr(settings, "STRIPE_WEBHOOK_SECRET", "")
+
+    try:
+        event = stripe.Webhook.construct_event(
+            payload=payload,
+            sig_header=signature,
+            secret=webhook_secret,
+        )
+    except ValueError:
+        logger.warning("Invalid Stripe webhook payload")
+        return JsonResponse({"error": "Invalid payload."}, status=400)
+    except stripe.error.SignatureVerificationError:
+        logger.warning("Invalid Stripe webhook signature")
+        return JsonResponse({"error": "Invalid signature."}, status=400)
+
+    event_data = event.to_dict()
+    event_id = event_data.get("id")
+    event_type = event_data.get("type")
+
+    if not event_id:
+        logger.warning("Stripe webhook missing event ID")
+        return JsonResponse({"error": "Missing event ID."}, status=400)
+
+    with transaction.atomic():
+        # Handle race conditions: try get first, create if not found, retry get if create races
+        try:
+            webhook_event = WebhookEvent.objects.select_for_update().get(
+                stripe_event_id=event_id
+            )
+            created = False
+        except WebhookEvent.DoesNotExist:
+            try:
+                webhook_event = WebhookEvent.objects.create(
+                    stripe_event_id=event_id,
+                    event_type=event_type or "unknown",
+                    raw_event_data=event_data,
+                    success=False,
+                )
+                created = True
+            except IntegrityError:
+                # Another transaction created the same event concurrently - retry get
+                webhook_event = WebhookEvent.objects.select_for_update().get(
+                    stripe_event_id=event_id
+                )
+                created = False
+
+        if not created and webhook_event.success:
+            logger.info(
+                "Stripe webhook already processed",
+                extra={"event_id": event_id, "event_type": event_type},
+            )
+            return JsonResponse({"status": "ignored"}, status=200)
+
+        if not created:
+            webhook_event.event_type = event_type or webhook_event.event_type
+            webhook_event.raw_event_data = event_data
+            webhook_event.error_message = ""
+            webhook_event.save(
+                update_fields=["event_type", "raw_event_data", "error_message"]
+            )
+
+        try:
+            dispatch_event(event_data)
+        except Exception as exc:
+            logger.exception(
+                "Stripe webhook processing failed",
+                extra={"event_id": event_id, "event_type": event_type},
+            )
+            webhook_event.success = False
+            webhook_event.error_message = str(exc)
+            webhook_event.save(update_fields=["success", "error_message"])
+            # Return 200 to prevent Stripe retries (error already logged and saved)
+            return JsonResponse({"status": "error"}, status=200)
+
+        webhook_event.success = True
+        webhook_event.save(update_fields=["success"])
+
+    return JsonResponse({"status": "ok"}, status=200)

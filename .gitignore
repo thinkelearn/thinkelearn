@@ -75,3 +75,6 @@ safety_report.json
 
 # Temporary files
 .tmp/
+
+# Claude local config
+.claude/

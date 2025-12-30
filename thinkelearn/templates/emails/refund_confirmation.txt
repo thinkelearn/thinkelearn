@@ -1,0 +1,18 @@
+Hi {{ enrollment.user.first_name|default:enrollment.user.username }},
+
+{% if is_partial %}
+We have processed a partial refund for your enrollment in "{{ course_name }}".
+{% else %}
+We have processed a refund for your enrollment in "{{ course_name }}".
+{% endif %}
+
+Refund amount: ${{ refund_amount }} CAD
+Original payment: ${{ original_amount }} CAD
+Refund date: {{ refund_date|date:"F j, Y" }}
+
+Refunds typically appear on your statement within 5-10 business days.
+
+Need help? Contact us at {{ support_email }}.
+
+Thanks,
+{{ site_name }}
