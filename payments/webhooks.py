@@ -34,8 +34,8 @@ from django.db import transaction
 from django.utils import timezone
 
 from lms.models import EnrollmentRecord
-from payments.emails import send_refund_confirmation
 from payments.models import Payment
+from payments.tasks import send_refund_confirmation_task
 
 logger = logging.getLogger(__name__)
 
@@ -512,16 +512,16 @@ def handle_charge_refunded(event: dict) -> None:
 
     # Send refund confirmation email (don't fail webhook if email fails)
     try:
-        send_refund_confirmation(
-            enrollment,
-            refund_amount=refund_amount,
-            original_amount=original_amount,
-            refund_date=timezone.now(),
+        send_refund_confirmation_task.enqueue(
+            enrollment_id=enrollment.id,
+            refund_amount=str(refund_amount),
+            original_amount=str(original_amount),
+            refund_date=timezone.now().isoformat(),
             is_partial=not is_full_refund,
         )
     except Exception as exc:
         logger.error(
-            "Refund confirmation email failed to send",
+            "Refund confirmation task failed to enqueue",
             extra={
                 "event_id": event.get("id"),
                 "enrollment_id": enrollment.id,

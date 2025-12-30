@@ -171,6 +171,12 @@ class ExtendedCoursePageTest(TestCase):
             username="testuser", email="test@example.com", password="testpass123"
         )
 
+        self.product = CourseProduct.objects.create(
+            course=self.course,
+            pricing_type=CourseProduct.PricingType.FIXED,
+            fixed_price=Decimal("49.00"),
+        )
+
         self.factory = RequestFactory()
 
     def test_get_average_rating_with_no_reviews(self):
@@ -351,6 +357,10 @@ class ExtendedCoursePageTest(TestCase):
         self.assertIn("average_rating", context)
         self.assertIn("total_reviews", context)
         self.assertIn("enrollment_count", context)
+        self.assertEqual(context["product"], self.product)
+        self.assertIn("/payments/checkout/success/", context["checkout_success_url"])
+        self.assertIn("/payments/checkout/cancel/", context["checkout_cancel_url"])
+        self.assertIn("/payments/checkout/failure/", context["checkout_failure_url"])
 
     def test_get_context_anonymous_user(self):
         """Test context for anonymous user"""

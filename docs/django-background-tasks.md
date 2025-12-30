@@ -166,6 +166,33 @@ TASK_WORKER_CONCURRENCY = int(os.environ.get('TASK_WORKER_CONCURRENCY', 4))
 TASK_WORKER_LOG_LEVEL = os.environ.get('TASK_WORKER_LOG_LEVEL', 'INFO')
 ```
 
+### Project Task Inventory
+
+The THINK eLearn LMS uses two task entry points in `payments/tasks.py`:
+
+- `send_refund_confirmation_task`: background email for Stripe refund notices
+- `cleanup_abandoned_enrollments_task`: scheduled cleanup of stale enrollments
+
+Example usage:
+
+```python
+from payments.tasks import send_refund_confirmation_task
+
+send_refund_confirmation_task.enqueue(
+    enrollment_id=123,
+    refund_amount="10.00",
+    original_amount="49.00",
+    refund_date="2025-01-05T12:34:56-05:00",
+    is_partial=True,
+)
+```
+
+Manual cleanup (CLI):
+
+```bash
+python manage.py cleanup_abandoned_enrollments --hours 24
+```
+
 ```python
 # ❌ WRONG - Celery configuration (DO NOT USE)
 CELERY_BROKER_URL = 'redis://localhost:6379/0'

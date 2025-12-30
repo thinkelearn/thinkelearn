@@ -159,6 +159,15 @@ STRIPE_PUBLISHABLE_KEY = os.environ.get("STRIPE_PUBLISHABLE_KEY", "")
 STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
 STRIPE_CURRENCY = os.environ.get("STRIPE_CURRENCY", "cad")
 
+# Django 6.0 background tasks configuration
+TASKS = {
+    "default": {
+        "BACKEND": "django.tasks.backends.database.DatabaseBackend",
+    }
+}
+TASK_WORKER_CONCURRENCY = int(os.environ.get("TASK_WORKER_CONCURRENCY", 4))
+TASK_WORKER_LOG_LEVEL = os.environ.get("TASK_WORKER_LOG_LEVEL", "INFO")
+
 
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/

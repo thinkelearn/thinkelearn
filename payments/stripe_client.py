@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+import time
 from dataclasses import dataclass
 from decimal import Decimal
 
@@ -23,6 +25,7 @@ class StripeClient:
     def __init__(self, api_key: str, max_retries: int = 2) -> None:
         self.api_key = api_key
         self.max_retries = max_retries
+        self.logger = logging.getLogger(__name__)
 
     def create_checkout_session(
         self,
@@ -72,17 +75,38 @@ class StripeClient:
                     url=session.url,
                     payment_intent=getattr(session, "payment_intent", None),
                 )
+            except stripe.error.InvalidRequestError as exc:
+                self.logger.error(
+                    "Stripe invalid request error",
+                    extra={"error": str(exc), "attempt": attempt + 1},
+                )
+                raise StripeClientError(
+                    "Payment request was invalid. Please contact support."
+                ) from exc
             except (
                 stripe.error.APIConnectionError,
                 stripe.error.RateLimitError,
                 stripe.error.APIError,
+                stripe.error.TimeoutError,
             ) as exc:
+                self.logger.warning(
+                    "Stripe transient error",
+                    extra={"error": str(exc), "attempt": attempt + 1},
+                )
                 if attempt >= self.max_retries:
                     raise StripeClientError(
                         "Stripe API is unavailable. Please try again shortly."
                     ) from exc
+                backoff_seconds = min(2**attempt, 8)
+                time.sleep(backoff_seconds)
             except stripe.error.StripeError as exc:
-                raise StripeClientError(str(exc)) from exc
+                self.logger.error(
+                    "Stripe error",
+                    extra={"error": str(exc), "attempt": attempt + 1},
+                )
+                raise StripeClientError(
+                    "Payment processing failed. Please try again."
+                ) from exc
 
         return session  # Ensure a return statement is present
 

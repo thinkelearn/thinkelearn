@@ -19,6 +19,7 @@ from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import IntegrityError, models, transaction
 from django.db.models import Avg
+from django.urls import reverse
 from django.utils import timezone
 from modelcluster.fields import ParentalKey, ParentalManyToManyField
 from wagtail.admin.panels import FieldPanel, InlinePanel, MultiFieldPanel
@@ -728,6 +729,18 @@ class ExtendedCoursePage(CoursePage):
 
     def get_context(self, request):
         context = super().get_context(request)
+
+        product = getattr(self, "product", None)
+        context["product"] = product
+        context["checkout_success_url"] = request.build_absolute_uri(
+            reverse("payments:checkout_success")
+        )
+        context["checkout_cancel_url"] = request.build_absolute_uri(
+            reverse("payments:checkout_cancel")
+        )
+        context["checkout_failure_url"] = request.build_absolute_uri(
+            reverse("payments:checkout_failure")
+        )
 
         # Add rating information
         context["average_rating"] = self.get_average_rating()
