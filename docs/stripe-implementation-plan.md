@@ -1,9 +1,9 @@
 # Stripe Payment Integration - Implementation Plan
 
-**Version:** 2.3
+**Version:** 2.4
 **Date:** 2025-12-30
-**Status:** Phase 1 COMPLETE ✅ | Phase 2 COMPLETE ✅ | Phase 3 COMPLETE ✅
-**Related PRs:** #26 (Phase 1), #28 (Phase 2 & 3 - Stripe webhooks and refunds)
+**Status:** Phase 1 ✅ | Phase 2 ✅ | Phase 3 ✅ | Phase 4 🚧 (Settings Validation ✅)
+**Related PRs:** #26 (Phase 1), #28 (Phase 2, 3 & 4 Settings Validation)
 
 ## Executive Summary
 
@@ -313,17 +313,7 @@ if not course.can_user_enroll(request.user):
    - [x] Authorization checks (user, eligibility)
    - [x] Amount validation using `product.validate_amount()`
    - [x] Idempotency key generation
-   - [x] Atomic transaction:
-
-     ```python
-     with transaction.atomic():
-         enrollment = EnrollmentRecord.create_for_user(...)
-         payment = Payment.create_for_enrollment(...)
-         session = stripe_client.create_checkout_session(...)
-         enrollment.stripe_checkout_session_id = session.id
-         enrollment.save()
-     ```
-
+   - [x] Atomic transaction with enrollment, payment, and Stripe session creation
    - [x] Rollback on Stripe API failure
 
 3. **Free Enrollment Flow (1 day)** ✅
@@ -375,30 +365,8 @@ if not course.can_user_enroll(request.user):
 
 2. **Success Handler (1.5 days)** ✅
    - [x] `checkout.session.completed` handler
-   - [x] Atomic transaction:
-
-     ```python
-     with transaction.atomic():
-         # Create WebhookEvent first (prevents re-processing)
-         WebhookEvent.objects.create(stripe_event_id=event.id, ...)
-
-         # Update enrollment
-         enrollment = get_enrollment_from_event(event)
-         enrollment.status = EnrollmentRecord.Status.ACTIVE
-         enrollment.amount_paid = amount
-         enrollment.save()
-
-         # Create CourseEnrollment
-         if not enrollment.course_enrollment:
-             enrollment.course_enrollment = CourseEnrollment.objects.create(...)
-             enrollment.save()
-
-         # Update payment
-         payment.status = Payment.Status.SUCCEEDED
-         payment.stripe_event_id = event.id
-         payment.save()
-     ```
-
+   - [x] Atomic transaction with WebhookEvent creation, enrollment activation, CourseEnrollment creation, and payment update
+   - [x] Enrollment status validation (only processes PENDING_PAYMENT or PAYMENT_FAILED)
    - [x] Handle missing enrollment gracefully (log warning)
 
 3. **Failure Handler (1 day)** ✅
@@ -472,34 +440,11 @@ if not course.can_user_enroll(request.user):
 - [x] Email templates tested with Mailpit
 - [x] 19/19 payment tests passing
 
-**Code Review Improvements** (Commit 8856c0b):
-
-Following comprehensive code review, the following enhancements were made:
-
-1. **Enrollment Status Validation** ✅
-   - `handle_checkout_session_completed`: Only processes PENDING_PAYMENT or PAYMENT_FAILED enrollments
-   - `handle_checkout_session_async_payment_failed`: Only processes PENDING_PAYMENT enrollments
-   - `handle_charge_refunded`: Only processes ACTIVE or REFUNDED enrollments
-   - Prevents invalid state transitions from late or duplicate webhooks
-
-2. **Documentation & Code Quality** ✅
-   - Added comprehensive docstrings to all webhook handler functions
-   - Extracted currency conversion constants (CENTS_IN_DOLLAR, DECIMAL_PLACES)
-   - Improved refund amount comparison logic for edge cases
-
-3. **Error Resilience** ✅
-   - Wrapped refund email sending in try/except to prevent webhook failures
-   - Email delivery failures logged but don't cause webhook processing to fail
-   - Ensures Stripe receives 200 response even if email delivery has issues
-
-4. **Test Coverage** ✅
-   - Added email integration tests to verify refund notifications
-   - Tests verify email subject, body content, and recipient
-   - Both full and partial refund emails tested
-
 ---
 
 ### Phase 4: Error Handling + Frontend Integration (Week 4)
+
+**Status:** 🚧 IN PROGRESS (Settings Validation COMPLETE ✅)
 
 **Goal:** Production-ready error handling and frontend integration
 
@@ -519,15 +464,26 @@ Following comprehensive code review, the following enhancements were made:
    - [ ] Stripe service downtime handling
    - [ ] Comprehensive logging
 
-3. **Settings Validation (0.5 days)**
-   - [ ] Django check for required settings:
-     - `STRIPE_SECRET_KEY`
-     - `STRIPE_PUBLISHABLE_KEY`
-     - `STRIPE_WEBHOOK_SECRET`
-   - [ ] Validate settings on startup
-   - [ ] Provide clear error messages
+3. **Settings Validation (0.5 days)** ✅ COMPLETE
+   - [x] Django system check for required settings (payments/checks.py)
+   - [x] Validates STRIPE_SECRET_KEY, STRIPE_PUBLISHABLE_KEY, STRIPE_WEBHOOK_SECRET
+   - [x] Tagged with 'deploy' (only runs with --deploy flag or DEBUG=False)
+   - [x] Warns if webhook secret appears to be test mode in production
+   - [x] Clear error messages with hints for missing configuration
+   - [x] Integrated into payments app configuration (payments/apps.py)
 
-4. **Frontend Integration (2 days)**
+4. **Background Tasks Framework (1 day)**
+   - [ ] Configure Django 6.0 native background tasks (settings.py)
+   - [ ] Migrate refund email sending to async task
+   - [ ] Convert orphaned cleanup to scheduled background task
+   - [ ] Add task monitoring and logging
+   - [ ] Write tests for background task execution
+   - [ ] Document Django tasks syntax for AI assistants (see `docs/django-background-tasks.md`)
+
+   **IMPORTANT:** This project uses Django 6.0's native `django.tasks` framework, NOT Celery or Django-Q2.
+   See `docs/django-background-tasks.md` for AI assistant guidance on correct syntax.
+
+5. **Frontend Integration (2 days)**
    - [ ] Add "Enroll" button to course pages
    - [ ] Payment amount selection UI (for PWYC courses)
    - [ ] Success/failure/cancel pages
@@ -537,33 +493,42 @@ Following comprehensive code review, the following enhancements were made:
    - [ ] Mobile-responsive design
 
 5. **Documentation (0.5 days)**
+   - [ ] AI assistant guide for Django background tasks (explicit syntax examples)
    - [ ] Frontend integration guide
    - [ ] Example HTML/JavaScript snippets
    - [ ] Environment variable reference
 
 6. **Write Tests (1.5 days)**
+   - [ ] Test background task execution (async emails, scheduled cleanup)
+   - [ ] Test task retry logic and error handling
    - [ ] Test cleanup command
    - [ ] Test all error scenarios
-   - [ ] Test settings validation
    - [ ] Test frontend templates render correctly
 
 **Deliverables:**
 
-- `payments/management/commands/cleanup_abandoned_enrollments.py`
-- `payments/checks.py` (Django system checks)
-- `payments/tests/test_error_handling.py`
-- `docs/stripe-frontend-integration.md`
-- Updated course page templates with enroll buttons
-- Success/failure/cancel page templates
+- [ ] Django background tasks configuration in settings
+- [ ] `payments/tasks.py` (async email tasks, scheduled cleanup)
+- [ ] `payments/management/commands/cleanup_abandoned_enrollments.py`
+- [x] `payments/checks.py` (Django system checks) ✅
+- [ ] `payments/tests/test_tasks.py` (background task tests)
+- [ ] `payments/tests/test_error_handling.py`
+- [ ] `docs/django-background-tasks.md` (AI assistant guidance)
+- [ ] `docs/stripe-frontend-integration.md`
+- [ ] Updated course page templates with enroll buttons
+- [ ] Success/failure/cancel page templates
 
 **Success Criteria:**
 
-- Graceful handling of all Stripe API errors
-- Orphaned records cleaned up automatically
-- Clear error messages for misconfiguration
-- Frontend can initiate Checkout Session flow
-- Mobile-responsive payment UI
-- Clear documentation for future developers
+- [ ] Background tasks running and processing asynchronously
+- [ ] Email sending doesn't block webhook responses
+- [ ] Scheduled cleanup runs automatically
+- [ ] Graceful handling of all Stripe API errors
+- [ ] Orphaned records cleaned up automatically
+- [x] Clear error messages for misconfiguration ✅
+- [ ] Frontend can initiate Checkout Session flow
+- [ ] Mobile-responsive payment UI
+- [ ] Clear documentation for AI assistants and developers
 
 ---
 
@@ -1040,7 +1005,7 @@ python manage.py migrate payments zero  # Remove payments app
 | Phase 1 | Week 1 | Models & Tests + Tax Research | Migrations, 100% model coverage, tax strategy | ✅ COMPLETE |
 | Phase 2 | Week 2 | Checkout Session Flow | Working checkout with tests | ✅ COMPLETE |
 | Phase 3 | Week 3 | Webhooks + Refunds | Reliable webhook processing, automated refunds, email notifications | ✅ COMPLETE |
-| Phase 4 | Week 4 | Error Handling + Frontend | Production-ready resilience, payment UI | ⏳ Next |
+| Phase 4 | Week 4 | Error Handling + Frontend | Production-ready resilience, payment UI | 🚧 IN PROGRESS |
 | Phase 5 | Week 5 | Production Prep | Security audit, monitoring, documentation | ⏳ Pending |
 | Phase 6 | Week 6 | Deployment | Safe rollout to production | ⏳ Pending |
 
@@ -1216,11 +1181,11 @@ The following features are **not included in the 6-week implementation** but are
 **Plan Author:** Claude Code
 **Initial Date:** 2025-12-28
 **Updated:** 2025-12-30
-**Version:** 2.3 (Phase 3 Complete)
+**Version:** 2.4 (Phase 4 Settings Validation Complete)
 
 **Business Decisions:** ✅ All answered (see "Decisions Made" section)
 **Scope:** MVP - 6 weeks to production
-**Status:** Phase 3 COMPLETE - Ready for Phase 4 (Frontend Integration)
+**Status:** Phase 4 IN PROGRESS - Settings validation complete, remaining tasks: error handling, frontend UI
 
 **Implementation Changes from v1.0:**
 
@@ -1232,18 +1197,23 @@ The following features are **not included in the 6-week implementation** but are
 - [x] Frontend merged into Phase 4
 - [x] Future enhancements documented
 
-**Latest Updates (v2.3):**
+**Latest Updates (v2.4):**
 
 - [x] Phase 3 COMPLETE: Stripe webhook processing and refunds fully implemented
   - Webhook infrastructure with signature verification and idempotency
-  - Success handler (`checkout.session.completed`) activates enrollments
+  - Success handler (`checkout.session.completed`) activates enrollments with status validation
   - Failure handler (`checkout.session.async_payment_failed`) marks failed payments
-  - Refund handler (`charge.refunded`) processes full and partial refunds
+  - Refund handler (`charge.refunded`) processes full and partial refunds with email notifications
   - Email notification system with HTML and plain text templates
-  - 8 comprehensive webhook tests + 1 email test (19 total payment tests)
-  - Code review improvements: status validation, error handling, documentation
-  - All webhook handlers include enrollment status validation
+  - 19 comprehensive payment tests (models, checkout, free enrollment, webhooks, emails)
+  - Enrollment status validation prevents invalid state transitions from late or duplicate webhooks
   - Email delivery failures don't cause webhook processing to fail
+
+- [x] Phase 4 Settings Validation COMPLETE (PR #28): Django system checks for Stripe configuration
+  - `payments/checks.py` validates required Stripe settings in production
+  - Tagged with 'deploy' to only run with --deploy flag or when DEBUG=False
+  - Warns if webhook secret appears to be test mode in production
+  - Clear error messages with hints for missing configuration
 
 **Next Steps:**
 
@@ -1252,7 +1222,8 @@ The following features are **not included in the 6-week implementation** but are
 3. ✅ ~~Phase 1: Foundation & Models~~ - COMPLETE (PR #26)
 4. ✅ ~~Phase 2: Payment Flow - Checkout Session~~ - COMPLETE (Merged 2025-12-29)
 5. ✅ ~~Phase 3: Webhook Handling + Refunds~~ - COMPLETE (PR #28, Merged 2025-12-30)
-6. **Phase 4: Error Handling + Frontend Integration** - Next (Week 4)
+6. 🚧 **Phase 4: Error Handling + Frontend Integration** - IN PROGRESS (Settings Validation ✅)
+   - Remaining: Orphaned record cleanup, Stripe API error handling, frontend UI, documentation
 
 ---
 

@@ -8,7 +8,7 @@ THINK eLearn is a **production-ready Django/Wagtail educational technology platf
 
 ## Architecture
 
-- **Framework**: Django 5.2.3 with Wagtail 7.0.1 CMS
+- **Framework**: Django 6.0+ with Wagtail 7.2.1+ CMS
 - **Development Environment**: Docker Compose (web, PostgreSQL, pgAdmin, Mailpit, CSS builder)
 - **Database**: PostgreSQL (Docker for development, Railway managed for production)
 - **Styling**: Tailwind CSS with custom brown/orange design system (auto-built in Docker)
@@ -20,7 +20,51 @@ THINK eLearn is a **production-ready Django/Wagtail educational technology platf
   - `portfolio`: PortfolioIndexPage, ProjectPage, PortfolioCategory models with unified client work and capability demonstration system
   - `blog`: Full BlogIndexPage and BlogPage with categories, tags, and pagination
   - `communications`: Advanced Twilio SMS/voicemail system with admin workflow
+  - `payments`: Stripe payment integration with background task processing
   - `search`: Built-in Wagtail search functionality
+
+## ⚠️ Background Tasks - CRITICAL FOR AI ASSISTANTS
+
+**This project uses Django 6.0's native `django.tasks` framework for background tasks.**
+
+### DO NOT Use These Frameworks:
+- ❌ **Celery** - Not installed, do not use `@app.task` or `.delay()` syntax
+- ❌ **Django-Q2** - Not installed, do not use `async_task()` or Q_CLUSTER
+- ❌ **Django-RQ** - Not installed
+- ❌ **Huey** - Not installed
+
+### ✅ Correct Syntax (Django 6.0 Native):
+
+```python
+# Defining a task
+from django.tasks import task
+
+@task()
+def send_email(user_id: int) -> None:
+    # Task implementation
+    pass
+
+# Enqueueing a task
+send_email.enqueue(user_id=123)
+
+# Scheduled task (runs periodically)
+from datetime import timedelta
+
+@task(run_every=timedelta(hours=24))
+def daily_cleanup() -> None:
+    # Runs once per day
+    pass
+
+# Running the worker
+python manage.py taskworker
+```
+
+**📖 Complete Documentation:** See `docs/django-background-tasks.md` for comprehensive AI assistant guidance with syntax comparisons and common pitfalls.
+
+**Current Use Cases:**
+- Async email sending (refund notifications)
+- Scheduled cleanup of abandoned enrollments
+- Background SCORM package processing (planned)
 
 ## Settings Structure
 
@@ -186,6 +230,9 @@ docker-compose exec web python manage.py setup_lms --with-categories --with-tags
 
 # Portfolio setup
 docker-compose exec web python manage.py setup_portfolio
+
+# Background task worker (Django 6.0 native tasks)
+docker-compose exec web python manage.py taskworker
 
 # Static files (handled automatically by CSS service)
 docker-compose exec web python manage.py collectstatic
