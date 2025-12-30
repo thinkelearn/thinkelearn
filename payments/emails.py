@@ -1,7 +1,6 @@
 import logging
 
 from django.conf import settings
-from django.contrib.sites.models import Site
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
 
@@ -25,16 +24,6 @@ def send_refund_confirmation(
         )
         return
 
-    # Get current site with fallback if not configured
-    try:
-        current_site = Site.objects.get_current()
-        site_domain = current_site.domain
-    except Site.DoesNotExist:
-        logger.warning("No Site configured, using default domain")
-        site_domain = getattr(settings, "DEFAULT_DOMAIN", "thinkelearn.com")
-
-    support_email = getattr(settings, "SUPPORT_EMAIL", settings.DEFAULT_FROM_EMAIL)
-
     context = {
         "enrollment": enrollment,
         "course_name": enrollment.course.title,
@@ -43,8 +32,7 @@ def send_refund_confirmation(
         "refund_date": refund_date,
         "is_partial": is_partial,
         "site_name": getattr(settings, "SITE_NAME", "THINK eLearn"),
-        "support_email": support_email,
-        "site_domain": site_domain,
+        "support_email": getattr(settings, "SUPPORT_EMAIL", settings.CONTACT_EMAIL),
     }
 
     html_message = render_to_string("emails/refund_confirmation.html", context)
