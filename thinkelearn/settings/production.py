@@ -3,6 +3,7 @@ import os
 import dj_database_url
 import sentry_sdk
 from sentry_sdk.integrations.django import DjangoIntegration
+from django.core.exceptions import ImproperlyConfigured
 
 from .base import *  # noqa: F403,F405
 
@@ -37,6 +38,20 @@ ALLOWED_HOSTS = [
     "www.thinkelearn.com",
     ".railway.app",
 ]
+
+required_stripe_settings = [
+    "STRIPE_SECRET_KEY",
+    "STRIPE_PUBLISHABLE_KEY",
+    "STRIPE_WEBHOOK_SECRET",
+]
+missing_stripe_settings = [
+    key for key in required_stripe_settings if not os.environ.get(key)
+]
+if missing_stripe_settings:
+    raise ImproperlyConfigured(
+        "Missing required Stripe settings: "
+        f"{', '.join(missing_stripe_settings)}"
+    )
 
 # Database configuration - Railway provides both DATABASE_URL and individual vars
 if os.environ.get("DATABASE_URL"):

@@ -12,6 +12,7 @@ dependencies = [
     "mailtrap>=2.4.0",
     "psycopg[binary]>=3.2.9",
     "sentry-sdk[django]>=2.31.0",
+    "stripe>=12.0.0",
     "twilio>=9.6.3",
     "wagtail>=7.0.1",
     "wagtail-lms>=0.4.0",
@@ -135,7 +136,14 @@ DJANGO_SETTINGS_MODULE = "thinkelearn.settings.test"
 python_files = ["tests.py", "test_*.py", "*_tests.py"]
 python_classes = ["Test*", "*Tests"]
 python_functions = ["test_*"]
-testpaths = ["home/tests", "blog/tests", "communications/tests", "portfolio", "lms"]
+testpaths = [
+    "home/tests",
+    "blog/tests",
+    "communications/tests",
+    "portfolio",
+    "lms",
+    "payments",
+]
 addopts = [
     "--verbose",
     "--tb=short",
