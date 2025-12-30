@@ -24,19 +24,19 @@ def check_stripe_configuration(app_configs, **kwargs):
 
     # At this point we're in production mode or running deployment checks
     required_settings = {
-        "STRIPE_SECRET_KEY": "Stripe secret key",
-        "STRIPE_PUBLISHABLE_KEY": "Stripe publishable key",
-        "STRIPE_WEBHOOK_SECRET": "Stripe webhook signing secret",
+        "STRIPE_SECRET_KEY": ("Stripe secret key", "payments.E001"),
+        "STRIPE_PUBLISHABLE_KEY": ("Stripe publishable key", "payments.E002"),
+        "STRIPE_WEBHOOK_SECRET": ("Stripe webhook signing secret", "payments.E003"),
     }
 
-    for setting_name, description in required_settings.items():
+    for setting_name, (description, error_id) in required_settings.items():
         value = getattr(settings, setting_name, None)
         if not value or value == "":
             errors.append(
                 Error(
                     f"{description} is not configured",
                     hint=f"Set {setting_name} in environment variables",
-                    id=f"payments.E00{len(errors) + 1}",
+                    id=error_id,
                 )
             )
 
