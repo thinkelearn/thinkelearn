@@ -407,14 +407,28 @@ def stripe_webhook(request):
         return JsonResponse({"error": "Missing event ID."}, status=400)
 
     with transaction.atomic():
-        webhook_event, created = WebhookEvent.objects.select_for_update().get_or_create(
-            stripe_event_id=event_id,
-            defaults={
-                "event_type": event_type or "unknown",
-                "raw_event_data": event_data,
-                "success": False,
-            },
-        )
+        # Handle race conditions: try get first, create if not found, retry get if create races
+        try:
+            webhook_event = WebhookEvent.objects.select_for_update().get(
+                stripe_event_id=event_id
+            )
+            created = False
+        except WebhookEvent.DoesNotExist:
+            try:
+                webhook_event = WebhookEvent.objects.create(
+                    stripe_event_id=event_id,
+                    event_type=event_type or "unknown",
+                    raw_event_data=event_data,
+                    success=False,
+                )
+                created = True
+            except IntegrityError:
+                # Another transaction created the same event concurrently - retry get
+                webhook_event = WebhookEvent.objects.select_for_update().get(
+                    stripe_event_id=event_id
+                )
+                created = False
+
         if not created and webhook_event.success:
             logger.info(
                 "Stripe webhook already processed",

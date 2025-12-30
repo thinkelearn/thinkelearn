@@ -230,17 +230,36 @@ def handle_checkout_session_completed(event: dict) -> None:
         enrollment.mark_paid()
 
         if payment:
-            payment_updates = ["status", "stripe_event_id", "failure_reason"]
-            payment.status = Payment.Status.SUCCEEDED
-            payment.stripe_event_id = event.get("id", "")
-            payment.failure_reason = ""
-            if session_id and payment.stripe_checkout_session_id != session_id:
-                payment.stripe_checkout_session_id = session_id
-                payment_updates.append("stripe_checkout_session_id")
-            if payment_intent and payment.stripe_payment_intent_id != payment_intent:
-                payment.stripe_payment_intent_id = payment_intent
-                payment_updates.append("stripe_payment_intent_id")
-            payment.save(update_fields=payment_updates)
+            # Re-fetch payment with row-level lock to prevent concurrent updates
+            try:
+                locked_payment = Payment.objects.select_for_update().get(id=payment.id)
+            except Payment.DoesNotExist:
+                logger.warning(
+                    "Checkout session completed but payment disappeared during processing",
+                    extra={
+                        "event_id": event.get("id"),
+                        "enrollment_id": enrollment.id,
+                        "session_id": session_id,
+                    },
+                )
+            else:
+                payment_updates = ["status", "stripe_event_id", "failure_reason"]
+                locked_payment.status = Payment.Status.SUCCEEDED
+                locked_payment.stripe_event_id = event.get("id", "")
+                locked_payment.failure_reason = ""
+                if (
+                    session_id
+                    and locked_payment.stripe_checkout_session_id != session_id
+                ):
+                    locked_payment.stripe_checkout_session_id = session_id
+                    payment_updates.append("stripe_checkout_session_id")
+                if (
+                    payment_intent
+                    and locked_payment.stripe_payment_intent_id != payment_intent
+                ):
+                    locked_payment.stripe_payment_intent_id = payment_intent
+                    payment_updates.append("stripe_payment_intent_id")
+                locked_payment.save(update_fields=payment_updates)
         else:
             logger.warning(
                 "Checkout session completed but payment not found",
