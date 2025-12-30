@@ -1,0 +1,33 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep:*)",
+      "Bash(docker logs:*)",
+      "Bash(docker-compose logs:*)",
+      "Bash(curl:*)",
+      "Bash(npm run build-css-prod:*)",
+      "Bash(python -m pytest home/tests/test_commands.py::CreateAdminCommandTest::test_create_admin_command -v)",
+      "Bash(python -m pytest home/tests/test_commands.py::CreateAdminCommandTest::test_create_admin_command -v --create-db)",
+      "Bash(python -m pytest home/tests/test_commands.py::CreateAdminCommandTest::test_create_admin_command -v --tb=line)",
+      "Bash(python manage.py test:*)",
+      "Bash(chmod:*)",
+      "Bash(rm:*)",
+      "Bash(mkdir:*)",
+      "Bash(cp:*)",
+      "mcp__playwright__browser_click",
+      "mcp__playwright__browser_evaluate",
+      "mcp__playwright__browser_navigate",
+      "Bash(uv run pytest portfolio/test_gallery_integration.py::GalleryLightboxIntegrationTest::test_gallery_lightbox_opens_and_closes -v)",
+      "mcp__playwright__browser_take_screenshot",
+      "mcp__playwright__browser_console_messages",
+      "mcp__playwright__browser_network_requests",
+      "Bash(uv run pytest:*)",
+      "mcp__github__pull_request_read",
+      "Bash(docker-compose exec:*)",
+      "mcp__sentry__search_issues",
+      "mcp__sentry__get_issue_details",
+      "Bash(gh pr view:*)"
+    ],
+    "deny": []
+  }
+}

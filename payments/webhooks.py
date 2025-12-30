@@ -29,6 +29,7 @@ This prevents invalid state transitions from:
 import logging
 from decimal import Decimal
 
+from django.core.exceptions import ObjectDoesNotExist
 from django.db import transaction
 from django.utils import timezone
 
@@ -90,6 +91,21 @@ def _get_enrollment_from_session(
 def _get_payment_for_enrollment(
     enrollment: EnrollmentRecord | None, session: dict
 ) -> Payment | None:
+    """Get payment record for enrollment from Stripe session data.
+
+    Tries multiple strategies in priority order:
+    1. Match by payment_intent (most reliable)
+    2. Match by session_id (also reliable)
+    3. Fallback: Find PROCESSING payment for enrollment
+    4. Last resort: Latest payment by creation time
+
+    Args:
+        enrollment: EnrollmentRecord instance or None
+        session: Stripe session dict
+
+    Returns:
+        Payment instance if found, None otherwise
+    """
     payment_intent = session.get("payment_intent")
     if payment_intent:
         payment = Payment.objects.filter(
@@ -105,6 +121,18 @@ def _get_payment_for_enrollment(
             return payment
 
     if enrollment:
+        # Prefer PROCESSING status (likely current payment)
+        payment = (
+            Payment.objects.filter(
+                enrollment_record=enrollment, status=Payment.Status.PROCESSING
+            )
+            .order_by("-created_at")
+            .first()
+        )
+        if payment:
+            return payment
+
+        # Fallback: Latest payment regardless of status
         return (
             Payment.objects.filter(enrollment_record=enrollment)
             .order_by("-created_at")
@@ -429,13 +457,12 @@ def handle_charge_refunded(event: dict) -> None:
             if enrollment.course_enrollment_id:
                 try:
                     enrollment.course_enrollment.delete()
-                except Exception as exc:
+                except ObjectDoesNotExist:
                     logger.warning(
-                        "CourseEnrollment deletion failed (may already be deleted)",
+                        "CourseEnrollment already deleted (concurrent deletion or manual admin action)",
                         extra={
                             "enrollment_id": enrollment.id,
                             "course_enrollment_id": enrollment.course_enrollment_id,
-                            "error": str(exc),
                         },
                     )
 

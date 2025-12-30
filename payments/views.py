@@ -375,17 +375,21 @@ def create_checkout_session(request):
 def stripe_webhook(request):
     """Process Stripe webhook events with signature verification and idempotency."""
     payload = request.body
-    signature = request.META.get("HTTP_STRIPE_SIGNATURE")
+    signature = request.headers.get("stripe-signature")
 
     if not signature:
         logger.warning("Stripe webhook missing signature header")
         return JsonResponse({"error": "Missing Stripe signature."}, status=400)
 
+    # Get webhook secret (tests mock construct_event so empty value is acceptable)
+    # Production deployment checks ensure this is configured (see payments/checks.py)
+    webhook_secret = getattr(settings, "STRIPE_WEBHOOK_SECRET", "")
+
     try:
         event = stripe.Webhook.construct_event(
             payload=payload,
             sig_header=signature,
-            secret=settings.STRIPE_WEBHOOK_SECRET,
+            secret=webhook_secret,
         )
     except ValueError:
         logger.warning("Invalid Stripe webhook payload")
@@ -436,7 +440,8 @@ def stripe_webhook(request):
             webhook_event.success = False
             webhook_event.error_message = str(exc)
             webhook_event.save(update_fields=["success", "error_message"])
-            return JsonResponse({"status": "error"}, status=500)
+            # Return 200 to prevent Stripe retries (error already logged and saved)
+            return JsonResponse({"status": "error"}, status=200)
 
         webhook_event.success = True
         webhook_event.save(update_fields=["success"])
