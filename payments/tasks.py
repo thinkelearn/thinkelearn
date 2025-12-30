@@ -5,7 +5,6 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 
 from django.db import transaction
-from django.tasks import task
 from django.utils import timezone
 
 from lms.models import EnrollmentRecord
@@ -19,6 +18,10 @@ def cleanup_abandoned_enrollments(*, cutoff: datetime | None = None) -> int:
     """Cancel pending enrollments older than the cutoff.
 
     Uses select_for_update to prevent race conditions with webhook processing.
+
+    Note: This function is called synchronously for now due to django-tasks
+    compatibility issues with Wagtail 7.2.1. Background task processing will be
+    added when Wagtail supports django-tasks 0.10.0+.
     """
     if cutoff is None:
         cutoff = timezone.now() - timedelta(hours=24)
@@ -37,22 +40,20 @@ def cleanup_abandoned_enrollments(*, cutoff: datetime | None = None) -> int:
     return count
 
 
-@task(run_every=timedelta(hours=24), queue="default")
-def cleanup_abandoned_enrollments_task() -> int:
-    """Scheduled task to clean up abandoned enrollments."""
-    return cleanup_abandoned_enrollments()
-
-
-@task()
-def send_refund_confirmation_task(
+def send_refund_confirmation_email(
     *,
     enrollment_id: int,
-    refund_amount: str,
-    original_amount: str,
-    refund_date: str,
+    refund_amount: Decimal,
+    original_amount: Decimal,
+    refund_date: datetime,
     is_partial: bool = False,
 ) -> None:
-    """Send refund confirmation email asynchronously."""
+    """Send refund confirmation email.
+
+    Note: This function is called synchronously for now due to django-tasks
+    compatibility issues with Wagtail 7.2.1. Background task processing will be
+    added when Wagtail supports django-tasks 0.10.0+.
+    """
     try:
         enrollment = EnrollmentRecord.objects.select_related(
             "user",
@@ -60,22 +61,15 @@ def send_refund_confirmation_task(
         ).get(id=enrollment_id)
     except EnrollmentRecord.DoesNotExist:
         logger.warning(
-            "EnrollmentRecord not found for refund confirmation task",
+            "EnrollmentRecord not found for refund confirmation email",
             extra={"enrollment_id": enrollment_id},
         )
         return
 
-    refund_amount_decimal = Decimal(refund_amount)
-    original_amount_decimal = Decimal(original_amount)
-
-    refund_datetime = datetime.fromisoformat(refund_date)
-    if timezone.is_naive(refund_datetime):
-        refund_datetime = timezone.make_aware(refund_datetime)
-
     send_refund_confirmation(
         enrollment,
-        refund_amount=refund_amount_decimal,
-        original_amount=original_amount_decimal,
-        refund_date=refund_datetime,
+        refund_amount=refund_amount,
+        original_amount=original_amount,
+        refund_date=refund_date,
         is_partial=is_partial,
     )

@@ -176,8 +176,8 @@ class StripeWebhookTests(TestCase):
         self.assertEqual(payment.status, Payment.Status.FAILED)
         self.assertEqual(payment.failure_reason, "unpaid")
 
-    @patch("payments.webhooks.send_refund_confirmation_task.enqueue")
-    def test_charge_refunded_revokes_access(self, enqueue_task):
+    @patch("payments.webhooks.send_refund_confirmation_email")
+    def test_charge_refunded_revokes_access(self, mock_send_email):
         enrollment = EnrollmentRecord.create_for_user(
             self.user, self.product, amount=Decimal("49.00")
         )
@@ -212,15 +212,15 @@ class StripeWebhookTests(TestCase):
         self.assertEqual(enrollment.status, EnrollmentRecord.Status.REFUNDED)
         self.assertIsNone(enrollment.course_enrollment)
         self.assertEqual(payment.status, Payment.Status.REFUNDED)
-        enqueue_task.assert_called_once()
-        _, kwargs = enqueue_task.call_args
+        mock_send_email.assert_called_once()
+        _, kwargs = mock_send_email.call_args
         self.assertEqual(kwargs["enrollment_id"], enrollment.id)
-        self.assertEqual(kwargs["refund_amount"], "49.00")
-        self.assertEqual(kwargs["original_amount"], "49.00")
+        self.assertEqual(kwargs["refund_amount"], Decimal("49.00"))
+        self.assertEqual(kwargs["original_amount"], Decimal("49.00"))
         self.assertFalse(kwargs["is_partial"])
 
-    @patch("payments.webhooks.send_refund_confirmation_task.enqueue")
-    def test_partial_refund_keeps_enrollment_active(self, enqueue_task):
+    @patch("payments.webhooks.send_refund_confirmation_email")
+    def test_partial_refund_keeps_enrollment_active(self, mock_send_email):
         enrollment = EnrollmentRecord.create_for_user(
             self.user, self.product, amount=Decimal("49.00")
         )
@@ -255,15 +255,15 @@ class StripeWebhookTests(TestCase):
         self.assertEqual(enrollment.status, EnrollmentRecord.Status.ACTIVE)
         self.assertEqual(payment.status, Payment.Status.REFUNDED)
         self.assertEqual(payment.failure_reason, "Partial refund")
-        enqueue_task.assert_called_once()
-        _, kwargs = enqueue_task.call_args
+        mock_send_email.assert_called_once()
+        _, kwargs = mock_send_email.call_args
         self.assertEqual(kwargs["enrollment_id"], enrollment.id)
-        self.assertEqual(kwargs["refund_amount"], "20.00")
-        self.assertEqual(kwargs["original_amount"], "49.00")
+        self.assertEqual(kwargs["refund_amount"], Decimal("20.00"))
+        self.assertEqual(kwargs["original_amount"], Decimal("49.00"))
         self.assertTrue(kwargs["is_partial"])
 
-    @patch("payments.webhooks.send_refund_confirmation_task.enqueue")
-    def test_refund_outside_window_logs_warning(self, enqueue_task):
+    @patch("payments.webhooks.send_refund_confirmation_email")
+    def test_refund_outside_window_logs_warning(self, mock_send_email):
         self.product.refund_window_days = 0
         self.product.save(update_fields=["refund_window_days"])
 
@@ -304,7 +304,7 @@ class StripeWebhookTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(enrollment.status, EnrollmentRecord.Status.REFUNDED)
         self.assertEqual(payment.status, Payment.Status.REFUNDED)
-        enqueue_task.assert_called_once()
+        mock_send_email.assert_called_once()
 
     def test_checkout_completed_enrollment_not_found(self):
         """Test checkout completed webhook when enrollment doesn't exist."""
@@ -494,8 +494,8 @@ class StripeWebhookTests(TestCase):
             any("missing payment_intent" in log.lower() for log in logs.output)
         )
 
-    @patch("payments.webhooks.send_refund_confirmation_task.enqueue")
-    def test_refund_user_without_email(self, enqueue_task):
+    @patch("payments.webhooks.send_refund_confirmation_email")
+    def test_refund_user_without_email(self, mock_send_email):
         """Test refund email handling when user has no email address."""
         user_no_email = User.objects.create_user(
             username="noemail", email="", password="pass"
@@ -536,10 +536,10 @@ class StripeWebhookTests(TestCase):
         self.assertEqual(enrollment.status, EnrollmentRecord.Status.REFUNDED)
         self.assertEqual(payment.status, Payment.Status.REFUNDED)
 
-        enqueue_task.assert_called_once()
+        mock_send_email.assert_called_once()
 
-    @patch("payments.webhooks.send_refund_confirmation_task.enqueue")
-    def test_refund_invalid_enrollment_status(self, enqueue_task):
+    @patch("payments.webhooks.send_refund_confirmation_email")
+    def test_refund_invalid_enrollment_status(self, mock_send_email):
         """Test refund for enrollment in invalid status (not ACTIVE/REFUNDED)."""
         enrollment = EnrollmentRecord.create_for_user(
             self.user, self.product, amount=Decimal("49.00")
@@ -582,4 +582,4 @@ class StripeWebhookTests(TestCase):
         self.assertTrue(
             any("not in active/refunded status" in log.lower() for log in logs.output)
         )
-        enqueue_task.assert_not_called()
+        mock_send_email.assert_not_called()

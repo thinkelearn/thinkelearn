@@ -16,7 +16,7 @@ from lms.models import (
 )
 from payments.tasks import (
     cleanup_abandoned_enrollments,
-    send_refund_confirmation_task,
+    send_refund_confirmation_email,
 )
 
 
@@ -84,18 +84,19 @@ class PaymentTaskTests(TestCase):
         enrollment.refresh_from_db()
         self.assertEqual(enrollment.status, EnrollmentRecord.Status.CANCELLED)
 
-    def test_send_refund_confirmation_task(self):
+    def test_send_refund_confirmation_email(self):
         enrollment = EnrollmentRecord.create_for_user(
             self.user, self.product, amount=Decimal("49.00")
         )
         enrollment.mark_paid()
 
+        refund_date = timezone.now()
         with patch("payments.tasks.send_refund_confirmation") as mock_send:
-            send_refund_confirmation_task(
+            send_refund_confirmation_email(
                 enrollment_id=enrollment.id,
-                refund_amount="10.00",
-                original_amount="49.00",
-                refund_date=timezone.now().isoformat(),
+                refund_amount=Decimal("10.00"),
+                original_amount=Decimal("49.00"),
+                refund_date=refund_date,
                 is_partial=True,
             )
 

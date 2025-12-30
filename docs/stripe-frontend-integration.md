@@ -118,63 +118,31 @@ Backend behavior:
 | `STRIPE_PUBLISHABLE_KEY` | Stripe publishable key for frontend usage (reserved) |
 | `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret |
 | `STRIPE_CURRENCY` | Default currency (CAD for launch) |
-| `TASK_WORKER_CONCURRENCY` | Background task worker concurrency |
-| `TASK_WORKER_LOG_LEVEL` | Background task worker log level |
 
-## Railway Deployment
+## Background Tasks
 
-### Task Worker Service Setup
+**Current Implementation: Synchronous**
 
-Background tasks (refund emails, abandoned enrollment cleanup) require a separate worker service in Railway to process the task queue.
+Refund emails and enrollment cleanup are currently executed synchronously (not in background tasks). This is a temporary approach due to dependency compatibility issues:
 
-**Steps to configure Railway task worker:**
+- Django 6.0 requires `django-tasks` 0.10.0+
+- Wagtail 7.2.1 requires `django-tasks` <0.10
+- These requirements are incompatible
 
-1. **In Railway Dashboard:**
-   - Navigate to your project
-   - Click "New Service" → "Empty Service"
-   - Name it "taskworker" (or similar)
+**When Wagtail Updates:**
 
-2. **Configure the worker service:**
-   - **Root Directory:** Same as web service (project root)
-   - **Build Command:** `pip install uv && uv sync --frozen`
-   - **Start Command:** `uv run python manage.py taskworker`
-   - **Environment Variables:** Link to the same environment as your web service (Railway can share env vars across services)
+When Wagtail releases a version compatible with `django-tasks` 0.10.0+, background task processing will be added:
 
-3. **Environment variables required:**
-   - `DATABASE_URL` (automatically provided by Railway PostgreSQL)
-   - `DJANGO_SETTINGS_MODULE=thinkelearn.settings.production`
-   - All Stripe variables (`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, etc.)
-   - `MAILTRAP_API_TOKEN` (for sending refund emails)
-   - Optional: `TASK_WORKER_CONCURRENCY` (default: 4)
-   - Optional: `TASK_WORKER_LOG_LEVEL` (default: INFO)
+1. Install `django-tasks` 0.10.0+
+2. Add task decorators back to functions in `payments/tasks.py`
+3. Update webhook calls to use `.enqueue()`
+4. Configure and deploy task worker service
 
-4. **Health Monitoring:**
-   - The task worker runs continuously
-   - Monitor logs via `railway logs taskworker`
-   - Scheduled cleanup runs every 24 hours automatically
+**Current Behavior:**
 
-**Alternative: Railway CLI setup**
-
-```bash
-# Add worker service using Railway CLI
-railway service create
-# Name: taskworker
-# Start command: uv run python manage.py taskworker
-
-# Link environment variables
-railway variables --service taskworker
-```
-
-**Verify deployment:**
-
-```bash
-# Check worker logs
-railway logs -s taskworker
-
-# You should see:
-# INFO: Task worker started with 4 concurrent workers
-# INFO: Listening for tasks...
-```
+- Refund emails sent synchronously during webhook processing
+- Enrollment cleanup can be triggered manually or via cron job
+- No separate worker service needed
 
 ---
 
@@ -184,5 +152,5 @@ railway logs -s taskworker
 2. Visit the course page and verify the checkout card renders.
 3. Use a Stripe test key and validate redirect behavior.
 4. Confirm success/cancel pages render.
-5. Start local task worker: `uv run python manage.py taskworker`
-6. Verify background tasks process (check console for task logs).
+5. Test refund webhooks to verify email sending works.
+6. Verify enrollment cleanup function works when called manually.
