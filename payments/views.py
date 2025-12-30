@@ -1,6 +1,6 @@
+import hashlib
 import json
 import logging
-import uuid
 from decimal import Decimal, InvalidOperation
 
 from django.conf import settings
@@ -19,6 +19,28 @@ logger = logging.getLogger(__name__)
 
 def get_stripe_client() -> StripeClient:
     return StripeClient(api_key=settings.STRIPE_SECRET_KEY)
+
+
+def generate_idempotency_key(user_id: int, product_id: int, amount: Decimal) -> str:
+    """
+    Generate a deterministic idempotency key for enrollment requests.
+
+    This ensures that retry attempts for the same enrollment request (same user,
+    product, and amount) will use the same idempotency key, preventing duplicate
+    enrollments and Stripe charges.
+
+    Args:
+        user_id: ID of the user making the enrollment request
+        product_id: ID of the course product being purchased
+        amount: Payment amount (Decimal)
+
+    Returns:
+        A 32-character hexadecimal hash suitable for use as an idempotency key
+    """
+    # Create a deterministic string from request parameters
+    key_source = f"{user_id}:{product_id}:{amount}"
+    # Hash to create a unique but reproducible key
+    return hashlib.sha256(key_source.encode()).hexdigest()[:32]
 
 
 @require_POST
@@ -85,6 +107,19 @@ def create_checkout_session(request):
     if raw_amount is not None:
         try:
             amount = Decimal(str(raw_amount))
+            # Validate amount is non-negative
+            if amount < 0:
+                logger.warning(
+                    "Negative amount in checkout session",
+                    extra={
+                        "user_id": request.user.id,
+                        "product_id": product_id,
+                        "raw_amount": raw_amount,
+                    },
+                )
+                return JsonResponse(
+                    {"error": "Amount must be non-negative."}, status=400
+                )
         except (InvalidOperation, TypeError):
             logger.warning(
                 "Invalid amount in checkout session",
@@ -105,13 +140,31 @@ def create_checkout_session(request):
         )
         return JsonResponse({"error": "Product not found."}, status=404)
 
+    # Determine the actual amount for idempotency key generation
+    # This matches the logic in EnrollmentRecord.create_for_user
+    if amount is None:
+        if product.pricing_type == CourseProduct.PricingType.FIXED:
+            actual_amount = product.fixed_price
+        elif product.pricing_type == CourseProduct.PricingType.FREE:
+            actual_amount = Decimal("0")
+        else:
+            # PWYC requires amount to be provided
+            actual_amount = Decimal("0")  # Fallback for idempotency key
+    else:
+        actual_amount = amount
+
+    # Generate deterministic idempotency key to prevent duplicate enrollments on retry
+    idempotency_key = generate_idempotency_key(
+        request.user.id, product.id, actual_amount
+    )
+
     try:
         with transaction.atomic():
             enrollment = EnrollmentRecord.create_for_user(
                 request.user,
                 product,
                 amount=amount,
-                idempotency_key=str(uuid.uuid4()),
+                idempotency_key=idempotency_key,
             )
 
             if enrollment.status == EnrollmentRecord.Status.ACTIVE:

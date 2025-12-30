@@ -84,8 +84,6 @@ class StripeClient:
             except stripe.error.StripeError as exc:
                 raise StripeClientError(str(exc)) from exc
 
-        raise StripeClientError("Stripe API is unavailable. Please try again shortly.")
-
     @staticmethod
     def _to_cents(amount: Decimal) -> int:
         return int((amount * 100).quantize(Decimal("1")))
