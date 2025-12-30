@@ -2,8 +2,8 @@ import os
 
 import dj_database_url
 import sentry_sdk
-from sentry_sdk.integrations.django import DjangoIntegration
 from django.core.exceptions import ImproperlyConfigured
+from sentry_sdk.integrations.django import DjangoIntegration
 
 from .base import *  # noqa: F403,F405
 
@@ -49,8 +49,7 @@ missing_stripe_settings = [
 ]
 if missing_stripe_settings:
     raise ImproperlyConfigured(
-        "Missing required Stripe settings: "
-        f"{', '.join(missing_stripe_settings)}"
+        f"Missing required Stripe settings: {', '.join(missing_stripe_settings)}"
     )
 
 # Database configuration - Railway provides both DATABASE_URL and individual vars
