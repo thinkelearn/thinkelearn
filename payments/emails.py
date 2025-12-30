@@ -25,7 +25,14 @@ def send_refund_confirmation(
         )
         return
 
-    current_site = Site.objects.get_current()
+    # Get current site with fallback if not configured
+    try:
+        current_site = Site.objects.get_current()
+        site_domain = current_site.domain
+    except Site.DoesNotExist:
+        logger.warning("No Site configured, using default domain")
+        site_domain = getattr(settings, "DEFAULT_DOMAIN", "thinkelearn.com")
+
     support_email = getattr(settings, "SUPPORT_EMAIL", settings.DEFAULT_FROM_EMAIL)
 
     context = {
@@ -37,7 +44,7 @@ def send_refund_confirmation(
         "is_partial": is_partial,
         "site_name": getattr(settings, "SITE_NAME", "THINK eLearn"),
         "support_email": support_email,
-        "site_domain": current_site.domain,
+        "site_domain": site_domain,
     }
 
     html_message = render_to_string("emails/refund_confirmation.html", context)

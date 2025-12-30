@@ -304,3 +304,281 @@ class StripeWebhookTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(enrollment.status, EnrollmentRecord.Status.REFUNDED)
         self.assertEqual(payment.status, Payment.Status.REFUNDED)
+
+    def test_checkout_completed_enrollment_not_found(self):
+        """Test checkout completed webhook when enrollment doesn't exist."""
+        event_data = {
+            "id": "evt_no_enrollment",
+            "type": "checkout.session.completed",
+            "data": {
+                "object": {
+                    "id": "cs_test_nonexistent",
+                    "amount_total": 4900,
+                    "payment_intent": "pi_nonexistent",
+                    "metadata": {"enrollment_record_id": "99999"},
+                }
+            },
+        }
+
+        with self.assertLogs("payments.webhooks", level="WARNING") as logs:
+            response = self._post_webhook(event_data)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(
+            any("enrollment not found" in log.lower() for log in logs.output)
+        )
+
+    def test_checkout_completed_payment_not_found(self):
+        """Test checkout completed webhook when payment doesn't exist."""
+        enrollment = EnrollmentRecord.create_for_user(
+            self.user, self.product, amount=Decimal("49.00")
+        )
+
+        event_data = {
+            "id": "evt_no_payment",
+            "type": "checkout.session.completed",
+            "data": {
+                "object": {
+                    "id": "cs_test_no_payment",
+                    "amount_total": 4900,
+                    "payment_intent": "pi_no_payment",
+                    "metadata": {"enrollment_record_id": str(enrollment.id)},
+                }
+            },
+        }
+
+        with self.assertLogs("payments.webhooks", level="WARNING") as logs:
+            response = self._post_webhook(event_data)
+
+        enrollment.refresh_from_db()
+
+        # Enrollment should still be activated even without payment record
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(enrollment.status, EnrollmentRecord.Status.ACTIVE)
+        self.assertTrue(any("payment not found" in log.lower() for log in logs.output))
+
+    def test_checkout_completed_already_active_enrollment(self):
+        """Test checkout completed webhook for already active enrollment."""
+        enrollment = EnrollmentRecord.create_for_user(
+            self.user, self.product, amount=Decimal("49.00")
+        )
+        enrollment.mark_paid()  # Already active
+
+        Payment.objects.create(
+            enrollment_record=enrollment,
+            amount=enrollment.amount_paid,
+            currency=self.product.currency,
+            status=Payment.Status.SUCCEEDED,
+        )
+
+        event_data = {
+            "id": "evt_already_active",
+            "type": "checkout.session.completed",
+            "data": {
+                "object": {
+                    "id": "cs_test_duplicate",
+                    "amount_total": 4900,
+                    "payment_intent": "pi_duplicate",
+                    "metadata": {"enrollment_record_id": str(enrollment.id)},
+                }
+            },
+        }
+
+        with self.assertLogs("payments.webhooks", level="WARNING") as logs:
+            response = self._post_webhook(event_data)
+
+        enrollment.refresh_from_db()
+
+        # Should log warning and not process duplicate
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(enrollment.status, EnrollmentRecord.Status.ACTIVE)
+        self.assertTrue(
+            any("not in pending/failed status" in log.lower() for log in logs.output)
+        )
+
+    def test_async_payment_failed_enrollment_not_found(self):
+        """Test async payment failed webhook when enrollment doesn't exist."""
+        event_data = {
+            "id": "evt_failed_no_enrollment",
+            "type": "checkout.session.async_payment_failed",
+            "data": {
+                "object": {
+                    "id": "cs_test_failed_nonexistent",
+                    "payment_status": "unpaid",
+                    "metadata": {"enrollment_record_id": "99999"},
+                }
+            },
+        }
+
+        with self.assertLogs("payments.webhooks", level="WARNING") as logs:
+            response = self._post_webhook(event_data)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(
+            any("enrollment not found" in log.lower() for log in logs.output)
+        )
+
+    def test_async_payment_failed_already_active(self):
+        """Test async payment failed for already active enrollment."""
+        enrollment = EnrollmentRecord.create_for_user(
+            self.user, self.product, amount=Decimal("49.00")
+        )
+        enrollment.mark_paid()  # Already active
+
+        event_data = {
+            "id": "evt_failed_active",
+            "type": "checkout.session.async_payment_failed",
+            "data": {
+                "object": {
+                    "id": "cs_test_failed_active",
+                    "payment_status": "unpaid",
+                    "metadata": {"enrollment_record_id": str(enrollment.id)},
+                }
+            },
+        }
+
+        with self.assertLogs("payments.webhooks", level="WARNING") as logs:
+            response = self._post_webhook(event_data)
+
+        enrollment.refresh_from_db()
+
+        # Should not change status from ACTIVE to PAYMENT_FAILED
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(enrollment.status, EnrollmentRecord.Status.ACTIVE)
+        self.assertTrue(
+            any("not in pending status" in log.lower() for log in logs.output)
+        )
+
+    def test_refund_payment_not_found(self):
+        """Test refund webhook when payment doesn't exist."""
+        event_data = {
+            "id": "evt_refund_no_payment",
+            "type": "charge.refunded",
+            "data": {
+                "object": {
+                    "payment_intent": "pi_nonexistent",
+                    "amount": 4900,
+                    "amount_refunded": 4900,
+                    "refunded": True,
+                }
+            },
+        }
+
+        with self.assertLogs("payments.webhooks", level="WARNING") as logs:
+            response = self._post_webhook(event_data)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(any("payment not found" in log.lower() for log in logs.output))
+
+    def test_refund_missing_payment_intent(self):
+        """Test refund webhook missing payment_intent field."""
+        event_data = {
+            "id": "evt_refund_no_intent",
+            "type": "charge.refunded",
+            "data": {
+                "object": {
+                    # Missing payment_intent
+                    "amount": 4900,
+                    "amount_refunded": 4900,
+                    "refunded": True,
+                }
+            },
+        }
+
+        with self.assertLogs("payments.webhooks", level="WARNING") as logs:
+            response = self._post_webhook(event_data)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(
+            any("missing payment_intent" in log.lower() for log in logs.output)
+        )
+
+    def test_refund_user_without_email(self):
+        """Test refund email handling when user has no email address."""
+        user_no_email = User.objects.create_user(
+            username="noemail", email="", password="pass"
+        )
+        enrollment = EnrollmentRecord.create_for_user(
+            user_no_email, self.product, amount=Decimal("49.00")
+        )
+        enrollment.mark_paid()
+
+        payment = Payment.objects.create(
+            enrollment_record=enrollment,
+            amount=enrollment.amount_paid,
+            currency=self.product.currency,
+            status=Payment.Status.SUCCEEDED,
+            stripe_payment_intent_id="pi_no_email",
+        )
+
+        event_data = {
+            "id": "evt_refund_no_email",
+            "type": "charge.refunded",
+            "data": {
+                "object": {
+                    "payment_intent": "pi_no_email",
+                    "amount": 4900,
+                    "amount_refunded": 4900,
+                    "refunded": True,
+                }
+            },
+        }
+
+        with self.assertLogs("payments.emails", level="WARNING") as logs:
+            response = self._post_webhook(event_data)
+
+        enrollment.refresh_from_db()
+        payment.refresh_from_db()
+
+        # Refund should still process successfully
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(enrollment.status, EnrollmentRecord.Status.REFUNDED)
+        self.assertEqual(payment.status, Payment.Status.REFUNDED)
+
+        # Email should be skipped with warning logged
+        self.assertEqual(len(mail.outbox), 0)
+        self.assertTrue(any("missing email" in log.lower() for log in logs.output))
+
+    def test_refund_invalid_enrollment_status(self):
+        """Test refund for enrollment in invalid status (not ACTIVE/REFUNDED)."""
+        enrollment = EnrollmentRecord.create_for_user(
+            self.user, self.product, amount=Decimal("49.00")
+        )
+        # Keep enrollment in PENDING_PAYMENT status
+
+        payment = Payment.objects.create(
+            enrollment_record=enrollment,
+            amount=enrollment.amount_paid,
+            currency=self.product.currency,
+            status=Payment.Status.SUCCEEDED,
+            stripe_payment_intent_id="pi_invalid_status",
+        )
+
+        event_data = {
+            "id": "evt_refund_invalid_status",
+            "type": "charge.refunded",
+            "data": {
+                "object": {
+                    "payment_intent": "pi_invalid_status",
+                    "amount": 4900,
+                    "amount_refunded": 4900,
+                    "refunded": True,
+                }
+            },
+        }
+
+        with self.assertLogs("payments.webhooks", level="WARNING") as logs:
+            response = self._post_webhook(event_data)
+
+        enrollment.refresh_from_db()
+        payment.refresh_from_db()
+
+        # Payment should be updated, but enrollment status should not change
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            enrollment.status, EnrollmentRecord.Status.PENDING_PAYMENT
+        )  # Unchanged
+        self.assertEqual(payment.status, Payment.Status.REFUNDED)
+        self.assertTrue(
+            any("not in active/refunded status" in log.lower() for log in logs.output)
+        )

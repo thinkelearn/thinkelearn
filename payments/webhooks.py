@@ -1,3 +1,31 @@
+"""Stripe webhook event handlers for payment processing.
+
+This module implements reliable, idempotent webhook processing for Stripe payment
+events using Django's atomic transactions and row-level locking.
+
+ARCHITECTURE:
+- Event handlers are dispatched through EVENT_HANDLERS registry
+- All handlers are idempotent (safe to retry/replay)
+- Database operations use atomic transactions with row-level locking
+- Pre-check/lock/re-validate pattern prevents race conditions
+
+RELIABILITY FEATURES:
+1. Idempotency: WebhookEvent model (in views.py) prevents duplicate processing
+2. Race condition safety: select_for_update() ensures atomic status transitions
+3. Graceful degradation: Errors logged but don't fail webhook acknowledgment
+4. Email isolation: Email failures don't block critical business logic
+
+STATUS VALIDATION:
+All handlers validate enrollment status twice:
+1. Pre-check (no lock): Fast rejection of invalid states
+2. Post-lock validation: Handles concurrent webhooks that changed status
+
+This prevents invalid state transitions from:
+- Out-of-order webhook delivery
+- Duplicate webhooks (Stripe retries)
+- Manual admin actions during webhook processing
+"""
+
 import logging
 from decimal import Decimal
 
@@ -29,25 +57,33 @@ def _cents_to_decimal(amount_cents: int | None) -> Decimal | None:
     return (Decimal(amount_cents) / CENTS_IN_DOLLAR).quantize(DECIMAL_PLACES)
 
 
-def _get_enrollment_from_session(session: dict) -> EnrollmentRecord | None:
+def _get_enrollment_from_session(
+    session: dict, *, lock: bool = False
+) -> EnrollmentRecord | None:
+    """Get enrollment record from Stripe session data.
+
+    Args:
+        session: Stripe session object
+        lock: If True, use select_for_update() to lock the row (requires transaction)
+
+    Returns:
+        EnrollmentRecord if found, None otherwise
+    """
     metadata = session.get("metadata") or {}
     enrollment_id = metadata.get("enrollment_record_id")
+
+    queryset = EnrollmentRecord.objects.select_related("product", "product__course")
+    if lock:
+        queryset = queryset.select_for_update()
+
     if enrollment_id:
-        enrollment = (
-            EnrollmentRecord.objects.select_related("product", "product__course")
-            .filter(id=enrollment_id)
-            .first()
-        )
+        enrollment = queryset.filter(id=enrollment_id).first()
         if enrollment:
             return enrollment
 
     session_id = session.get("id")
     if session_id:
-        return (
-            EnrollmentRecord.objects.select_related("product", "product__course")
-            .filter(stripe_checkout_session_id=session_id)
-            .first()
-        )
+        return queryset.filter(stripe_checkout_session_id=session_id).first()
     return None
 
 
@@ -83,6 +119,14 @@ def handle_checkout_session_completed(event: dict) -> None:
 
     Activates enrollment and creates CourseEnrollment after successful payment.
     Only processes enrollments in PENDING_PAYMENT or PAYMENT_FAILED status.
+
+    DESIGN DECISIONS:
+    - Pre-check/lock/re-validate pattern: Prevents unnecessary row locking when
+      enrollment is in invalid state, while ensuring atomic status changes.
+    - Early validation: First check is cheap (no lock), second check (after lock)
+      handles race conditions from concurrent webhooks.
+    - Row-level locking: Prevents duplicate activations from concurrent webhook
+      deliveries (Stripe retries, replay attacks, etc.).
     """
     session = event["data"]["object"]
     enrollment = _get_enrollment_from_session(session)
@@ -96,7 +140,7 @@ def handle_checkout_session_completed(event: dict) -> None:
         )
         return
 
-    # Validate enrollment status before processing
+    # Pre-check status to avoid unnecessary locking (performance optimization)
     if enrollment.status not in [
         EnrollmentRecord.Status.PENDING_PAYMENT,
         EnrollmentRecord.Status.PAYMENT_FAILED,
@@ -111,12 +155,37 @@ def handle_checkout_session_completed(event: dict) -> None:
         )
         return
 
-    payment = _get_payment_for_enrollment(enrollment, session)
     amount_total = _cents_to_decimal(session.get("amount_total"))
     payment_intent = session.get("payment_intent") or ""
     session_id = session.get("id")
 
     with transaction.atomic():
+        # Re-fetch with row-level lock to prevent race conditions
+        enrollment = _get_enrollment_from_session(session, lock=True)
+        if not enrollment:
+            logger.error(
+                "Enrollment disappeared during webhook processing",
+                extra={"event_id": event.get("id"), "session_id": session_id},
+            )
+            return
+
+        # Re-validate status after acquiring lock
+        if enrollment.status not in [
+            EnrollmentRecord.Status.PENDING_PAYMENT,
+            EnrollmentRecord.Status.PAYMENT_FAILED,
+        ]:
+            logger.info(
+                "Enrollment status changed after acquiring lock (likely processed by concurrent webhook)",
+                extra={
+                    "event_id": event.get("id"),
+                    "enrollment_id": enrollment.id,
+                    "current_status": enrollment.status,
+                },
+            )
+            return
+
+        payment = _get_payment_for_enrollment(enrollment, session)
+
         update_fields = []
         if amount_total is not None and enrollment.amount_paid != amount_total:
             enrollment.amount_paid = amount_total
@@ -160,6 +229,13 @@ def handle_checkout_session_async_payment_failed(event: dict) -> None:
 
     Marks enrollment as PAYMENT_FAILED when payment fails after checkout.
     Only processes enrollments currently in PENDING_PAYMENT status.
+
+    DESIGN DECISIONS:
+    - Strict status validation: Only transitions from PENDING_PAYMENT to avoid
+      incorrect status changes from late webhooks (e.g., failure webhook arriving
+      after successful payment webhook).
+    - Pre-check/lock/re-validate: Same pattern as checkout completed for
+      consistency and race condition safety.
     """
     session = event["data"]["object"]
     enrollment = _get_enrollment_from_session(session)
@@ -173,23 +249,48 @@ def handle_checkout_session_async_payment_failed(event: dict) -> None:
         )
         return
 
-    payment = _get_payment_for_enrollment(enrollment, session)
+    # Pre-check status to avoid unnecessary locking
+    if enrollment.status != EnrollmentRecord.Status.PENDING_PAYMENT:
+        logger.warning(
+            "Async payment failed for enrollment not in pending status",
+            extra={
+                "event_id": event.get("id"),
+                "enrollment_id": enrollment.id,
+                "current_status": enrollment.status,
+            },
+        )
+        return
+
     failure_reason = session.get("payment_status") or "Async payment failed"
 
     with transaction.atomic():
-        # Only mark as failed if currently pending payment
-        if enrollment.status == EnrollmentRecord.Status.PENDING_PAYMENT:
-            enrollment.transition_to(EnrollmentRecord.Status.PAYMENT_FAILED)
-        else:
-            logger.warning(
-                "Async payment failed for enrollment not in pending status",
+        # Re-fetch with row-level lock to prevent race conditions
+        enrollment = _get_enrollment_from_session(session, lock=True)
+        if not enrollment:
+            logger.error(
+                "Enrollment disappeared during webhook processing",
+                extra={
+                    "event_id": event.get("id"),
+                    "session_id": session.get("id"),
+                },
+            )
+            return
+
+        # Re-validate status after acquiring lock
+        if enrollment.status != EnrollmentRecord.Status.PENDING_PAYMENT:
+            logger.info(
+                "Enrollment status changed after acquiring lock (likely processed by concurrent webhook)",
                 extra={
                     "event_id": event.get("id"),
                     "enrollment_id": enrollment.id,
                     "current_status": enrollment.status,
                 },
             )
+            return
 
+        enrollment.transition_to(EnrollmentRecord.Status.PAYMENT_FAILED)
+
+        payment = _get_payment_for_enrollment(enrollment, session)
         if payment:
             payment.status = Payment.Status.FAILED
             payment.failure_reason = failure_reason
@@ -211,6 +312,19 @@ def handle_charge_refunded(event: dict) -> None:
     Handles both full and partial refunds. Full refunds revoke course access,
     partial refunds keep enrollment active. Sends email confirmation in both cases.
     Only processes refunds for enrollments in ACTIVE or REFUNDED status.
+
+    DESIGN DECISIONS:
+    - Email failure isolation: Wrapped in try/except to prevent email delivery
+      issues from blocking critical business logic (refund processing).
+    - Status-based processing: Only ACTIVE/REFUNDED enrollments trigger full
+      processing. Other statuses still update payment records but skip enrollment
+      changes to maintain data integrity.
+    - No select_related with locks: select_for_update() doesn't support nullable
+      outer joins (course_enrollment), so we omit select_related when locking.
+    - Partial refund handling: Keeps enrollment ACTIVE and logs as "Partial refund"
+      in payment.failure_reason for accounting purposes.
+    - CourseEnrollment deletion safety: Try/except handles already-deleted objects
+      (e.g., manual admin deletions, concurrent operations).
     """
     charge = event["data"]["object"]
     payment_intent = charge.get("payment_intent")
@@ -261,7 +375,7 @@ def handle_charge_refunded(event: dict) -> None:
             },
         )
 
-    # Validate enrollment status before processing refund
+    # Pre-check enrollment status before acquiring lock
     if enrollment.status not in [
         EnrollmentRecord.Status.ACTIVE,
         EnrollmentRecord.Status.REFUNDED,
@@ -276,6 +390,7 @@ def handle_charge_refunded(event: dict) -> None:
         )
         # Still process payment status update but skip enrollment changes
         with transaction.atomic():
+            payment = Payment.objects.select_for_update().get(id=payment.id)
             payment.status = Payment.Status.REFUNDED
             payment.stripe_event_id = event.get("id", "")
             payment.failure_reason = "Partial refund" if not is_full_refund else ""
@@ -283,11 +398,46 @@ def handle_charge_refunded(event: dict) -> None:
         return
 
     with transaction.atomic():
+        # Re-fetch enrollment and payment with row-level locks
+        # Note: Can't use select_related with nullable relations when using select_for_update
+        enrollment = EnrollmentRecord.objects.select_for_update().get(id=enrollment.id)
+        payment = Payment.objects.select_for_update().get(id=payment.id)
+
+        # Re-validate status after acquiring lock
+        if enrollment.status not in [
+            EnrollmentRecord.Status.ACTIVE,
+            EnrollmentRecord.Status.REFUNDED,
+        ]:
+            logger.info(
+                "Enrollment status changed after acquiring lock (likely processed by concurrent webhook)",
+                extra={
+                    "event_id": event.get("id"),
+                    "enrollment_id": enrollment.id,
+                    "current_status": enrollment.status,
+                },
+            )
+            # Still update payment status
+            payment.status = Payment.Status.REFUNDED
+            payment.stripe_event_id = event.get("id", "")
+            payment.failure_reason = "Partial refund" if not is_full_refund else ""
+            payment.save(update_fields=["status", "stripe_event_id", "failure_reason"])
+            return
+
         if is_full_refund:
             if enrollment.status != EnrollmentRecord.Status.REFUNDED:
                 enrollment.transition_to(EnrollmentRecord.Status.REFUNDED)
             if enrollment.course_enrollment_id:
-                enrollment.course_enrollment.delete()
+                try:
+                    enrollment.course_enrollment.delete()
+                except Exception as exc:
+                    logger.warning(
+                        "CourseEnrollment deletion failed (may already be deleted)",
+                        extra={
+                            "enrollment_id": enrollment.id,
+                            "course_enrollment_id": enrollment.course_enrollment_id,
+                            "error": str(exc),
+                        },
+                    )
 
         payment.status = Payment.Status.REFUNDED
         payment.stripe_event_id = event.get("id", "")
