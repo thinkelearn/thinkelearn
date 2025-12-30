@@ -18,6 +18,7 @@ urlpatterns = [
     path("terms/", views.terms_and_conditions, name="terms_and_conditions"),
     path("communications/", include("communications.urls")),
     path("portfolio/", include("portfolio.urls")),
+    path("payments/", include("payments.urls")),
     path("lms/", include("wagtail_lms.urls")),
     # django-allauth authentication URLs - must be before Wagtail catch-all
     # Reserved path: avoid other "accounts/" URL patterns to prevent conflicts
