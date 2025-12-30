@@ -121,9 +121,68 @@ Backend behavior:
 | `TASK_WORKER_CONCURRENCY` | Background task worker concurrency |
 | `TASK_WORKER_LOG_LEVEL` | Background task worker log level |
 
+## Railway Deployment
+
+### Task Worker Service Setup
+
+Background tasks (refund emails, abandoned enrollment cleanup) require a separate worker service in Railway to process the task queue.
+
+**Steps to configure Railway task worker:**
+
+1. **In Railway Dashboard:**
+   - Navigate to your project
+   - Click "New Service" → "Empty Service"
+   - Name it "taskworker" (or similar)
+
+2. **Configure the worker service:**
+   - **Root Directory:** Same as web service (project root)
+   - **Build Command:** `pip install uv && uv sync --frozen`
+   - **Start Command:** `uv run python manage.py taskworker`
+   - **Environment Variables:** Link to the same environment as your web service (Railway can share env vars across services)
+
+3. **Environment variables required:**
+   - `DATABASE_URL` (automatically provided by Railway PostgreSQL)
+   - `DJANGO_SETTINGS_MODULE=thinkelearn.settings.production`
+   - All Stripe variables (`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, etc.)
+   - `MAILTRAP_API_TOKEN` (for sending refund emails)
+   - Optional: `TASK_WORKER_CONCURRENCY` (default: 4)
+   - Optional: `TASK_WORKER_LOG_LEVEL` (default: INFO)
+
+4. **Health Monitoring:**
+   - The task worker runs continuously
+   - Monitor logs via `railway logs taskworker`
+   - Scheduled cleanup runs every 24 hours automatically
+
+**Alternative: Railway CLI setup**
+
+```bash
+# Add worker service using Railway CLI
+railway service create
+# Name: taskworker
+# Start command: uv run python manage.py taskworker
+
+# Link environment variables
+railway variables --service taskworker
+```
+
+**Verify deployment:**
+
+```bash
+# Check worker logs
+railway logs -s taskworker
+
+# You should see:
+# INFO: Task worker started with 4 concurrent workers
+# INFO: Listening for tasks...
+```
+
+---
+
 ## Local Testing Checklist
 
 1. Create a Course + CourseProduct in Wagtail admin.
 2. Visit the course page and verify the checkout card renders.
 3. Use a Stripe test key and validate redirect behavior.
 4. Confirm success/cancel pages render.
+5. Start local task worker: `uv run python manage.py taskworker`
+6. Verify background tasks process (check console for task logs).

@@ -4,6 +4,7 @@ import logging
 from datetime import datetime, timedelta
 from decimal import Decimal
 
+from django.db import transaction
 from django.tasks import task
 from django.utils import timezone
 
@@ -13,12 +14,18 @@ from payments.emails import send_refund_confirmation
 logger = logging.getLogger(__name__)
 
 
+@transaction.atomic
 def cleanup_abandoned_enrollments(*, cutoff: datetime | None = None) -> int:
-    """Cancel pending enrollments older than the cutoff."""
+    """Cancel pending enrollments older than the cutoff.
+
+    Uses select_for_update to prevent race conditions with webhook processing.
+    """
     if cutoff is None:
         cutoff = timezone.now() - timedelta(hours=24)
 
-    pending_qs = EnrollmentRecord.objects.filter(
+    # Use select_for_update to lock rows and prevent race conditions
+    # with concurrent webhook processing
+    pending_qs = EnrollmentRecord.objects.select_for_update().filter(
         status=EnrollmentRecord.Status.PENDING_PAYMENT,
         created_at__lt=cutoff,
     )
@@ -46,10 +53,17 @@ def send_refund_confirmation_task(
     is_partial: bool = False,
 ) -> None:
     """Send refund confirmation email asynchronously."""
-    enrollment = EnrollmentRecord.objects.select_related(
-        "user",
-        "product__course",
-    ).get(id=enrollment_id)
+    try:
+        enrollment = EnrollmentRecord.objects.select_related(
+            "user",
+            "product__course",
+        ).get(id=enrollment_id)
+    except EnrollmentRecord.DoesNotExist:
+        logger.warning(
+            "EnrollmentRecord not found for refund confirmation task",
+            extra={"enrollment_id": enrollment_id},
+        )
+        return
 
     refund_amount_decimal = Decimal(refund_amount)
     original_amount_decimal = Decimal(original_amount)

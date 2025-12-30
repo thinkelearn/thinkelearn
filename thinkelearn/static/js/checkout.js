@@ -36,7 +36,6 @@ checkoutForms.forEach((form) => {
     const errorElement = form.querySelector("[data-checkout-error]");
     const amountInput = form.querySelector("[data-checkout-amount]");
     const suggestedButton = form.querySelector("[data-checkout-suggested]");
-    const pricingType = form.dataset.pricingType;
 
     const setError = (message) => {
         if (!errorElement) {
@@ -145,13 +144,9 @@ checkoutForms.forEach((form) => {
                 return;
             }
 
-            if (pricingType === "free") {
-                window.location.assign(form.dataset.successUrl);
-                return;
-            }
-
             setError("Unable to continue to checkout. Please try again.");
         } catch (error) {
+            console.error("Checkout request failed:", error);
             setError("Network error. Please refresh the page and try again.");
         } finally {
             button.disabled = false;

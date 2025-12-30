@@ -108,8 +108,6 @@ class StripeClient:
                     "Payment processing failed. Please try again."
                 ) from exc
 
-        return session  # Ensure a return statement is present
-
     @staticmethod
     def _to_cents(amount: Decimal) -> int:
         return int((amount * 100).quantize(Decimal("1")))
