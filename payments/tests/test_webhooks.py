@@ -54,7 +54,7 @@ class StripeWebhookTests(TestCase):
                 self.url,
                 data=b"{}",
                 content_type="application/json",
-                HTTP_STRIPE_SIGNATURE="test-signature",
+                headers={"stripe-signature": "test-signature"},
             )
 
     def test_webhook_requires_signature(self):
@@ -72,7 +72,7 @@ class StripeWebhookTests(TestCase):
                 self.url,
                 data=b"{}",
                 content_type="application/json",
-                HTTP_STRIPE_SIGNATURE="invalid",
+                headers={"stripe-signature": "invalid"},
             )
 
         self.assertEqual(response.status_code, 400)
@@ -141,9 +141,7 @@ class StripeWebhookTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(WebhookEvent.objects.count(), 1)
         self.assertEqual(
-            EnrollmentRecord.objects.filter(
-                course_enrollment__isnull=False
-            ).count(),
+            EnrollmentRecord.objects.filter(course_enrollment__isnull=False).count(),
             1,
         )
 
@@ -214,7 +212,14 @@ class StripeWebhookTests(TestCase):
         self.assertEqual(enrollment.status, EnrollmentRecord.Status.REFUNDED)
         self.assertIsNone(enrollment.course_enrollment)
         self.assertEqual(payment.status, Payment.Status.REFUNDED)
+
+        # Verify refund email sent with correct content
         self.assertEqual(len(mail.outbox), 1)
+        email = mail.outbox[0]
+        self.assertIn("Refund processed", email.subject)
+        self.assertIn(enrollment.course.title, email.subject)
+        self.assertIn("$49.00", email.body)  # Original amount
+        self.assertIn(self.user.email, email.to)
 
     def test_partial_refund_keeps_enrollment_active(self):
         enrollment = EnrollmentRecord.create_for_user(
@@ -251,6 +256,12 @@ class StripeWebhookTests(TestCase):
         self.assertEqual(enrollment.status, EnrollmentRecord.Status.ACTIVE)
         self.assertEqual(payment.status, Payment.Status.REFUNDED)
         self.assertEqual(payment.failure_reason, "Partial refund")
+
+        # Verify partial refund email sent
+        self.assertEqual(len(mail.outbox), 1)
+        email = mail.outbox[0]
+        self.assertIn("Refund processed", email.subject)
+        self.assertIn("partial refund", email.body.lower())
 
     def test_refund_outside_window_logs_warning(self):
         self.product.refund_window_days = 0
