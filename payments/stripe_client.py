@@ -84,6 +84,8 @@ class StripeClient:
             except stripe.error.StripeError as exc:
                 raise StripeClientError(str(exc)) from exc
 
+        return session  # Ensure a return statement is present
+
     @staticmethod
     def _to_cents(amount: Decimal) -> int:
         return int((amount * 100).quantize(Decimal("1")))
@@ -91,7 +93,7 @@ class StripeClient:
     @staticmethod
     def _import_stripe():
         try:
-            import stripe  # type: ignore
+            import stripe
         except ImportError as exc:
             raise StripeClientError(
                 "Stripe SDK is not installed. Please contact support."
