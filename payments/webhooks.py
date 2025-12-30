@@ -339,10 +339,24 @@ def handle_checkout_session_async_payment_failed(event: dict) -> None:
 
         payment = _get_payment_for_enrollment(enrollment, session)
         if payment:
-            payment.status = Payment.Status.FAILED
-            payment.failure_reason = failure_reason
-            payment.stripe_event_id = event.get("id", "")
-            payment.save(update_fields=["status", "failure_reason", "stripe_event_id"])
+            # Re-fetch payment with row-level lock to prevent concurrent updates
+            try:
+                locked_payment = Payment.objects.select_for_update().get(id=payment.id)
+            except Payment.DoesNotExist:
+                logger.warning(
+                    "Async payment failed but payment disappeared during processing",
+                    extra={
+                        "event_id": event.get("id"),
+                        "enrollment_id": enrollment.id,
+                    },
+                )
+            else:
+                locked_payment.status = Payment.Status.FAILED
+                locked_payment.failure_reason = failure_reason
+                locked_payment.stripe_event_id = event.get("id", "")
+                locked_payment.save(
+                    update_fields=["status", "failure_reason", "stripe_event_id"]
+                )
         else:
             logger.warning(
                 "Async payment failed but payment not found",
@@ -489,6 +503,12 @@ def handle_charge_refunded(event: dict) -> None:
         payment.stripe_event_id = event.get("id", "")
         payment.failure_reason = "Partial refund" if not is_full_refund else ""
         payment.save(update_fields=["status", "stripe_event_id", "failure_reason"])
+
+    # Re-fetch enrollment with related objects for email (avoid N+1 queries)
+    # Transaction has committed, so we can use select_related safely
+    enrollment = EnrollmentRecord.objects.select_related("user", "product__course").get(
+        id=enrollment.id
+    )
 
     # Send refund confirmation email (don't fail webhook if email fails)
     try:
