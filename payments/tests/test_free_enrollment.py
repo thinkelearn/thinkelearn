@@ -64,4 +64,14 @@ class FreeEnrollmentFlowTests(TestCase):
 
         enrollment = EnrollmentRecord.objects.first()
         self.assertEqual(enrollment.status, EnrollmentRecord.Status.ACTIVE)
-        self.assertTrue(CourseEnrollment.objects.filter(user=self.user).exists())
+
+        # Verify CourseEnrollment was created for the correct course
+        course_enrollment = CourseEnrollment.objects.filter(
+            user=self.user, course=self.course
+        ).first()
+        self.assertIsNotNone(
+            course_enrollment,
+            "CourseEnrollment should be created for the specific free course",
+        )
+        # Compare page IDs since course_enrollment.course returns base CoursePage
+        self.assertEqual(course_enrollment.course.id, self.course.id)

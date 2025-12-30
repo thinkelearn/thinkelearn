@@ -100,11 +100,34 @@ class StripeClient:
 
 
 class MockStripeClient:
-    """Test double for StripeClient."""
+    """
+    Test double for StripeClient.
 
-    def __init__(self, session_id: str = "cs_test", session_url: str = "https://test"):
+    Provides a mock implementation that returns configurable StripeSession objects
+    without making actual Stripe API calls. Supports optional payment_intent to
+    match real Stripe behavior.
+    """
+
+    def __init__(
+        self,
+        session_id: str = "cs_test",
+        session_url: str = "https://test",
+        payment_intent: str | None = None,
+    ):
+        """
+        Initialize mock Stripe client.
+
+        Args:
+            session_id: Mock session ID to return
+            session_url: Mock session URL to return
+            payment_intent: Optional payment intent ID (matches real Stripe behavior)
+        """
         self.session_id = session_id
         self.session_url = session_url
+        self.payment_intent = payment_intent
 
     def create_checkout_session(self, **_kwargs) -> StripeSession:
-        return StripeSession(id=self.session_id, url=self.session_url)
+        """Create a mock checkout session."""
+        return StripeSession(
+            id=self.session_id, url=self.session_url, payment_intent=self.payment_intent
+        )

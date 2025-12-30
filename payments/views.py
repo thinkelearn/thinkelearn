@@ -18,6 +18,19 @@ logger = logging.getLogger(__name__)
 
 
 def get_stripe_client() -> StripeClient:
+    """
+    Create and return a configured StripeClient instance.
+
+    This factory function centralizes Stripe client creation to ensure consistent
+    configuration across all Stripe API calls. The client uses the STRIPE_SECRET_KEY
+    from Django settings.
+
+    Returns:
+        StripeClient: Configured client for making Stripe API calls
+
+    Raises:
+        ImproperlyConfigured: If STRIPE_SECRET_KEY is not set (handled at settings level)
+    """
     return StripeClient(api_key=settings.STRIPE_SECRET_KEY)
 
 
@@ -45,6 +58,49 @@ def generate_idempotency_key(user_id: int, product_id: int, amount: Decimal) -> 
 
 @require_POST
 def create_checkout_session(request):
+    """
+    Create a Stripe Checkout Session or free enrollment for a course product.
+
+    This endpoint accepts JSON POST requests and returns JSON responses. It handles
+    both paid enrollments (via Stripe Checkout Session) and free enrollments.
+
+    **CSRF Protection**: This view uses Django's CSRF middleware. Frontend JavaScript
+    must include the CSRF token in the X-CSRFToken header for all requests.
+
+    **Authentication**: Requires authenticated user (returns 401 if not authenticated).
+
+    **Request Body** (JSON):
+        - product_id (required): ID of the CourseProduct to enroll in
+        - amount (optional): Payment amount for PWYC courses
+        - success_url (required): Redirect URL after successful checkout
+        - cancel_url (required): Redirect URL if user cancels
+
+    **Response** (JSON):
+        Success cases:
+        - 201 Created: Returns enrollment details and Stripe session URL (paid)
+                      or confirmation (free)
+
+        Error cases:
+        - 400 Bad Request: Invalid input, validation errors
+        - 401 Unauthorized: User not authenticated
+        - 404 Not Found: Product not found
+        - 409 Conflict: Duplicate enrollment
+        - 502 Bad Gateway: Stripe API unavailable
+
+    **Idempotency**: Requests with identical user_id, product_id, and amount
+    use the same idempotency key to prevent duplicate enrollments and charges
+    on network retries.
+
+    **Security**:
+        - All inputs validated before processing
+        - Negative amounts rejected
+        - URL validation for redirect parameters
+        - Comprehensive logging for security monitoring
+        - Atomic database transactions with automatic rollback on errors
+
+    Returns:
+        JsonResponse: JSON object with enrollment/session details or error message
+    """
     if not request.user.is_authenticated:
         logger.warning(
             "Unauthenticated checkout session attempt",
@@ -242,7 +298,24 @@ def create_checkout_session(request):
                 "error": error_message,
             },
         )
-        return JsonResponse({"error": error_message}, status=400)
+        # Sanitize validation errors to prevent leaking internal implementation details
+        # while preserving user-relevant business logic errors
+        if any(
+            phrase in error_message.lower()
+            for phrase in [
+                "amount is required",
+                "not currently available",
+                "do not meet the requirements",
+                "between",  # Price range info
+            ]
+        ):
+            # These are business validation errors meant for users
+            return JsonResponse({"error": error_message}, status=400)
+        # Generic error for other validation failures
+        return JsonResponse(
+            {"error": "Invalid request. Please check your input and try again."},
+            status=400,
+        )
     except IntegrityError:
         logger.warning(
             "Duplicate enrollment attempt",
@@ -262,7 +335,14 @@ def create_checkout_session(request):
             },
             exc_info=True,
         )
-        return JsonResponse({"error": str(exc)}, status=502)
+        # Sanitize Stripe errors to prevent leaking integration details
+        # Full error details are logged for debugging
+        return JsonResponse(
+            {
+                "error": "Payment processing is temporarily unavailable. Please try again in a few moments."
+            },
+            status=502,
+        )
 
     logger.info(
         "Stripe checkout session created successfully",
