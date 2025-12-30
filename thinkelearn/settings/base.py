@@ -250,6 +250,7 @@ TWILIO_PHONE_NUMBER = os.environ.get("TWILIO_PHONE_NUMBER")
 # Communication notifications
 SITE_NAME = "THINK eLearn"
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "noreply@thinkelearn.com")
+SUPPORT_EMAIL = os.environ.get("SUPPORT_EMAIL", "support@thinkelearn.com")
 
 # Email notification recipients
 VOICEMAIL_NOTIFICATION_EMAILS = [
