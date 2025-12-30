@@ -224,7 +224,7 @@ class TestPreSocialLogin:
         self, adapter, mock_request, mock_sociallogin
     ):
         """Should work with both email_verified and verified_email flags."""
-        _user = User.objects.create_user(
+        User.objects.create_user(
             username="testuser",
             email="user@example.com",
             password="testpass123",
