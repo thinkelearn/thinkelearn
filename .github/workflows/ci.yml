@@ -232,3 +232,7 @@ jobs:
         tags: thinkelearn:test
         cache-from: type=gha
         cache-to: type=gha,mode=max
+        build-args: |
+          STRIPE_SECRET_KEY=sk_test_dummy_ci_key
+          STRIPE_PUBLISHABLE_KEY=pk_test_dummy_ci_key
+          STRIPE_WEBHOOK_SECRET=whsec_test_dummy_ci_secret

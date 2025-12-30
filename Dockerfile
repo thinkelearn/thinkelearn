@@ -7,13 +7,22 @@ RUN useradd wagtail
 # Port used by this container to serve HTTP.
 EXPOSE 8000
 
+# Accept build arguments for Stripe configuration (needed for collectstatic during build)
+ARG STRIPE_SECRET_KEY=""
+ARG STRIPE_PUBLISHABLE_KEY=""
+ARG STRIPE_WEBHOOK_SECRET=""
+
 # Set environment variables.
 # 1. Force Python stdout and stderr streams to be unbuffered.
 # 2. Set PORT variable that is used by Gunicorn. This should match "EXPOSE"
 # 3. Use production settings
+# 4. Set Stripe environment variables (pass through from build args)
 ENV PYTHONUNBUFFERED=1 \
     PORT=8000 \
-    DJANGO_SETTINGS_MODULE=thinkelearn.settings.production
+    DJANGO_SETTINGS_MODULE=thinkelearn.settings.production \
+    STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY} \
+    STRIPE_PUBLISHABLE_KEY=${STRIPE_PUBLISHABLE_KEY} \
+    STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
 
 # Install system packages required by Wagtail and Django.
 RUN apt-get update --yes --quiet && apt-get install --yes --quiet --no-install-recommends \
