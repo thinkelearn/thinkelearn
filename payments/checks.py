@@ -1,7 +1,7 @@
 """Django system checks for payments app configuration."""
 
 from django.conf import settings
-from django.core.checks import Error, Tags, Warning, register
+from django.core.checks import CheckMessage, Error, Tags, Warning, register
 
 
 @register(Tags.security, deploy=True)
@@ -15,7 +15,7 @@ def check_stripe_configuration(app_configs, **kwargs):
     This check is tagged with 'deploy' so it only runs with --deploy flag
     or in production mode (DEBUG=False).
     """
-    errors = []
+    errors: list[CheckMessage] = []
 
     # Only enforce when explicitly checking for deployment readiness
     # or in production (DEBUG=False)
