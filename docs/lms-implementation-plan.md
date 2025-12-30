@@ -1,13 +1,13 @@
-# Stripe Payment Integration - Implementation Plan
+# LMS Implementation Plan - Production Launch
 
-**Version:** 2.4
+**Version:** 3.0
 **Date:** 2025-12-30
 **Status:** Phase 1 ✅ | Phase 2 ✅ | Phase 3 ✅ | Phase 4 🚧 (Settings Validation ✅)
 **Related PRs:** #26 (Phase 1), #28 (Phase 2, 3 & 4 Settings Validation)
 
 ## Executive Summary
 
-This document outlines a comprehensive plan to implement Stripe payment processing for course enrollments in THINK eLearn. The implementation will support **both pay-what-you-can and fixed-price courses**, maintain data integrity, ensure security, and follow the project's testing standards (55%+ coverage with focus on business logic).
+This document outlines the comprehensive implementation plan for launching THINK eLearn's production-ready Learning Management System with Stripe payment processing. The implementation supports **both pay-what-you-can and fixed-price courses**, maintains data integrity, ensures security, and follows the project's testing standards (55%+ coverage with focus on business logic).
 
 **Implementation Scope:**
 
@@ -1146,6 +1146,64 @@ The following features are **not included in the 6-week implementation** but are
    - **Effort:** ~1 week
    - **When:** Sufficient transaction volume for insights
 
+### LMS Features
+
+1. **Certificate Generation**
+   - PDF certificates for course completion
+   - Customizable certificate templates
+   - Digital signatures and verification
+   - **Effort:** ~1 week
+   - **When:** Course completion rates justify certificates
+
+2. **Email Notifications**
+   - Enrollment confirmation emails
+   - Course completion congratulations
+   - Progress milestone reminders
+   - **Effort:** ~3 days
+   - **When:** After Phase 4 email infrastructure complete
+
+3. **Course Completion Badges/Achievements**
+   - Gamification elements for learner engagement
+   - Badge collections on learner profiles
+   - Social sharing capabilities
+   - **Effort:** ~1 week
+   - **When:** Sufficient active learner base
+
+4. **Discussion Forums**
+   - Per-course discussion boards
+   - Threaded conversations
+   - Instructor moderation tools
+   - **Effort:** ~2 weeks
+   - **When:** Community engagement becomes priority
+
+5. **Assignment/Quiz Integration**
+   - Beyond SCORM: custom assessments
+   - Auto-grading and manual review
+   - Assignment submission tracking
+   - **Effort:** ~2-3 weeks
+   - **When:** Courses require non-SCORM assessments
+
+6. **Course Export (Offline Learning)**
+   - Download SCORM packages for offline access
+   - Mobile app integration
+   - Sync progress when reconnected
+   - **Effort:** ~2 weeks
+   - **When:** Mobile learners request offline access
+
+7. **Advanced Analytics for Instructors**
+   - Student progress dashboards
+   - Completion rate analytics
+   - Drop-off point identification
+   - **Effort:** ~1 week
+   - **When:** Multiple instructors managing courses
+
+8. **Bulk Enrollment Tools**
+   - CSV upload for mass enrollments
+   - Group/cohort management
+   - Corporate training support
+   - **Effort:** ~3 days
+   - **When:** Corporate clients require bulk operations
+
 **Design Note:** All models are designed to support these features. Currency field, pricing_type flexibility, and clean separation of concerns mean these enhancements require minimal model changes.
 
 ---
@@ -1169,19 +1227,21 @@ The following features are **not included in the 6-week implementation** but are
 
 ### Project-Specific References
 
-- `docs/lms-implementation-status.md` - Current LMS state
 - `CLAUDE.md` - Project overview and standards
 - `lms/tests.py` - Testing patterns to follow
+- `payments/tests/` - Payment integration tests
 - `.github/workflows/ci.yml` - CI/CD pipeline
+- `docs/archive/lms-implementation-status-archived-2025-12-30.md` - Historical LMS planning document
 
 ---
 
 ## Approval & Sign-Off
 
 **Plan Author:** Claude Code
-**Initial Date:** 2025-12-28
+**Initial Date:** 2025-12-28 (originally "Stripe Payment Integration")
+**Renamed:** 2025-12-30 (consolidated with LMS Implementation Status)
 **Updated:** 2025-12-30
-**Version:** 2.4 (Phase 4 Settings Validation Complete)
+**Version:** 3.0 (Renamed to LMS Implementation Plan)
 
 **Business Decisions:** ✅ All answered (see "Decisions Made" section)
 **Scope:** MVP - 6 weeks to production
