@@ -108,6 +108,9 @@ class StripeClient:
                     "Payment processing failed. Please try again."
                 ) from exc
 
+        # This should never be reached since all code paths return or raise
+        raise StripeClientError("Unexpected error: retry loop completed without result")
+
     @staticmethod
     def _to_cents(amount: Decimal) -> int:
         return int((amount * 100).quantize(Decimal("1")))
