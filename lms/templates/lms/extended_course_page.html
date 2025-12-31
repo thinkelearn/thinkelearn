@@ -161,14 +161,10 @@
                             {% else %}
                                 <div class="text-center py-8">
                                     {% if can_enroll %}
-                                        <p class="text-neutral-600 mb-6">Ready to start learning? Enroll now to access the course content.</p>
-                                        <a href="{% url 'wagtail_lms:enroll_course' page.id %}"
-                                           class="inline-flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-white bg-cyan-600 hover:bg-cyan-700 transition-colors duration-200 shadow-sm">
-                                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path>
-                                            </svg>
-                                            Enroll in Course
-                                        </a>
+                                        <p class="text-neutral-600 mb-6">
+                                            Ready to start learning? Complete your enrollment to access the course content.
+                                        </p>
+                                        {% include "lms/includes/checkout_enroll.html" %}
                                     {% else %}
                                         <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
                                             <p class="text-yellow-800">You cannot enroll in this course yet. Please complete the prerequisites first.</p>
@@ -177,9 +173,35 @@
                                 </div>
                             {% endif %}
                         {% else %}
+                            {% with page.url as next_url %}
                             <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
-                                <p class="text-yellow-800">Please sign in to enroll in this course.</p>
+                                <div class="flex">
+                                    <div class="flex-shrink-0">
+                                        <svg class="h-6 w-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                                        </svg>
+                                    </div>
+                                    <div class="ml-3">
+                                        <h3 class="text-sm font-medium text-yellow-800">Authentication Required</h3>
+                                        <div class="mt-2 text-sm text-yellow-700">
+                                            <p>Please sign in to your account to enroll in this course and track your progress.</p>
+                                        </div>
+                                        <div class="mt-4">
+                                            <div class="flex flex-wrap gap-3">
+                                                <a href="{% url 'account_login' %}?next={{ next_url|urlencode }}"
+                                                   class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-yellow-700 bg-yellow-100 hover:bg-yellow-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500">
+                                                    Sign In
+                                                </a>
+                                                <a href="{% url 'account_signup' %}?next={{ next_url|urlencode }}"
+                                                   class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-yellow-700 bg-white hover:bg-yellow-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500">
+                                                    Sign Up
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
+                            {% endwith %}
                         {% endif %}
                     </div>
                 {% endif %}

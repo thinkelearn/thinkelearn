@@ -9,6 +9,7 @@ from django.core.exceptions import ValidationError
 from django.core.validators import URLValidator
 from django.db import IntegrityError, transaction
 from django.http import JsonResponse
+from django.shortcuts import render
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
@@ -461,3 +462,25 @@ def stripe_webhook(request):
         webhook_event.save(update_fields=["success"])
 
     return JsonResponse({"status": "ok"}, status=200)
+
+
+def checkout_success(request):
+    """Render checkout success page."""
+    return render(
+        request,
+        "payments/checkout_success.html",
+        {
+            "session_id": request.GET.get("session_id"),
+            "is_free": request.GET.get("free") == "1",
+        },
+    )
+
+
+def checkout_cancel(request):
+    """Render checkout cancel page."""
+    return render(request, "payments/checkout_cancel.html")
+
+
+def checkout_failure(request):
+    """Render checkout failure page."""
+    return render(request, "payments/checkout_failure.html")

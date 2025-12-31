@@ -4,11 +4,13 @@ from unittest.mock import Mock
 
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import IntegrityError
 from django.test import RequestFactory, TestCase
+from django.urls import reverse
 from django.utils import timezone
-from wagtail.models import Page
-from wagtail_lms.models import CourseEnrollment
+from wagtail.models import Page, Site
+from wagtail_lms.models import CourseEnrollment, SCORMPackage
 
 from lms.models import (
     CourseCategory,
@@ -156,19 +158,42 @@ class ExtendedCoursePageTest(TestCase):
         self.root_page = Page.add_root(title="Root")
         self.courses_index = CoursesIndexPage(title="Courses", slug="courses")
         self.root_page.add_child(instance=self.courses_index)
+        try:
+            site = Site.objects.get(is_default_site=True)
+            site.root_page = self.root_page
+            site.save()
+        except Site.DoesNotExist:
+            Site.objects.create(
+                hostname="localhost",
+                root_page=self.root_page,
+                is_default_site=True,
+            )
 
+        self.scorm_package = SCORMPackage.objects.create(
+            title="Sample Package",
+            package_file=SimpleUploadedFile("package.zip", b"fake-zip"),
+            extracted_path="package_1_dummy",
+            launch_url="index.html",
+        )
         self.course = ExtendedCoursePage(
             title="Test Course",
             slug="test-course",
             difficulty="beginner",
             duration_hours=10,
             is_published=True,
+            scorm_package=self.scorm_package,
         )
         self.courses_index.add_child(instance=self.course)
         self.course.save_revision().publish()
 
         self.user = User.objects.create_user(
             username="testuser", email="test@example.com", password="testpass123"
+        )
+
+        self.product = CourseProduct.objects.create(
+            course=self.course,
+            pricing_type=CourseProduct.PricingType.FIXED,
+            fixed_price=Decimal("49.00"),
         )
 
         self.factory = RequestFactory()
@@ -211,6 +236,18 @@ class ExtendedCoursePageTest(TestCase):
 
         can_enroll = self.course.can_user_enroll(self.user)
         self.assertFalse(can_enroll)
+
+    def test_login_cta_next_points_to_course_page(self):
+        """Ensure login CTA redirects back to the course page for paid courses."""
+        response = self.client.get(self.course.url)
+
+        self.assertEqual(response.status_code, 200)
+
+        login_url = reverse("account_login")
+        signup_url = reverse("account_signup")
+        content = response.content.decode()
+        self.assertIn(f"{login_url}?next={self.course.url}", content)
+        self.assertIn(f"{signup_url}?next={self.course.url}", content)
 
     def test_can_user_enroll_enrollment_limit_reached(self):
         """Test cannot enroll when enrollment limit is reached"""
@@ -351,6 +388,10 @@ class ExtendedCoursePageTest(TestCase):
         self.assertIn("average_rating", context)
         self.assertIn("total_reviews", context)
         self.assertIn("enrollment_count", context)
+        self.assertEqual(context["product"], self.product)
+        self.assertIn("/payments/checkout/success/", context["checkout_success_url"])
+        self.assertIn("/payments/checkout/cancel/", context["checkout_cancel_url"])
+        self.assertIn("/payments/checkout/failure/", context["checkout_failure_url"])
 
     def test_get_context_anonymous_user(self):
         """Test context for anonymous user"""

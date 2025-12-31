@@ -34,8 +34,8 @@ from django.db import transaction
 from django.utils import timezone
 
 from lms.models import EnrollmentRecord
-from payments.emails import send_refund_confirmation
 from payments.models import Payment
+from payments.tasks import send_refund_confirmation_email
 
 logger = logging.getLogger(__name__)
 
@@ -512,8 +512,8 @@ def handle_charge_refunded(event: dict) -> None:
 
     # Send refund confirmation email (don't fail webhook if email fails)
     try:
-        send_refund_confirmation(
-            enrollment,
+        send_refund_confirmation_email(
+            enrollment_id=enrollment.id,
             refund_amount=refund_amount,
             original_amount=original_amount,
             refund_date=timezone.now(),
