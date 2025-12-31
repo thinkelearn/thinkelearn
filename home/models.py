@@ -13,21 +13,6 @@ from wagtail.images.blocks import ImageChooserBlock
 from wagtail.models import Page
 
 
-class ProcessBlock(blocks.StructBlock):
-    title = blocks.CharBlock(max_length=255, help_text="Process section title")
-    content = blocks.RichTextBlock(help_text="Process description")
-    icon = blocks.CharBlock(
-        max_length=50,
-        default="fas fa-sync-alt",
-        help_text="FontAwesome icon class (e.g., 'fas fa-sync-alt', 'fas fa-rocket', 'fas fa-lightbulb')",
-    )
-
-    class Meta:
-        template = "home/blocks/process_block.html"
-        icon = "list-ul"
-        label = "Process Section"
-
-
 class HomePage(Page):
     # Hero Section
     hero_title = models.CharField(
@@ -559,50 +544,3 @@ class ContactPage(AbstractEmailForm):
 
     class Meta:
         verbose_name = "Contact Page"
-
-
-class ProcessPage(Page):
-    # Hero Section
-    hero_title = models.CharField(
-        max_length=255,
-        default="THINK eLearn Process",
-        help_text="Main headline for the process page",
-    )
-    hero_subtitle = models.TextField(
-        blank=True, help_text="Subtitle text below the main headline"
-    )
-    hero_image = models.ForeignKey(
-        "wagtailimages.Image",
-        null=True,
-        blank=True,
-        on_delete=models.SET_NULL,
-        related_name="+",
-        help_text="Hero background",
-    )
-
-    # Process Sections
-    process_sections = StreamField(
-        [
-            ("process", ProcessBlock()),
-        ],
-        blank=True,
-        help_text="Add multiple process sections as needed",
-    )
-
-    content_panels = Page.content_panels + [
-        MultiFieldPanel(
-            [
-                FieldPanel("hero_title"),
-                FieldPanel("hero_subtitle"),
-                FieldPanel("hero_image"),
-            ],
-            heading="Hero Section",
-        ),
-        FieldPanel("process_sections"),
-    ]
-
-    parent_page_types = []
-    subpage_types = []
-
-    class Meta:
-        verbose_name = "Process Page"
