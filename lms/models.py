@@ -578,7 +578,7 @@ class CoursesIndexPage(Page):
         courses = (
             ExtendedCoursePage.objects.live()
             .descendant_of(self)
-            .prefetch_related("categories", "tags", "reviews")
+            .prefetch_related("reviews")
             .order_by("-first_published_at")
         )
 
@@ -767,8 +767,7 @@ class ExtendedCoursePage(CoursePage):
         context["related_courses"] = (
             ExtendedCoursePage.objects.filter(id__in=related_course_ids)
             .live()
-            .public()
-            .prefetch_related("categories", "tags")[:3]
+            .public()[:3]
         )
 
         return context
