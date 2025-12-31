@@ -525,16 +525,15 @@ if not course.can_user_enroll(request.user):
    - [x] Clear error messages with hints for missing configuration
    - [x] Integrated into payments app configuration (payments/apps.py)
 
-4. **Background Tasks Framework (1 day)**
-   - [x] Configure Django 6.0 native background tasks (settings.py)
-   - [x] Migrate refund email sending to async task
-   - [x] Convert orphaned cleanup to scheduled background task
-   - [x] Add task monitoring and logging
-   - [x] Write tests for background task execution
-   - [x] Document Django tasks syntax for AI assistants (see `docs/django-background-tasks.md`)
+4. **Background Tasks Framework (1 day)** - ⚠️ REVERTED TO SYNCHRONOUS
+   - [x] ~~Configure Django 6.0 native background tasks (settings.py)~~ **Reverted - awaiting Wagtail support**
+   - [x] Create `payments/tasks.py` module (currently **synchronous**, not async)
+   - [x] Refund email sending function (synchronous)
+   - [x] Orphaned cleanup command (manual/scheduled via cron, not background task)
+   - [x] Document Django tasks syntax for future implementation (see `docs/django-background-tasks.md`)
 
-   **IMPORTANT:** This project uses Django 6.0's native `django.tasks` framework, NOT Celery or Django-Q2.
-   See `docs/django-background-tasks.md` for AI assistant guidance on correct syntax.
+   **IMPORTANT:** Django 6.0's native `django.tasks` framework will be implemented in the **future when Wagtail supports django-tasks v0.10.0**. Currently, all functions in `payments/tasks.py` are **synchronous**.
+   See `docs/django-background-tasks.md` for future implementation guidance.
 
 5. **Frontend Integration (2 days)**
    - [x] Add "Enroll" button to course pages
@@ -560,13 +559,13 @@ if not course.can_user_enroll(request.user):
 
 **Deliverables:**
 
-- [x] Django background tasks configuration in settings
-- [x] `payments/tasks.py` (async email tasks, scheduled cleanup)
+- [x] ~~Django background tasks configuration in settings~~ **Deferred - awaiting Wagtail support**
+- [x] `payments/tasks.py` (synchronous functions, not async - future conversion planned)
 - [x] `payments/management/commands/cleanup_abandoned_enrollments.py`
 - [x] `payments/checks.py` (Django system checks) ✅
-- [x] `payments/tests/test_tasks.py` (background task tests)
+- [x] ~~`payments/tests/test_tasks.py` (background task tests)~~ **Not implemented - synchronous functions**
 - [x] `payments/tests/test_error_handling.py`
-- [x] `docs/django-background-tasks.md` (AI assistant guidance)
+- [x] `docs/django-background-tasks.md` (AI assistant guidance for future implementation)
 - [x] `docs/stripe-frontend-integration.md`
 - [x] Updated course page templates with enroll buttons
 - [x] Success/failure/cancel page templates
@@ -1386,12 +1385,12 @@ The following features are **not included in the 6-week implementation** but are
   - Warns if webhook secret appears to be test mode in production
   - Clear error messages with hints for missing configuration
 
-- [x] Phase 4 COMPLETE: Error handling, frontend integration, background tasks
+- [x] Phase 4 COMPLETE: Error handling, frontend integration, tasks module (synchronous)
   - Stripe API retry/backoff and sanitized error handling
-  - Django 6.0 `django.tasks` configuration with scheduled cleanup + async refund emails
+  - Created `payments/tasks.py` with synchronous functions (async conversion planned for future when Wagtail supports django-tasks v0.10.0)
   - Checkout UI on course pages (PWYC input, loading/error states)
   - Success/cancel/failure pages for Stripe redirects
-  - New docs: `docs/stripe-frontend-integration.md`
+  - New docs: `docs/stripe-frontend-integration.md`, `docs/django-background-tasks.md` (future implementation guide)
 
 **Next Steps:**
 

@@ -7,9 +7,22 @@
 
 ---
 
-## ⚠️ CRITICAL: Framework Identification
+## ⚠️ IMPORTANT: Current Implementation Status
 
-**This project uses Django 6.0's native background tasks framework.**
+**This documentation describes the PLANNED future implementation of Django 6.0's native background tasks framework.**
+
+**Current Status:**
+- The `payments/tasks.py` module exists but functions are currently **synchronous** (not asynchronous)
+- Django Tasks will be implemented in the future when **Wagtail supports django-tasks v0.10.0**
+- Until then, all task functions run synchronously in the main process
+
+This documentation is prepared for future reference and should not be used as a guide for current implementation.
+
+---
+
+## ⚠️ CRITICAL: Framework Identification (Future)
+
+**This project plans to use Django 6.0's native background tasks framework.**
 
 ### ❌ DO NOT Use These Frameworks:
 - **Celery** - Not installed, do not use `@app.task` or `delay()` syntax

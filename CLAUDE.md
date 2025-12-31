@@ -20,12 +20,14 @@ THINK eLearn is a **production-ready Django/Wagtail educational technology platf
   - `portfolio`: PortfolioIndexPage, ProjectPage, PortfolioCategory models with unified client work and capability demonstration system
   - `blog`: Full BlogIndexPage and BlogPage with categories, tags, and pagination
   - `communications`: Advanced Twilio SMS/voicemail system with admin workflow
-  - `payments`: Stripe payment integration with background task processing
+  - `payments`: Stripe payment integration (background tasks planned for future)
   - `search`: Built-in Wagtail search functionality
 
-## ⚠️ Background Tasks - CRITICAL FOR AI ASSISTANTS
+## ⚠️ Background Tasks - PLANNED FOR FUTURE
 
-**This project uses Django 6.0's native `django.tasks` framework for background tasks.**
+**This project plans to implement Django 6.0's native `django.tasks` framework for background tasks when Wagtail supports django-tasks v0.10.0.**
+
+**Current Status:** The `payments/tasks.py` module exists but functions are currently **synchronous** (not asynchronous). They will be converted to true background tasks in the future.
 
 ### DO NOT Use These Frameworks:
 - ❌ **Celery** - Not installed, do not use `@app.task` or `.delay()` syntax
@@ -33,10 +35,10 @@ THINK eLearn is a **production-ready Django/Wagtail educational technology platf
 - ❌ **Django-RQ** - Not installed
 - ❌ **Huey** - Not installed
 
-### ✅ Correct Syntax (Django 6.0 Native):
+### ✅ Future Syntax (Django 6.0 Native - Not Yet Implemented):
 
 ```python
-# Defining a task
+# Defining a task (FUTURE IMPLEMENTATION)
 from django.tasks import task
 
 @task()
@@ -44,10 +46,10 @@ def send_email(user_id: int) -> None:
     # Task implementation
     pass
 
-# Enqueueing a task
+# Enqueueing a task (FUTURE IMPLEMENTATION)
 send_email.enqueue(user_id=123)
 
-# Scheduled task (runs periodically)
+# Scheduled task (FUTURE IMPLEMENTATION)
 from datetime import timedelta
 
 @task(run_every=timedelta(hours=24))
@@ -55,16 +57,16 @@ def daily_cleanup() -> None:
     # Runs once per day
     pass
 
-# Running the worker
+# Running the worker (FUTURE IMPLEMENTATION)
 python manage.py taskworker
 ```
 
-**📖 Complete Documentation:** See `docs/django-background-tasks.md` for comprehensive AI assistant guidance with syntax comparisons and common pitfalls.
+**📖 Complete Documentation:** See `docs/django-background-tasks.md` for comprehensive AI assistant guidance with syntax comparisons and common pitfalls (prepared for future implementation).
 
-**Current Use Cases:**
+**Planned Use Cases (Future):**
 - Async email sending (refund notifications)
 - Scheduled cleanup of abandoned enrollments
-- Background SCORM package processing (planned)
+- Background SCORM package processing
 
 ## Settings Structure
 
@@ -231,8 +233,8 @@ docker-compose exec web python manage.py setup_lms --with-categories --with-tags
 # Portfolio setup
 docker-compose exec web python manage.py setup_portfolio
 
-# Background task worker (Django 6.0 native tasks)
-docker-compose exec web python manage.py taskworker
+# Background task worker (FUTURE - not yet implemented)
+# docker-compose exec web python manage.py taskworker
 
 # Static files (handled automatically by CSS service)
 docker-compose exec web python manage.py collectstatic
