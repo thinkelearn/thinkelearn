@@ -1,8 +1,8 @@
 # LMS Implementation Plan - Production Launch
 
-**Version:** 3.0
+**Version:** 3.1
 **Date:** 2025-12-30
-**Status:** Phase 1 ✅ | Phase 2 ✅ | Phase 3 ✅ | Phase 4 ✅
+**Status:** Phase 1 ✅ | Phase 2 ✅ | Phase 3 ✅ | Phase 4 ✅ | Phase 5 ⏳ | Phase 6 ⏳ | Phase 7 ⏳ | Phase 8 ⏳
 **Related PRs:** #26 (Phase 1), #28 (Phase 2, 3 & 4 Settings Validation)
 
 ## Executive Summary
@@ -15,7 +15,8 @@ This document outlines the comprehensive implementation plan for launching THINK
 - **Payment Flow**: Stripe Checkout Session (redirect flow)
 - **Currency**: Canadian Dollar (CAD) with multi-currency design for future expansion
 - **Refunds**: Automated 30-day refund window (configurable per product)
-- **Timeline**: **6 weeks** to production-ready deployment
+- **Accounting**: Track gross, refunded, and net amounts with per-transaction ledger entries
+- **Timeline**: **7 weeks** to production-ready deployment
 
 **Key Principles:**
 
@@ -48,7 +49,15 @@ This document outlines the comprehensive implementation plan for launching THINK
 - ~~No payment processing capability~~ ✅ Implemented in Phase 1
 - ~~No concept of "products" or pricing~~ ✅ CourseProduct model with 3 pricing types
 - ~~No payment state tracking~~ ✅ EnrollmentRecord with state machine
-- ~~No integration with payment providers~~ ⏳ Stripe integration in Phase 2
+- ~~No integration with payment providers~~ ✅ Stripe integration in Phase 2
+
+**Observed Gap (Sandbox Refund Testing):**
+
+- Payment records only store the original amount and a coarse status.
+- Partial refunds are recorded as `REFUNDED` with a `failure_reason` note, but
+  **no refunded amount is persisted**.
+- Result: Django admin cannot support meaningful accounting or reconciliation
+  without cross-referencing Stripe or external spreadsheets.
 
 ---
 
@@ -128,6 +137,50 @@ All models have been implemented with comprehensive validation, test coverage (9
 - **Audit trail**: failure_reason, stripe_event_id for debugging
 - **Stripe references**: indexed for webhook lookups
 - **Admin interface**: Read-only display of payment history
+
+**Planned Enhancements (Phase 5):**
+
+- Replace `failure_reason` misuse with dedicated refund metadata
+- Track **gross, refunded, and net** amounts per payment
+- Capture Stripe identifiers: charge ID, refund IDs, balance transaction ID
+- Introduce ledger-style records for multiple refunds/adjustments per payment
+
+#### Decision: Ledger-Based Accounting Model (Phase 5) ✅
+
+To enable accounting-grade reporting, we will implement a **ledger model** that
+records every money movement as a discrete entry and aggregates totals on the
+`Payment` record. This mirrors Stripe’s charge/refund/balance transaction flow
+and supports partial refunds, multiple refunds, and fee-aware reporting.
+
+**Chosen Model:**
+
+- **PaymentLedgerEntry** as the primary source of truth (one row per charge,
+  refund, or adjustment).
+- **Payment** stores **denormalized totals** (gross, refunded, net) for fast
+  reporting and admin views.
+
+**Why this over a single `PaymentRefund` table:**
+
+- Multiple refunds per charge are common and should remain distinct entries.
+- Stripe can send multiple refund updates for the same charge.
+- Ledger entries support future fee/payout reporting without schema changes.
+
+#### PaymentLedgerEntry (payments/models.py) - PLANNED ⏳
+
+**Purpose:** Provide auditable, per-transaction accounting entries for charges,
+refunds, and adjustments with amounts and Stripe references.
+
+**Proposed Fields:**
+
+- `payment` (FK), `entry_type` (CHARGE, REFUND, ADJUSTMENT, FEE)
+- `amount`, `currency`, `net_amount`
+- `stripe_charge_id`, `stripe_refund_id`, `stripe_balance_transaction_id`
+- `processed_at`, `metadata` (JSON for Stripe payload fragments)
+
+**Notes:**
+
+- Enables partial refunds without losing original payment context
+- Supports future reporting: gross vs refunded vs net per product/course
 
 #### WebhookEvent (payments/models.py) - IMPLEMENTED ✅
 
@@ -532,7 +585,61 @@ if not course.can_user_enroll(request.user):
 
 ---
 
-### Phase 5: Production Preparation (Week 5)
+### Phase 5: Accounting Data Model + Reconciliation (Week 5)
+
+**Goal:** Make payment records usable for accounting and reconciliation in Django
+
+**Tasks:**
+
+1. **Ledger-Oriented Models (2 days)**
+   - [ ] Add `PaymentLedgerEntry` (CHARGE/REFUND/ADJUSTMENT/FEE entries)
+   - [ ] Add denormalized totals to `Payment` (gross, refunded, net)
+   - [ ] Store Stripe IDs for charge/refund/balance transaction
+   - [ ] Keep `failure_reason` for real failures only
+
+2. **Webhook Enhancements (1.5 days)**
+   - [ ] Record `charge.succeeded` into ledger
+   - [ ] Record `charge.refunded` as one or many refund entries
+   - [ ] Optionally consume `charge.updated` for fee/payout data
+   - [ ] Keep `checkout.session.completed` for enrollment activation
+   - [ ] Maintain idempotency across refund retries/updates
+
+3. **Admin Readiness (0.5 days)**
+   - [ ] Show total paid, refunded, net, and fees per payment
+   - [ ] Expose ledger entries inline for auditability
+   - [ ] Add list filters (status, refund state, course/product)
+   - [ ] Defer full admin reporting dashboards until post-launch
+
+4. **Tests (1.5 days)**
+   - [ ] Partial refund persists refunded amount
+   - [ ] Multiple refunds aggregate correctly
+   - [ ] Ledger entries are idempotent
+   - [ ] Admin views show accurate totals
+
+**Deliverables:**
+
+- `payments/models.py` (ledger + refund modelling)
+- `payments/webhooks.py` (charge/refund ledger updates)
+- `payments/admin.py` (accounting-friendly views)
+- Tests covering partial/multiple refunds and reporting
+
+**Success Criteria:**
+
+- Partial refunds store refunded amount
+- Admin can see gross/refund/net without Stripe reconciliation
+- Multiple refunds are represented as distinct ledger entries
+
+**Reporting Examples (Business Outcomes, post-launch UI):**
+
+- **Course revenue (monthly):** Sum ledger CHARGE entries per course minus REFUND entries
+- **Customer lifetime value:** Net amounts per user across all payments
+- **Refund rate:** Refunded amount / gross amount by course and by month
+- **Net revenue after fees:** Sum of net amounts (CHARGE net minus FEE and REFUND entries)
+- **Open enrollments with refunds:** Enrollments with partial refunds and remaining net balance
+
+---
+
+### Phase 6: Production Preparation (Week 6)
 
 **Goal:** Production deployment readiness
 
@@ -581,7 +688,7 @@ if not course.can_user_enroll(request.user):
 
 ---
 
-### Phase 6: Deployment & Validation (Week 6)
+### Phase 7: Deployment & Validation (Week 7)
 
 **Goal:** Safe production deployment
 
@@ -998,7 +1105,7 @@ python manage.py migrate payments zero  # Remove payments app
 
 ## Timeline Summary
 
-**Total Duration:** 6 weeks (reduced from original 8 weeks)
+**Total Duration:** 7 weeks (reduced from original 8 weeks)
 
 | Phase | Duration | Focus | Deliverables | Status |
 | ----- | -------- | ----- | ------------ | ------ |
@@ -1006,21 +1113,24 @@ python manage.py migrate payments zero  # Remove payments app
 | Phase 2 | Week 2 | Checkout Session Flow | Working checkout with tests | ✅ COMPLETE |
 | Phase 3 | Week 3 | Webhooks + Refunds | Reliable webhook processing, automated refunds, email notifications | ✅ COMPLETE |
 | Phase 4 | Week 4 | Error Handling + Frontend | Production-ready resilience, payment UI | ✅ COMPLETE |
-| Phase 5 | Week 5 | Production Prep | Security audit, monitoring, documentation | ⏳ Pending |
-| Phase 6 | Week 6 | Deployment | Safe rollout to production | ⏳ Pending |
+| Phase 5 | Week 5 | Accounting Data Model | Ledger entries, refund tracking, reporting | ⏳ Pending |
+| Phase 6 | Week 6 | Production Prep | Security audit, monitoring, documentation | ⏳ Pending |
+| Phase 7 | Week 7 | Deployment | Safe rollout to production | ⏳ Pending |
+| Phase 8 | Post-Launch | Reporting UI + Analytics | Admin dashboards, exports, validation | ⏳ Pending |
 
 **Timeline Changes from Original Plan:**
 
 - **Removed:** Payment Intent flow (Phase 4) - using Checkout Session only
 - **Merged:** Frontend integration into Phase 4 (was separate Phase 6)
 - **Added:** Tax research in Phase 1, refund handling in Phase 3
-- **Result:** 2 weeks faster to production (6 weeks vs 8 weeks)
+- **Result:** 1 week faster to production (7 weeks vs 8 weeks)
 
 **Critical Path:**
 
 - Phases 1-3 are sequential (foundation required)
-- Phases 4-5 can partially overlap (frontend + production prep)
-- Phase 6 requires all previous phases complete
+- Phases 5-6 can partially overlap (accounting model + production prep)
+- Phase 7 requires all previous phases complete
+- Phase 8 is post-launch and does not block release
 
 ---
 
@@ -1241,24 +1351,25 @@ The following features are **not included in the 6-week implementation** but are
 **Initial Date:** 2025-12-28 (originally "Stripe Payment Integration")
 **Renamed:** 2025-12-30 (consolidated with LMS Implementation Status)
 **Updated:** 2025-12-30
-**Version:** 3.0 (Renamed to LMS Implementation Plan)
+**Version:** 3.1 (Renamed to LMS Implementation Plan)
 
 **Business Decisions:** ✅ All answered (see "Decisions Made" section)
-**Scope:** MVP - 6 weeks to production
-**Status:** Phase 4 COMPLETE - Error handling, frontend integration, and tasks framework delivered
+**Scope:** MVP - 7 weeks to production
+**Status:** Phase 4 COMPLETE - Error handling, frontend integration, and tasks framework delivered; Phase 5 pending
 
 **Implementation Changes from v1.0:**
 
 - [x] All business questions answered
-- [x] Timeline reduced from 8 weeks to 6 weeks
+- [x] Timeline reduced from 8 weeks to 7 weeks
 - [x] Payment Intent flow removed (Checkout Session only)
 - [x] Tax research added to Phase 1
 - [x] Refund automation added to Phase 3
 - [x] Frontend merged into Phase 4
 - [x] Future enhancements documented
 
-**Latest Updates (v2.4):**
+**Latest Updates (v3.1):**
 
+- [x] Added Phase 5 for accounting-grade payment ledger and refund modelling
 - [x] Phase 3 COMPLETE: Stripe webhook processing and refunds fully implemented
   - Webhook infrastructure with signature verification and idempotency
   - Success handler (`checkout.session.completed`) activates enrollments with status validation
@@ -1290,7 +1401,44 @@ The following features are **not included in the 6-week implementation** but are
 4. ✅ ~~Phase 2: Payment Flow - Checkout Session~~ - COMPLETE (Merged 2025-12-29)
 5. ✅ ~~Phase 3: Webhook Handling + Refunds~~ - COMPLETE (PR #28, Merged 2025-12-30)
 6. ✅ ~~Phase 4: Error Handling + Frontend Integration~~ - COMPLETE
+7. ⏳ Phase 5: Accounting Data Model + Reconciliation - PENDING
+8. ⏳ Phase 6: Production Preparation - PENDING
+9. ⏳ Phase 7: Deployment & Validation - PENDING
+10. ⏳ Phase 8: Reporting UI + Analytics - PENDING
 
 ---
 
 **END OF IMPLEMENTATION PLAN**
+### Phase 8: Reporting UI + Analytics (Post-Launch)
+
+**Goal:** Build full admin dashboards for business reporting once real data exists
+
+**Tasks:**
+
+1. **Admin Dashboards (2 days)**
+   - [ ] Course revenue by period (gross/refund/net)
+   - [ ] Refund rate by course and month
+   - [ ] Customer lifetime value (CLV)
+   - [ ] Net revenue after fees
+   - [ ] Partial refund exposure report
+
+2. **Exports (1 day)**
+   - [ ] CSV exports for finance and tax workflows
+   - [ ] Date range filters
+
+3. **QA + Validation (1 day)**
+   - [ ] Validate calculations against Stripe dashboard totals
+   - [ ] Add regression tests for report logic
+
+**Deliverables:**
+
+- Admin reporting screens
+- CSV export tools
+- Validation checklist vs Stripe
+
+**Success Criteria:**
+
+- Reports match Stripe totals within expected timing deltas
+- Finance can export monthly data without external reconciliation
+
+---
