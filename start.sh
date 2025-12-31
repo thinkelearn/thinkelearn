@@ -147,9 +147,10 @@ setup_environment() {
     docker-compose exec -T web python manage.py create_admin --reset
 
     # Setup initial pages
-    print_status "Setting up core pages (About, Contact, Blog, Portfolio)..."
+    print_status "Setting up core pages (About, Contact, Blog, Portfolio, LMS)..."
     docker-compose exec -T web python manage.py setup_pages
     docker-compose exec -T web python manage.py setup_portfolio
+    docker-compose exec -T web python manage.py setup_lms
 
     echo ""
     print_success "🎉 Complete setup finished!"
