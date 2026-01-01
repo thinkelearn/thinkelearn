@@ -123,7 +123,8 @@ class PaymentLedgerEntry(models.Model):
         ADJUSTMENT: Manual corrections or adjustments (can be positive or negative).
 
     Fields:
-        amount: Transaction amount in the smallest currency unit (e.g., cents).
+        amount: Transaction amount in the major currency unit (e.g., dollars) stored
+            as a Decimal with 2 decimal places.
         net_amount: Amount after Stripe fees deducted (optional, for reconciliation).
         stripe_charge_id: Unique Stripe charge identifier (required for CHARGE entries).
         stripe_refund_id: Unique Stripe refund identifier (required for REFUND entries).
