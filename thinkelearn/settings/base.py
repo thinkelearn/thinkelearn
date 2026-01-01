@@ -131,8 +131,10 @@ AUTHENTICATION_BACKENDS = [
 ]
 
 # django-allauth configuration (email-only, no username)
+# https://docs.allauth.org/en/dev/account/configuration.html
 ACCOUNT_LOGIN_METHODS = {"email"}  # Login with email only
 ACCOUNT_SIGNUP_FIELDS = ["email*", "password1*", "password2*"]  # No username field
+ACCOUNT_SIGNUP_FORM_HONEYPOT_FIELD = "phone_number"
 ACCOUNT_EMAIL_VERIFICATION = "mandatory"
 ACCOUNT_UNIQUE_EMAIL = True
 ACCOUNT_USER_MODEL_USERNAME_FIELD = None  # Tell allauth to ignore username
