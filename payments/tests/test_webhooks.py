@@ -195,6 +195,7 @@ class StripeWebhookTests(TestCase):
             "type": "charge.refunded",
             "data": {
                 "object": {
+                    "id": "ch_refund",
                     "payment_intent": "pi_refund",
                     "amount": 4900,
                     "amount_refunded": 4900,
@@ -240,6 +241,7 @@ class StripeWebhookTests(TestCase):
             "type": "charge.refunded",
             "data": {
                 "object": {
+                    "id": "ch_partial",
                     "payment_intent": "pi_partial",
                     "amount": 4900,
                     "amount_refunded": 2000,
@@ -646,6 +648,105 @@ class StripeWebhookTests(TestCase):
             1,
         )
         mock_send_email.assert_called()
+
+    @patch("payments.webhooks.send_refund_confirmation_email")
+    def test_refund_recalculates_totals_on_early_return(self, mock_send_email):
+        """Test that recalculate_totals() is called even when enrollment status changes after lock.
+
+        This tests the critical bug where refund ledger entries are created but
+        denormalized totals aren't updated when the early return path is taken
+        (line 727 in webhooks.py).
+        """
+        enrollment = EnrollmentRecord.create_for_user(
+            self.user, self.product, amount=Decimal("49.00")
+        )
+        enrollment.mark_paid()
+
+        payment = Payment.objects.create(
+            enrollment_record=enrollment,
+            amount=enrollment.amount_paid,
+            currency=self.product.currency,
+            status=Payment.Status.SUCCEEDED,
+            stripe_payment_intent_id="pi_early_return",
+            stripe_charge_id="ch_early_return",
+        )
+
+        # Create initial charge ledger entry
+        PaymentLedgerEntry.objects.create(
+            payment=payment,
+            entry_type=PaymentLedgerEntry.EntryType.CHARGE,
+            amount=Decimal("49.00"),
+            currency=self.product.currency,
+            stripe_charge_id="ch_early_return",
+            processed_at=timezone.now(),
+        )
+        payment.recalculate_totals()
+        payment.refresh_from_db()
+
+        # Verify initial state
+        self.assertEqual(payment.amount_gross, Decimal("49.00"))
+        self.assertEqual(payment.amount_refunded, Decimal("0.00"))
+        self.assertEqual(payment.amount_net, Decimal("49.00"))
+
+        # Change enrollment to invalid status before refund webhook
+        # This simulates a race condition or admin action
+        enrollment.status = EnrollmentRecord.Status.PENDING_PAYMENT
+        enrollment.save()
+
+        event_data = {
+            "id": "evt_early_return",
+            "type": "charge.refunded",
+            "data": {
+                "object": {
+                    "id": "ch_early_return",
+                    "payment_intent": "pi_early_return",
+                    "amount": 4900,
+                    "amount_refunded": 4900,
+                    "refunded": True,
+                    "refunds": {
+                        "data": [
+                            {
+                                "id": "re_early_return",
+                                "amount": 4900,
+                                "currency": "cad",
+                                "created": int(timezone.now().timestamp()),
+                            }
+                        ]
+                    },
+                }
+            },
+        }
+
+        response = self._post_webhook(event_data)
+
+        enrollment.refresh_from_db()
+        payment.refresh_from_db()
+
+        # Verify the webhook succeeded
+        self.assertEqual(response.status_code, 200)
+
+        # Verify enrollment status didn't change (invalid status, early return path)
+        self.assertEqual(enrollment.status, EnrollmentRecord.Status.PENDING_PAYMENT)
+
+        # Verify payment status was updated
+        self.assertEqual(payment.status, Payment.Status.REFUNDED)
+
+        # CRITICAL: Verify denormalized totals were updated despite early return
+        # This is the bug being tested - without recalculate_totals() call,
+        # these values would be incorrect
+        self.assertEqual(payment.amount_gross, Decimal("49.00"))
+        self.assertEqual(payment.amount_refunded, Decimal("49.00"))
+        self.assertEqual(payment.amount_net, Decimal("0.00"))
+
+        # Verify refund ledger entry was created
+        refund_entries = PaymentLedgerEntry.objects.filter(
+            payment=payment, entry_type=PaymentLedgerEntry.EntryType.REFUND
+        )
+        self.assertEqual(refund_entries.count(), 1)
+        self.assertEqual(refund_entries.first().amount, Decimal("49.00"))
+
+        # Email should not be sent (invalid enrollment status)
+        mock_send_email.assert_not_called()
 
     def test_charge_succeeded_creates_ledger_entry(self):
         enrollment = EnrollmentRecord.create_for_user(

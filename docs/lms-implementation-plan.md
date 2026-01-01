@@ -2,8 +2,8 @@
 
 **Version:** 3.1
 **Date:** 2025-12-30
-**Status:** Phase 1 ✅ | Phase 2 ✅ | Phase 3 ✅ | Phase 4 ✅ | Phase 5 ⏳ | Phase 6 ⏳ | Phase 7 ⏳ | Phase 8 ⏳
-**Related PRs:** #26 (Phase 1), #28 (Phase 2, 3 & 4 Settings Validation)
+**Status:** Phase 1 ✅ | Phase 2 ✅ | Phase 3 ✅ | Phase 4 ✅ | Phase 5 ✅ | Phase 6 ⏳ | Phase 7 ⏳ | Phase 8 ⏳
+**Related PRs:** #26 (Phase 1), #28 (Phase 2, 3 & 4 Settings Validation), #34 (Phase 5 Accounting Ledger)
 
 ## Executive Summary
 
@@ -165,22 +165,32 @@ and supports partial refunds, multiple refunds, and fee-aware reporting.
 - Stripe can send multiple refund updates for the same charge.
 - Ledger entries support future fee/payout reporting without schema changes.
 
-#### PaymentLedgerEntry (payments/models.py) - PLANNED ⏳
+#### PaymentLedgerEntry (payments/models.py) - IMPLEMENTED ✅
 
 **Purpose:** Provide auditable, per-transaction accounting entries for charges,
 refunds, and adjustments with amounts and Stripe references.
 
-**Proposed Fields:**
+**Implemented Features:**
 
-- `payment` (FK), `entry_type` (CHARGE, REFUND, ADJUSTMENT, FEE)
-- `amount`, `currency`, `net_amount`
-- `stripe_charge_id`, `stripe_refund_id`, `stripe_balance_transaction_id`
-- `processed_at`, `metadata` (JSON for Stripe payload fragments)
+- **Entry Types**: CHARGE, REFUND, ADJUSTMENT, FEE
+- **Fields**: `payment` (FK), `entry_type`, `amount`, `currency`, `net_amount`
+- **Stripe References**: `stripe_charge_id`, `stripe_refund_id`, `stripe_balance_transaction_id`
+- **Metadata**: `processed_at`, `metadata` (JSON for Stripe payload fragments)
+- **Unique Constraints**: One charge entry per stripe_charge_id, one refund entry per stripe_refund_id
+- **Comprehensive Documentation**: Complete docstrings explaining entry types, fields, and constraints
 
-**Notes:**
+**Enhanced Payment Model:**
+
+- **Denormalized Totals**: `amount_gross`, `amount_refunded`, `amount_net` for fast queries
+- **Recalculation Method**: `recalculate_totals(save=True)` aggregates ledger entries
+- **Documentation**: Clear explanation of immutable vs dynamic amount fields
+
+**Benefits:**
 
 - Enables partial refunds without losing original payment context
-- Supports future reporting: gross vs refunded vs net per product/course
+- Supports reporting: gross vs refunded vs net per product/course
+- Complete audit trail for all money movements
+- Idempotent webhook processing prevents duplicate entries
 
 #### WebhookEvent (payments/models.py) - IMPLEMENTED ✅
 
@@ -584,49 +594,70 @@ if not course.can_user_enroll(request.user):
 
 ---
 
-### Phase 5: Accounting Data Model + Reconciliation (Week 5)
+### Phase 5: Accounting Data Model + Reconciliation ✅ COMPLETE
+
+**Status:** ✅ COMPLETE (PR #34, Merged 2026-01-01)
 
 **Goal:** Make payment records usable for accounting and reconciliation in Django
 
 **Tasks:**
 
-1. **Ledger-Oriented Models (2 days)**
-   - [ ] Add `PaymentLedgerEntry` (CHARGE/REFUND/ADJUSTMENT/FEE entries)
-   - [ ] Add denormalized totals to `Payment` (gross, refunded, net)
-   - [ ] Store Stripe IDs for charge/refund/balance transaction
-   - [ ] Keep `failure_reason` for real failures only
+1. **Ledger-Oriented Models (2 days)** ✅
+   - [x] Add `PaymentLedgerEntry` (CHARGE/REFUND/ADJUSTMENT/FEE entries)
+   - [x] Add denormalized totals to `Payment` (gross, refunded, net)
+   - [x] Store Stripe IDs for charge/refund/balance transaction
+   - [x] Keep `failure_reason` for real failures only
+   - [x] Add comprehensive docstrings to models
+   - [x] Document `amount` vs `amount_gross` field relationship
 
-2. **Webhook Enhancements (1.5 days)**
-   - [ ] Record `charge.succeeded` into ledger
-   - [ ] Record `charge.refunded` as one or many refund entries
-   - [ ] Optionally consume `charge.updated` for fee/payout data
-   - [ ] Keep `checkout.session.completed` for enrollment activation
-   - [ ] Maintain idempotency across refund retries/updates
+2. **Webhook Enhancements (1.5 days)** ✅
+   - [x] Record `charge.succeeded` into ledger
+   - [x] Record `charge.refunded` as one or many refund entries
+   - [x] Keep `checkout.session.completed` for enrollment activation
+   - [x] Maintain idempotency across refund retries/updates
+   - [x] Call `recalculate_totals()` after creating ledger entries
+   - [x] Optimize `update_fields` to only include modified fields
 
-3. **Admin Readiness (0.5 days)**
-   - [ ] Show total paid, refunded, net, and fees per payment
-   - [ ] Expose ledger entries inline for auditability
-   - [ ] Add list filters (status, refund state, course/product)
-   - [ ] Defer full admin reporting dashboards until post-launch
+3. **Admin Readiness (0.5 days)** ✅
+   - [x] Show total paid, refunded, net, and fees per payment
+   - [x] Expose ledger entries inline for auditability
+   - [x] Add list filters (status, refund state, course/product)
+   - [x] Add `RefundStateFilter` for admin filtering
+   - [x] Defer full admin reporting dashboards until post-launch
 
-4. **Tests (1.5 days)**
-   - [ ] Partial refund persists refunded amount
-   - [ ] Multiple refunds aggregate correctly
-   - [ ] Ledger entries are idempotent
-   - [ ] Admin views show accurate totals
+4. **Tests (1.5 days)** ✅
+   - [x] Partial refund persists refunded amount
+   - [x] Multiple refunds aggregate correctly
+   - [x] Ledger entries are idempotent
+   - [x] Admin views show accurate totals
+   - [x] Test `charge.succeeded` webhook handler
+   - [x] Test `recalculate_totals()` with all entry types
+   - [x] Test early return path in refund handler (regression test)
 
-**Deliverables:**
+5. **Code Quality & Bug Fixes** ✅
+   - [x] Fix critical bug: missing `recalculate_totals()` call on early return
+   - [x] Fix performance issue: conditional `update_fields` in `handle_charge_succeeded`
+   - [x] Add comprehensive model documentation
+   - [x] Document `recalculate_totals(save=True)` parameter
 
-- `payments/models.py` (ledger + refund modelling)
-- `payments/webhooks.py` (charge/refund ledger updates)
-- `payments/admin.py` (accounting-friendly views)
-- Tests covering partial/multiple refunds and reporting
+**Deliverables:** ✅ ALL COMPLETE
 
-**Success Criteria:**
+- `payments/models.py` (ledger + refund modeling with full documentation) ✅
+- `payments/migrations/0002_accounting_ledger.py` (database schema) ✅
+- `payments/webhooks.py` (charge/refund ledger updates) ✅
+- `payments/admin.py` (accounting-friendly views with inline ledger entries) ✅
+- `payments/tests/test_models.py` (recalculate_totals tests) ✅
+- `payments/tests/test_webhooks.py` (26 comprehensive tests including regression test) ✅
 
-- Partial refunds store refunded amount
-- Admin can see gross/refund/net without Stripe reconciliation
-- Multiple refunds are represented as distinct ledger entries
+**Success Criteria:** ✅ ALL MET
+
+- [x] Partial refunds store refunded amount
+- [x] Admin can see gross/refund/net without Stripe reconciliation
+- [x] Multiple refunds are represented as distinct ledger entries
+- [x] All 49 payments tests passing
+- [x] Denormalized totals always accurate (bug fix verified with test)
+- [x] Webhook processing is idempotent
+- [x] Complete documentation for maintainability
 
 **Reporting Examples (Business Outcomes, post-launch UI):**
 
@@ -1112,7 +1143,7 @@ python manage.py migrate payments zero  # Remove payments app
 | Phase 2 | Week 2 | Checkout Session Flow | Working checkout with tests | ✅ COMPLETE |
 | Phase 3 | Week 3 | Webhooks + Refunds | Reliable webhook processing, automated refunds, email notifications | ✅ COMPLETE |
 | Phase 4 | Week 4 | Error Handling + Frontend | Production-ready resilience, payment UI | ✅ COMPLETE |
-| Phase 5 | Week 5 | Accounting Data Model | Ledger entries, refund tracking, reporting | ⏳ Pending |
+| Phase 5 | Week 5 | Accounting Data Model | Ledger entries, refund tracking, reporting | ✅ COMPLETE |
 | Phase 6 | Week 6 | Production Prep | Security audit, monitoring, documentation | ⏳ Pending |
 | Phase 7 | Week 7 | Deployment | Safe rollout to production | ⏳ Pending |
 | Phase 8 | Post-Launch | Reporting UI + Analytics | Admin dashboards, exports, validation | ⏳ Pending |
@@ -1400,7 +1431,7 @@ The following features are **not included in the 6-week implementation** but are
 4. ✅ ~~Phase 2: Payment Flow - Checkout Session~~ - COMPLETE (Merged 2025-12-29)
 5. ✅ ~~Phase 3: Webhook Handling + Refunds~~ - COMPLETE (PR #28, Merged 2025-12-30)
 6. ✅ ~~Phase 4: Error Handling + Frontend Integration~~ - COMPLETE
-7. ⏳ Phase 5: Accounting Data Model + Reconciliation - PENDING
+7. ✅ ~~Phase 5: Accounting Data Model + Reconciliation~~ - COMPLETE (PR #34, Merged 2026-01-01)
 8. ⏳ Phase 6: Production Preparation - PENDING
 9. ⏳ Phase 7: Deployment & Validation - PENDING
 10. ⏳ Phase 8: Reporting UI + Analytics - PENDING

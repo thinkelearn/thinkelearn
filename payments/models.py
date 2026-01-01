@@ -5,7 +5,22 @@ from django.db.models import Q, Sum
 
 
 class Payment(models.Model):
-    """Individual payment transaction record."""
+    """Individual payment transaction record.
+
+    Tracks the lifecycle of a single payment transaction from initiation through
+    completion, refund, or failure. Uses both immutable fields (amount) and
+    denormalized fields (amount_gross, amount_refunded, amount_net) for performance.
+
+    Fields:
+        amount: Initial payment amount from enrollment (immutable, set at creation).
+        amount_gross: Calculated gross amount from CHARGE ledger entries (dynamic).
+        amount_refunded: Total refunded from REFUND ledger entries (dynamic).
+        amount_net: Net amount after refunds/fees (gross - refunded - fees + adjustments).
+
+    The denormalized amount fields are automatically updated via recalculate_totals()
+    whenever ledger entries are created or modified. This provides fast queries without
+    needing to aggregate ledger entries every time.
+    """
 
     class Status(models.TextChoices):
         INITIATED = "initiated", "Initiated"
@@ -59,7 +74,18 @@ class Payment(models.Model):
         ]
 
     def recalculate_totals(self, *, save: bool = True) -> None:
-        """Recalculate gross, refunded, and net totals from ledger entries."""
+        """Recalculate gross, refunded, and net totals from ledger entries.
+
+        Aggregates all ledger entries by type and updates the denormalized total
+        fields on this Payment instance.
+
+        Args:
+            save: When True (default), persist the recalculated totals to the
+                database using save(update_fields=[...]). When False, update
+                the in-memory amount_gross, amount_refunded, and amount_net
+                attributes without saving the instance, which can be useful
+                for batching updates or handling persistence separately.
+        """
         totals = (
             self.ledger_entries.values("entry_type")
             .annotate(total=Sum("amount"))
@@ -84,7 +110,32 @@ class Payment(models.Model):
 
 
 class PaymentLedgerEntry(models.Model):
-    """Ledger-style entries for payment accounting."""
+    """Ledger-style entries for payment accounting.
+
+    Each entry records a single money movement (charge, refund, fee, or adjustment)
+    in double-entry bookkeeping style. Entries are immutable once created and provide
+    a complete audit trail of all payment activity.
+
+    Entry Types:
+        CHARGE: Money received from customer (positive amount).
+        REFUND: Money returned to customer (positive amount, subtracted in calculations).
+        FEE: Processing fees charged by payment provider (positive amount, subtracted).
+        ADJUSTMENT: Manual corrections or adjustments (can be positive or negative).
+
+    Fields:
+        amount: Transaction amount in the smallest currency unit (e.g., cents).
+        net_amount: Amount after Stripe fees deducted (optional, for reconciliation).
+        stripe_charge_id: Unique Stripe charge identifier (required for CHARGE entries).
+        stripe_refund_id: Unique Stripe refund identifier (required for REFUND entries).
+        stripe_balance_transaction_id: Stripe balance transaction ID for reconciliation.
+
+    Constraints:
+        - One charge entry per stripe_charge_id (prevents duplicate charge entries).
+        - One refund entry per stripe_refund_id (prevents duplicate refund entries).
+
+    These constraints ensure idempotency - processing the same webhook multiple times
+    won't create duplicate ledger entries.
+    """
 
     class EntryType(models.TextChoices):
         CHARGE = "charge", "Charge"

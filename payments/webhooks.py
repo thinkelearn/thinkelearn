@@ -339,19 +339,16 @@ def handle_charge_succeeded(event: dict) -> None:
         metadata_updates = _sync_charge_metadata(payment, charge)
         _ensure_charge_ledger_entry(payment, charge)
 
+        # Consolidate all updates into single save operation
+        update_fields = ["stripe_event_id"] + metadata_updates
+
         # Update payment status if applicable
         if payment.status in [Payment.Status.INITIATED, Payment.Status.PROCESSING]:
             payment.status = Payment.Status.SUCCEEDED
             payment.failure_reason = ""
+            update_fields.extend(["status", "failure_reason"])
 
         payment.stripe_event_id = event.get("id", "")
-
-        # Consolidate all updates into single save operation
-        update_fields = [
-            "status",
-            "failure_reason",
-            "stripe_event_id",
-        ] + metadata_updates
         payment.save(update_fields=update_fields)
 
         payment.recalculate_totals()
@@ -724,6 +721,7 @@ def handle_charge_refunded(event: dict) -> None:
                 "failure_reason",
             ] + metadata_updates
             payment.save(update_fields=update_fields)
+            payment.recalculate_totals()
             return
 
         if is_full_refund:
