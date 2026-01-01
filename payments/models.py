@@ -70,9 +70,7 @@ class Payment(models.Model):
         gross = by_type.get(PaymentLedgerEntry.EntryType.CHARGE, Decimal("0"))
         refunded = by_type.get(PaymentLedgerEntry.EntryType.REFUND, Decimal("0"))
         fee = by_type.get(PaymentLedgerEntry.EntryType.FEE, Decimal("0"))
-        adjustment = by_type.get(
-            PaymentLedgerEntry.EntryType.ADJUSTMENT, Decimal("0")
-        )
+        adjustment = by_type.get(PaymentLedgerEntry.EntryType.ADJUSTMENT, Decimal("0"))
         net = gross - refunded - fee + adjustment
 
         self.amount_gross = gross
@@ -80,6 +78,8 @@ class Payment(models.Model):
         self.amount_net = net
 
         if save:
+            # Use update_fields to prevent race conditions where other fields
+            # might be modified concurrently. Only save the denormalized totals.
             self.save(update_fields=["amount_gross", "amount_refunded", "amount_net"])
 
 
@@ -129,6 +129,9 @@ class PaymentLedgerEntry(models.Model):
                 name="unique_refund_entry_per_refund_id",
             ),
         ]
+
+    def __str__(self):
+        return f"{self.get_entry_type_display()} - {self.amount} {self.currency}"
 
 
 class WebhookEvent(models.Model):

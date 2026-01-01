@@ -143,6 +143,15 @@ def _get_payment_for_enrollment(
 
 
 def _get_payment_for_charge(charge: dict, *, lock: bool = False) -> Payment | None:
+    """Get payment record from Stripe charge data.
+
+    Args:
+        charge: Stripe charge object
+        lock: If True, use select_for_update() to lock the row (requires transaction)
+
+    Returns:
+        Payment if found, None otherwise
+    """
     payment_intent = charge.get("payment_intent")
     if not payment_intent:
         return None
@@ -153,12 +162,32 @@ def _get_payment_for_charge(charge: dict, *, lock: bool = False) -> Payment | No
 
 
 def _timestamp_to_datetime(timestamp: int | None) -> timezone.datetime | None:
+    """Convert Unix timestamp to timezone-aware datetime.
+
+    Args:
+        timestamp: Unix timestamp in seconds (Stripe format)
+
+    Returns:
+        Timezone-aware datetime in UTC, or None if input is None
+    """
     if timestamp is None:
         return None
-    return timezone.datetime.fromtimestamp(timestamp, tz=timezone.utc)
+    return timezone.datetime.fromtimestamp(timestamp, tz=timezone.UTC)
 
 
-def _sync_charge_metadata(payment: Payment, charge: dict) -> None:
+def _sync_charge_metadata(payment: Payment, charge: dict) -> list[str]:
+    """Sync Stripe charge metadata to payment record.
+
+    Updates stripe_charge_id and stripe_balance_transaction_id fields
+    if they differ from values in charge object. Does NOT save the payment.
+
+    Args:
+        payment: Payment record to update (modified in-place)
+        charge: Stripe charge object containing metadata
+
+    Returns:
+        List of field names that were updated (for use in save(update_fields=...))
+    """
     charge_id = charge.get("id") or ""
     balance_transaction = charge.get("balance_transaction") or ""
     payment_updates = []
@@ -173,11 +202,18 @@ def _sync_charge_metadata(payment: Payment, charge: dict) -> None:
         payment.stripe_balance_transaction_id = balance_transaction
         payment_updates.append("stripe_balance_transaction_id")
 
-    if payment_updates:
-        payment.save(update_fields=payment_updates)
+    return payment_updates
 
 
 def _ensure_charge_ledger_entry(payment: Payment, charge: dict) -> None:
+    """Create ledger entry for a successful charge.
+
+    Uses idempotent get_or_create with unique Stripe charge ID.
+
+    Args:
+        payment: Payment record to add ledger entry to
+        charge: Stripe charge object containing transaction details
+    """
     charge_id = charge.get("id") or ""
     if not charge_id:
         return
@@ -203,24 +239,33 @@ def _ensure_charge_ledger_entry(payment: Payment, charge: dict) -> None:
 
 
 def _ensure_refund_ledger_entries(payment: Payment, charge: dict) -> None:
+    """Create or update ledger entries for all refunds on a charge.
+
+    Uses idempotent get_or_create with unique Stripe refund IDs.
+    Handles fallback case where refund details are unavailable.
+
+    Args:
+        payment: Payment record to add ledger entries to
+        charge: Stripe charge object containing refund information
+    """
     refunds = (charge.get("refunds") or {}).get("data") or []
     charge_id = charge.get("id") or ""
     if not refunds:
         refund_amount = _cents_to_decimal(charge.get("amount_refunded"))
         if refund_amount and refund_amount > 0:
+            # Use composite ID for fallback to avoid unique constraint conflict
+            fallback_refund_id = f"{charge_id}:fallback" if charge_id else ""
             PaymentLedgerEntry.objects.get_or_create(
                 payment=payment,
                 entry_type=PaymentLedgerEntry.EntryType.REFUND,
-                stripe_refund_id=charge_id or "",
+                stripe_refund_id=fallback_refund_id,
                 defaults={
                     "amount": refund_amount,
                     "currency": (
                         charge.get("currency") or payment.currency or "CAD"
                     ).upper(),
                     "stripe_charge_id": charge_id,
-                    "stripe_balance_transaction_id": charge.get(
-                        "balance_transaction"
-                    )
+                    "stripe_balance_transaction_id": charge.get("balance_transaction")
                     or "",
                     "processed_at": _timestamp_to_datetime(charge.get("created")),
                     "metadata": {"fallback": True},
@@ -228,10 +273,20 @@ def _ensure_refund_ledger_entries(payment: Payment, charge: dict) -> None:
             )
         return
 
+    # Optimize with bulk_create for multiple refunds
+    entries_to_create = []
+    existing_refund_ids = set(
+        PaymentLedgerEntry.objects.filter(
+            payment=payment,
+            entry_type=PaymentLedgerEntry.EntryType.REFUND,
+        ).values_list("stripe_refund_id", flat=True)
+    )
+
     for refund in refunds:
         refund_id = refund.get("id") or ""
-        if not refund_id:
+        if not refund_id or refund_id in existing_refund_ids:
             continue
+
         refund_amount = _cents_to_decimal(refund.get("amount")) or Decimal("0")
         refund_currency = (
             refund.get("currency")
@@ -239,19 +294,25 @@ def _ensure_refund_ledger_entries(payment: Payment, charge: dict) -> None:
             or payment.currency
             or "CAD"
         ).upper()
-        PaymentLedgerEntry.objects.get_or_create(
-            payment=payment,
-            entry_type=PaymentLedgerEntry.EntryType.REFUND,
-            stripe_refund_id=refund_id,
-            defaults={
-                "amount": refund_amount,
-                "currency": refund_currency,
-                "stripe_charge_id": charge_id,
-                "stripe_balance_transaction_id": refund.get("balance_transaction")
-                or "",
-                "processed_at": _timestamp_to_datetime(refund.get("created")),
-                "metadata": {"status": refund.get("status")},
-            },
+
+        entries_to_create.append(
+            PaymentLedgerEntry(
+                payment=payment,
+                entry_type=PaymentLedgerEntry.EntryType.REFUND,
+                stripe_refund_id=refund_id,
+                amount=refund_amount,
+                currency=refund_currency,
+                stripe_charge_id=charge_id,
+                stripe_balance_transaction_id=refund.get("balance_transaction") or "",
+                processed_at=_timestamp_to_datetime(refund.get("created")),
+                metadata={"status": refund.get("status")},
+            )
+        )
+
+    if entries_to_create:
+        PaymentLedgerEntry.objects.bulk_create(
+            entries_to_create,
+            ignore_conflicts=True,  # Respects unique constraints
         )
 
 
@@ -273,21 +334,26 @@ def handle_charge_succeeded(event: dict) -> None:
         payment = _get_payment_for_charge(charge, lock=True)
         if not payment:
             return
-        _sync_charge_metadata(payment, charge)
+
+        # Sync metadata fields and collect all updates for single save
+        metadata_updates = _sync_charge_metadata(payment, charge)
         _ensure_charge_ledger_entry(payment, charge)
+
+        # Update payment status if applicable
         if payment.status in [Payment.Status.INITIATED, Payment.Status.PROCESSING]:
             payment.status = Payment.Status.SUCCEEDED
             payment.failure_reason = ""
+
         payment.stripe_event_id = event.get("id", "")
-        payment.save(
-            update_fields=[
-                "status",
-                "failure_reason",
-                "stripe_event_id",
-                "stripe_charge_id",
-                "stripe_balance_transaction_id",
-            ]
-        )
+
+        # Consolidate all updates into single save operation
+        update_fields = [
+            "status",
+            "failure_reason",
+            "stripe_event_id",
+        ] + metadata_updates
+        payment.save(update_fields=update_fields)
+
         payment.recalculate_totals()
 
 
@@ -601,21 +667,24 @@ def handle_charge_refunded(event: dict) -> None:
         # Still process payment status update but skip enrollment changes
         with transaction.atomic():
             payment = Payment.objects.select_for_update().get(id=payment.id)
-            _sync_charge_metadata(payment, charge)
+
+            # Sync metadata fields and collect all updates for single save
+            metadata_updates = _sync_charge_metadata(payment, charge)
             _ensure_charge_ledger_entry(payment, charge)
             _ensure_refund_ledger_entries(payment, charge)
+
             payment.status = Payment.Status.REFUNDED
             payment.stripe_event_id = event.get("id", "")
             payment.failure_reason = ""
-            payment.save(
-                update_fields=[
-                    "status",
-                    "stripe_event_id",
-                    "failure_reason",
-                    "stripe_charge_id",
-                    "stripe_balance_transaction_id",
-                ]
-            )
+
+            # Consolidate all updates into single save operation
+            update_fields = [
+                "status",
+                "stripe_event_id",
+                "failure_reason",
+            ] + metadata_updates
+            payment.save(update_fields=update_fields)
+
             payment.recalculate_totals()
         return
 
@@ -624,7 +693,9 @@ def handle_charge_refunded(event: dict) -> None:
         # Note: Can't use select_related with nullable relations when using select_for_update
         enrollment = EnrollmentRecord.objects.select_for_update().get(id=enrollment.id)
         payment = Payment.objects.select_for_update().get(id=payment.id)
-        _sync_charge_metadata(payment, charge)
+
+        # Sync metadata fields and collect all updates for single save
+        metadata_updates = _sync_charge_metadata(payment, charge)
         _ensure_charge_ledger_entry(payment, charge)
         _ensure_refund_ledger_entries(payment, charge)
 
@@ -644,8 +715,15 @@ def handle_charge_refunded(event: dict) -> None:
             # Still update payment status
             payment.status = Payment.Status.REFUNDED
             payment.stripe_event_id = event.get("id", "")
-            payment.failure_reason = "Partial refund" if not is_full_refund else ""
-            payment.save(update_fields=["status", "stripe_event_id", "failure_reason"])
+            payment.failure_reason = ""
+
+            # Consolidate all updates into single save operation
+            update_fields = [
+                "status",
+                "stripe_event_id",
+                "failure_reason",
+            ] + metadata_updates
+            payment.save(update_fields=update_fields)
             return
 
         if is_full_refund:
@@ -666,15 +744,15 @@ def handle_charge_refunded(event: dict) -> None:
         payment.status = Payment.Status.REFUNDED
         payment.stripe_event_id = event.get("id", "")
         payment.failure_reason = ""
-        payment.save(
-            update_fields=[
-                "status",
-                "stripe_event_id",
-                "failure_reason",
-                "stripe_charge_id",
-                "stripe_balance_transaction_id",
-            ]
-        )
+
+        # Consolidate all updates into single save operation
+        update_fields = [
+            "status",
+            "stripe_event_id",
+            "failure_reason",
+        ] + metadata_updates
+        payment.save(update_fields=update_fields)
+
         payment.recalculate_totals()
 
     # Re-fetch enrollment with related objects for email (avoid N+1 queries)

@@ -98,6 +98,98 @@ class PaymentModelTest(TestCase):
         self.assertEqual(payment.amount_refunded, Decimal("20.00"))
         self.assertEqual(payment.amount_net, Decimal("79.99"))
 
+    def test_payment_totals_with_fees(self):
+        """Test that FEE entries correctly reduce amount_net."""
+        payment = Payment.objects.create(
+            enrollment_record=self.enrollment,
+            amount=Decimal("100.00"),
+        )
+        PaymentLedgerEntry.objects.create(
+            payment=payment,
+            entry_type=PaymentLedgerEntry.EntryType.CHARGE,
+            amount=Decimal("100.00"),
+            currency="CAD",
+        )
+        PaymentLedgerEntry.objects.create(
+            payment=payment,
+            entry_type=PaymentLedgerEntry.EntryType.FEE,
+            amount=Decimal("2.90"),  # Stripe fee
+            currency="CAD",
+        )
+
+        payment.recalculate_totals()
+        payment.refresh_from_db()
+
+        self.assertEqual(payment.amount_gross, Decimal("100.00"))
+        self.assertEqual(payment.amount_refunded, Decimal("0"))
+        # Net should be gross - fees
+        self.assertEqual(payment.amount_net, Decimal("97.10"))
+
+    def test_payment_totals_with_adjustments(self):
+        """Test that ADJUSTMENT entries correctly modify amount_net."""
+        payment = Payment.objects.create(
+            enrollment_record=self.enrollment,
+            amount=Decimal("100.00"),
+        )
+        PaymentLedgerEntry.objects.create(
+            payment=payment,
+            entry_type=PaymentLedgerEntry.EntryType.CHARGE,
+            amount=Decimal("100.00"),
+            currency="CAD",
+        )
+        PaymentLedgerEntry.objects.create(
+            payment=payment,
+            entry_type=PaymentLedgerEntry.EntryType.ADJUSTMENT,
+            amount=Decimal("5.00"),  # Credit adjustment
+            currency="CAD",
+        )
+
+        payment.recalculate_totals()
+        payment.refresh_from_db()
+
+        self.assertEqual(payment.amount_gross, Decimal("100.00"))
+        # Net should be gross + adjustment
+        self.assertEqual(payment.amount_net, Decimal("105.00"))
+
+    def test_payment_totals_with_all_entry_types(self):
+        """Test comprehensive calculation with all entry types."""
+        payment = Payment.objects.create(
+            enrollment_record=self.enrollment,
+            amount=Decimal("100.00"),
+        )
+        PaymentLedgerEntry.objects.create(
+            payment=payment,
+            entry_type=PaymentLedgerEntry.EntryType.CHARGE,
+            amount=Decimal("100.00"),
+            currency="CAD",
+        )
+        PaymentLedgerEntry.objects.create(
+            payment=payment,
+            entry_type=PaymentLedgerEntry.EntryType.FEE,
+            amount=Decimal("2.90"),
+            currency="CAD",
+        )
+        PaymentLedgerEntry.objects.create(
+            payment=payment,
+            entry_type=PaymentLedgerEntry.EntryType.REFUND,
+            amount=Decimal("20.00"),
+            currency="CAD",
+        )
+        PaymentLedgerEntry.objects.create(
+            payment=payment,
+            entry_type=PaymentLedgerEntry.EntryType.ADJUSTMENT,
+            amount=Decimal("5.00"),
+            currency="CAD",
+        )
+
+        payment.recalculate_totals()
+        payment.refresh_from_db()
+
+        self.assertEqual(payment.amount_gross, Decimal("100.00"))
+        self.assertEqual(payment.amount_refunded, Decimal("20.00"))
+        # Net = 100 (gross) - 20 (refund) - 2.90 (fee) + 5 (adjustment) = 82.10
+        self.assertEqual(payment.amount_net, Decimal("82.10"))
+
 
 class WebhookEventModelTest(TestCase):
     def test_webhook_event_creation(self):

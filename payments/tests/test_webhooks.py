@@ -685,3 +685,259 @@ class StripeWebhookTests(TestCase):
             ).count(),
             1,
         )
+
+    def test_charge_succeeded_syncs_stripe_ids(self):
+        """Test that charge.succeeded syncs stripe_charge_id and stripe_balance_transaction_id."""
+        enrollment = EnrollmentRecord.create_for_user(
+            self.user, self.product, amount=Decimal("49.00")
+        )
+        payment = Payment.objects.create(
+            enrollment_record=enrollment,
+            amount=enrollment.amount_paid,
+            currency=self.product.currency,
+            status=Payment.Status.PROCESSING,
+            stripe_payment_intent_id="pi_charge_sync",
+        )
+        event_data = {
+            "id": "evt_charge_sync",
+            "type": "charge.succeeded",
+            "data": {
+                "object": {
+                    "id": "ch_sync_123",
+                    "payment_intent": "pi_charge_sync",
+                    "amount": 4900,
+                    "currency": "cad",
+                    "created": int(timezone.now().timestamp()),
+                    "balance_transaction": "txn_balance_123",
+                }
+            },
+        }
+
+        response = self._post_webhook(event_data)
+
+        payment.refresh_from_db()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(payment.status, Payment.Status.SUCCEEDED)
+        # Verify Stripe metadata was synced
+        self.assertEqual(payment.stripe_charge_id, "ch_sync_123")
+        self.assertEqual(payment.stripe_balance_transaction_id, "txn_balance_123")
+        self.assertEqual(payment.amount_gross, Decimal("49.00"))
+
+    def test_charge_succeeded_idempotency(self):
+        """Test that processing charge.succeeded multiple times creates only one ledger entry."""
+        enrollment = EnrollmentRecord.create_for_user(
+            self.user, self.product, amount=Decimal("49.00")
+        )
+        payment = Payment.objects.create(
+            enrollment_record=enrollment,
+            amount=enrollment.amount_paid,
+            currency=self.product.currency,
+            status=Payment.Status.PROCESSING,
+            stripe_payment_intent_id="pi_charge_idem",
+        )
+        event_data = {
+            "id": "evt_charge_idem_1",
+            "type": "charge.succeeded",
+            "data": {
+                "object": {
+                    "id": "ch_idem_123",
+                    "payment_intent": "pi_charge_idem",
+                    "amount": 4900,
+                    "currency": "cad",
+                    "created": int(timezone.now().timestamp()),
+                }
+            },
+        }
+
+        # Process same charge twice with different event IDs
+        self._post_webhook(event_data)
+        event_data["id"] = "evt_charge_idem_2"  # Different event ID
+        response = self._post_webhook(event_data)
+
+        payment.refresh_from_db()
+
+        self.assertEqual(response.status_code, 200)
+        # Should only have one charge ledger entry despite two webhook events
+        self.assertEqual(
+            PaymentLedgerEntry.objects.filter(
+                payment=payment, entry_type=PaymentLedgerEntry.EntryType.CHARGE
+            ).count(),
+            1,
+        )
+        self.assertEqual(payment.amount_gross, Decimal("49.00"))
+
+    def test_charge_succeeded_already_succeeded_payment(self):
+        """Test that charge.succeeded doesn't overwrite status for already-succeeded payments."""
+        enrollment = EnrollmentRecord.create_for_user(
+            self.user, self.product, amount=Decimal("49.00")
+        )
+        payment = Payment.objects.create(
+            enrollment_record=enrollment,
+            amount=enrollment.amount_paid,
+            currency=self.product.currency,
+            status=Payment.Status.SUCCEEDED,  # Already succeeded
+            stripe_payment_intent_id="pi_charge_existing",
+        )
+        event_data = {
+            "id": "evt_charge_existing",
+            "type": "charge.succeeded",
+            "data": {
+                "object": {
+                    "id": "ch_existing_123",
+                    "payment_intent": "pi_charge_existing",
+                    "amount": 4900,
+                    "currency": "cad",
+                    "created": int(timezone.now().timestamp()),
+                }
+            },
+        }
+
+        response = self._post_webhook(event_data)
+
+        payment.refresh_from_db()
+
+        self.assertEqual(response.status_code, 200)
+        # Status should remain SUCCEEDED (not overwritten)
+        self.assertEqual(payment.status, Payment.Status.SUCCEEDED)
+        # Ledger entry should still be created
+        self.assertEqual(
+            PaymentLedgerEntry.objects.filter(
+                payment=payment, entry_type=PaymentLedgerEntry.EntryType.CHARGE
+            ).count(),
+            1,
+        )
+
+    def test_charge_succeeded_failed_payment(self):
+        """Test that charge.succeeded doesn't update status for failed payments."""
+        enrollment = EnrollmentRecord.create_for_user(
+            self.user, self.product, amount=Decimal("49.00")
+        )
+        payment = Payment.objects.create(
+            enrollment_record=enrollment,
+            amount=enrollment.amount_paid,
+            currency=self.product.currency,
+            status=Payment.Status.FAILED,  # Already failed
+            failure_reason="Card declined",
+            stripe_payment_intent_id="pi_charge_failed",
+        )
+        event_data = {
+            "id": "evt_charge_failed",
+            "type": "charge.succeeded",
+            "data": {
+                "object": {
+                    "id": "ch_failed_123",
+                    "payment_intent": "pi_charge_failed",
+                    "amount": 4900,
+                    "currency": "cad",
+                    "created": int(timezone.now().timestamp()),
+                }
+            },
+        }
+
+        response = self._post_webhook(event_data)
+
+        payment.refresh_from_db()
+
+        self.assertEqual(response.status_code, 200)
+        # Status should remain FAILED (not overwritten)
+        self.assertEqual(payment.status, Payment.Status.FAILED)
+        self.assertEqual(payment.failure_reason, "Card declined")
+        # Ledger entry should still be created for accounting
+        self.assertEqual(
+            PaymentLedgerEntry.objects.filter(
+                payment=payment, entry_type=PaymentLedgerEntry.EntryType.CHARGE
+            ).count(),
+            1,
+        )
+
+    @patch("payments.webhooks.send_refund_confirmation_email")
+    def test_multiple_partial_refunds(self, mock_send_email):
+        """Test that multiple partial refunds correctly aggregate in amount_refunded."""
+        enrollment = EnrollmentRecord.create_for_user(
+            self.user, self.product, amount=Decimal("49.00")
+        )
+        enrollment.mark_paid()
+        payment = Payment.objects.create(
+            enrollment_record=enrollment,
+            amount=Decimal("49.00"),
+            currency=self.product.currency,
+            status=Payment.Status.SUCCEEDED,
+            stripe_payment_intent_id="pi_multi_refund",
+        )
+
+        # First refund: $20.00
+        event1 = {
+            "id": "evt_refund_1",
+            "type": "charge.refunded",
+            "data": {
+                "object": {
+                    "id": "ch_multi",
+                    "payment_intent": "pi_multi_refund",
+                    "amount": 4900,
+                    "amount_refunded": 2000,
+                    "refunded": False,
+                    "refunds": {
+                        "data": [
+                            {
+                                "id": "re_1",
+                                "amount": 2000,
+                                "currency": "cad",
+                                "created": int(timezone.now().timestamp()),
+                            }
+                        ]
+                    },
+                }
+            },
+        }
+
+        # Second refund: $10.00
+        event2 = {
+            "id": "evt_refund_2",
+            "type": "charge.refunded",
+            "data": {
+                "object": {
+                    "id": "ch_multi",
+                    "payment_intent": "pi_multi_refund",
+                    "amount": 4900,
+                    "amount_refunded": 3000,
+                    "refunded": False,
+                    "refunds": {
+                        "data": [
+                            {
+                                "id": "re_1",
+                                "amount": 2000,
+                                "currency": "cad",
+                                "created": int(timezone.now().timestamp()),
+                            },
+                            {
+                                "id": "re_2",
+                                "amount": 1000,
+                                "currency": "cad",
+                                "created": int(timezone.now().timestamp()),
+                            },
+                        ]
+                    },
+                }
+            },
+        }
+
+        self._post_webhook(event1)
+        self._post_webhook(event2)
+
+        payment.refresh_from_db()
+
+        # Should have 2 separate refund entries
+        self.assertEqual(
+            PaymentLedgerEntry.objects.filter(
+                payment=payment, entry_type=PaymentLedgerEntry.EntryType.REFUND
+            ).count(),
+            2,
+        )
+
+        # Total refunded should be $30.00
+        self.assertEqual(payment.amount_refunded, Decimal("30.00"))
+        self.assertEqual(payment.amount_net, Decimal("19.00"))
+        # Enrollment should still be active (partial refund)
+        enrollment.refresh_from_db()
+        self.assertEqual(enrollment.status, EnrollmentRecord.Status.ACTIVE)
