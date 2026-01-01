@@ -19,11 +19,8 @@ class PaymentLedgerEntryInline(admin.TabularInline):
         "created_at",
     )
     readonly_fields = fields
-    # Add pagination for payments with many ledger entries (refunds, adjustments)
     show_change_link = True
     can_delete = False
-    # Display up to 20 entries per page (defensive limit for high-volume payments)
-    max_num = 20
 
 
 class RefundStateFilter(admin.SimpleListFilter):
