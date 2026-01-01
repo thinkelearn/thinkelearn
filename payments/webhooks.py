@@ -27,6 +27,7 @@ This prevents invalid state transitions from:
 """
 
 import logging
+from datetime import UTC
 from decimal import Decimal
 
 from django.core.exceptions import ObjectDoesNotExist
@@ -172,7 +173,7 @@ def _timestamp_to_datetime(timestamp: int | None) -> timezone.datetime | None:
     """
     if timestamp is None:
         return None
-    return timezone.datetime.fromtimestamp(timestamp, tz=timezone.UTC)
+    return timezone.datetime.fromtimestamp(timestamp, tz=UTC)
 
 
 def _sync_charge_metadata(payment: Payment, charge: dict) -> list[str]:
