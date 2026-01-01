@@ -219,9 +219,6 @@ rank_files_by_risk() {
       # Auth/security config
       if (contains(file, /(auth|account|permission|policy|acl|rbac|middleware|settings|csrf|csp|security|oauth|jwt|sso)/)) w += 170
 
-      # Migrations
-      if (contains(file, /\/migrations\/.*\.py$/)) w += 200
-
       # Templates + JS can be security relevant
       if (contains(file, /\.(html|jinja|twig)$/) || contains(file, /templates\//)) w += 60
       if (contains(file, /\.(js|ts|tsx)$/)) w += 45
@@ -276,6 +273,25 @@ echo "   FALLBACK=$MODEL_FALLBACK"
 
 git fetch origin >/dev/null 2>&1 || true
 
+# ====== Exclusions (token savers) ======
+# These files will be excluded from: risk ranking, deep review sets, accounting sets, test sets
+EXCLUDE_REGEX="${EXCLUDE_REGEX:-(^|/)__init__\.py$|^thinkelearn/static/css/thinkelearn\.css$|\.md$|^uv\.lock$|^\.github/workflows/ci\.yml$|^\.github/workflows/claude\.yml$|^\.gitignore$|^\.pre-commit-config\.yaml$|^Dockerfile$|^Dockerfile\.dev$|^scripts/pr_review_llm\.sh$}"
+
+is_excluded() {
+  local path="$1"
+  [[ "$path" =~ $EXCLUDE_REGEX ]]
+}
+
+filter_excluded_filelist() {
+  # reads file paths on stdin, prints only allowed paths
+  while read -r f; do
+    [[ -z "$f" ]] && continue
+    if ! is_excluded "$f"; then
+      echo "$f"
+    fi
+  done
+}
+
 # ====== Collect artifacts ======
 if [[ "$REGEN_DIFF" == "1" ]]; then
   echo "==> Regenerating diff from git..."
@@ -302,15 +318,18 @@ fi
 git diff --stat "$BASE_REF...$HEAD_REF" > "$RUN_DIR/diffstat.txt"
 git diff --name-status "$BASE_REF...$HEAD_REF" > "$RUN_DIR/name-status.txt"
 git diff --name-only "$BASE_REF...$HEAD_REF" > "$RUN_DIR/files.txt"
+cat "$RUN_DIR/files.txt" | filter_excluded_filelist > "$RUN_DIR/files.filtered.txt"
 git diff --numstat "$BASE_REF...$HEAD_REF" > "$RUN_DIR/numstat.txt"
+awk '{print $3}' "$RUN_DIR/numstat.txt" | filter_excluded_filelist > "$RUN_DIR/_allowed_paths.txt"
+awk 'NR==FNR{ok[$1]=1; next} ok[$3]{print}' "$RUN_DIR/_allowed_paths.txt" "$RUN_DIR/numstat.txt" > "$RUN_DIR/numstat.filtered.txt"
 git log --pretty=format:'%an|%ad|%s' --date=short "$BASE_REF..$HEAD_REF" > "$RUN_DIR/commit_log_compact.txt"
 
-awk -F/ '{print $1}' "$RUN_DIR/files.txt" | sort | uniq -c | sort -nr > "$RUN_DIR/dirs_top.txt"
-awk -F/ 'NF>1{print $1"/"$2}' "$RUN_DIR/files.txt" | sort | uniq -c | sort -nr > "$RUN_DIR/dirs_top2.txt"
+awk -F/ '{print $1}' "$RUN_DIR/files.filtered.txt" | sort | uniq -c | sort -nr > "$RUN_DIR/dirs_top.txt"
+awk -F/ 'NF>1{print $1"/"$2}' "$RUN_DIR/files.filtered.txt" | sort | uniq -c | sort -nr > "$RUN_DIR/dirs_top2.txt"
 
 {
   echo "Diff lines: $(wc -l < "$DIFF_PATH")"
-  echo "Files changed: $(wc -l < "$RUN_DIR/files.txt")"
+  echo "Files changed (filtered): $(wc -l < "$RUN_DIR/files.filtered.txt")"
   echo
   cat "$RUN_DIR/diffstat.txt"
 } > "$RUN_DIR/metrics.txt"
@@ -320,18 +339,13 @@ head -n 600 "$RUN_DIR/diff_outline.txt" > "$RUN_DIR/diff_outline_head.txt" || tr
 
 # ====== Risk ranking ======
 echo "==> Risk ranking..."
-rank_files_by_risk "$RUN_DIR/numstat.txt" "$RUN_DIR/ranked_files.tsv"
+rank_files_by_risk "$RUN_DIR/numstat.filtered.txt" "$RUN_DIR/ranked_files.tsv"
 head -n 100 "$RUN_DIR/ranked_files.tsv" > "$RUN_DIR/ranked_files_top100.tsv"
 
 TOP_RISK_SET="$(awk 'NR<=N{print $4}' N="$TOP_RISK_FILES" "$RUN_DIR/ranked_files.tsv")"
-
 SECURITY_SET="$(take_top_ranked "$RUN_DIR/ranked_files.tsv" "(stripe|webhook|checkout|payment|refund|charge|balance_transaction|auth|permission|middleware|settings|csrf|csp|security|oauth|jwt|sso)" "$TOP_RISK_SECURITY_FILES")"
 PAYMENTS_SET="$(take_top_ranked "$RUN_DIR/ranked_files.tsv" "(payments/|stripe|webhook|checkout|payment|refund|enroll|lms)" "$TOP_RISK_PAYMENTS_FILES")"
-
-# Phase 5 focused selection
 ACCOUNTING_SET="$(take_top_ranked "$RUN_DIR/ranked_files.tsv" "(ledger|accounting|reconcil|recalculate_totals|amount_gross|amount_refunded|amount_net|charge\\.succeeded|charge\\.refunded|balance_transaction|payments/models\\.py|payments/webhooks\\.py|payments/admin\\.py)" "$TOP_RISK_ACCOUNTING_FILES")"
-
-MIGRATIONS_SET="$(grep -E '/migrations/.*\.py$' "$RUN_DIR/files.txt" || true)"
 TESTS_SET="$(take_top_ranked "$RUN_DIR/ranked_files.tsv" "(^|/)(tests/|test_).*\\.py$" "$TOP_RISK_TEST_FILES")"
 
 # ====== HOLISTIC REVIEW ======
@@ -357,7 +371,7 @@ HOLISTIC_PROMPT="$RUN_DIR/prompt_holistic.txt"
   echo "=== PHASE 5 FOCUS FILES (accounting/ledger/reconciliation) ==="
   echo "$ACCOUNTING_SET"
   echo
-  echo "=== DIR BREAKDOWN ==="
+  echo "=== DIR BREAKDOWN (filtered) ==="
   head -n 25 "$RUN_DIR/dirs_top.txt"
   echo
   echo "=== COMMIT LOG (last 300) ==="
@@ -368,7 +382,6 @@ HOLISTIC_PROMPT="$RUN_DIR/prompt_holistic.txt"
   echo
   if [[ -n "$PLAN_PATH" ]]; then
     echo "=== PLAN EXCERPT (Phase 5 accounting) ==="
-    # Pull a bit more since Phase 5 is lower in the doc; bounded by tokenizer anyway.
     sed -n '300,500p' "$PLAN_PATH"
     echo
   fi
@@ -436,51 +449,10 @@ for part in "$RUN_DIR/security_chunks"/diff.part*.txt; do
   echo -e "\n" >> "$RUN_DIR/01_security_review.md"
 done
 
-# ====== MIGRATIONS REVIEW ======
-echo "==> Data integrity & migrations review..."
-: > "$RUN_DIR/02_data_integrity_review.md"
-if [[ -n "$MIGRATIONS_SET" ]]; then
-  while read -r mf; do
-    [[ -z "$mf" ]] && continue
-    git diff "$BASE_REF...$HEAD_REF" -- "$mf" > "$RUN_DIR/_mig.tmp" || true
-    [[ ! -s "$RUN_DIR/_mig.tmp" ]] && continue
-
-    prompt="$RUN_DIR/_mig_prompt.txt"
-    {
-      echo "Review this Django migration for production safety:"
-      echo "- locking risks"
-      echo "- irreversible ops"
-      echo "- missing indexes/constraints"
-      echo "- data migration safety and rollback plan"
-      echo
-      echo "Special attention: Phase 5 accounting ledger constraints and indexes."
-      echo
-      echo "File: $mf"
-      echo
-      cat "$RUN_DIR/_mig.tmp"
-    } > "$prompt"
-
-    llm_run \
-      "$MODEL_DEEP" \
-      "Django migrations expert. Be strict and concrete." \
-      "$prompt" \
-      "$RUN_DIR/_mig_out.md"
-
-    {
-      echo "## $mf"
-      cat "$RUN_DIR/_mig_out.md"
-      echo -e "\n---\n"
-    } >> "$RUN_DIR/02_data_integrity_review.md"
-  done <<< "$MIGRATIONS_SET"
-else
-  echo "No migration files detected." >> "$RUN_DIR/02_data_integrity_review.md"
-fi
-
-# ====== ACCOUNTING + RECONCILIATION REVIEW (new, Phase 5-focused) ======
-echo "==> Accounting + reconciliation review (Phase 5)..."
+# ====== ACCOUNTING + RECONCILIATION REVIEW ======
+echo "==> Accounting + reconciliation review..."
 : > "$RUN_DIR/03_accounting_review.md"
 
-# Ensure we always include canonical Phase 5 files if present
 CANONICAL_ACCOUNTING_FILES="$RUN_DIR/_canonical_accounting_files.txt"
 {
   echo "payments/models.py"
@@ -499,14 +471,15 @@ ACCOUNTING_SET_FILE="$RUN_DIR/_accounting_set.txt"
 
 while read -r f; do
   [[ -z "$f" ]] && continue
-  if ! grep -qx "$f" "$RUN_DIR/files.txt"; then
-    # still allow if diff exists for file path (rare for deleted/renamed cases)
-    git diff "$BASE_REF...$HEAD_REF" -- "$f" > "$RUN_DIR/_file.tmp" || true
-    [[ ! -s "$RUN_DIR/_file.tmp" ]] && continue
-  else
-    git diff "$BASE_REF...$HEAD_REF" -- "$f" > "$RUN_DIR/_file.tmp" || true
-    [[ ! -s "$RUN_DIR/_file.tmp" ]] && continue
+
+  # Skip excluded (canonical list can include non-changed files)
+  if is_excluded "$f"; then
+    continue
   fi
+
+  # Only review if diff exists
+  git diff "$BASE_REF...$HEAD_REF" -- "$f" > "$RUN_DIR/_file.tmp" || true
+  [[ ! -s "$RUN_DIR/_file.tmp" ]] && continue
 
   prompt="$RUN_DIR/_acct_prompt.txt"
   {
@@ -553,10 +526,12 @@ DEEP_SET="$RUN_DIR/_deep_set.txt"
 
 while read -r f; do
   [[ -z "$f" ]] && continue
-  if ! grep -qx "$f" "$RUN_DIR/files.txt"; then
+
+  if is_excluded "$f"; then
     continue
   fi
 
+  # Only review if diff exists
   git diff "$BASE_REF...$HEAD_REF" -- "$f" > "$RUN_DIR/_deep_file.tmp" || true
   [[ ! -s "$RUN_DIR/_deep_file.tmp" ]] && continue
 
@@ -594,7 +569,8 @@ echo "==> Test review..."
 if [[ -n "$TESTS_SET" ]]; then
   while read -r tf; do
     [[ -z "$tf" ]] && continue
-    if ! grep -qx "$tf" "$RUN_DIR/files.txt"; then
+
+    if is_excluded "$tf"; then
       continue
     fi
 
@@ -602,7 +578,7 @@ if [[ -n "$TESTS_SET" ]]; then
     [[ ! -s "$RUN_DIR/_test.tmp" ]] && continue
 
     prompt="$RUN_DIR/_test_prompt.txt"
-    {
+  {
       echo "Review these test changes. Identify missing cases and flakiness risks."
       echo "Especially important for Phase 5 accounting:"
       echo "- partial refund persists refunded amount"
@@ -651,13 +627,6 @@ summarize_to_brief \
 summarize_to_brief \
   "$MODEL_SYNTHESIS" \
   "Summarize into a bounded brief for final PR synthesis. Keep it actionable." \
-  "migrations" \
-  "$RUN_DIR/02_data_integrity_review.md" \
-  "$RUN_DIR/12_brief_migrations.md" || true
-
-summarize_to_brief \
-  "$MODEL_SYNTHESIS" \
-  "Summarize into a bounded brief for final PR synthesis. Keep it actionable." \
   "accounting" \
   "$RUN_DIR/03_accounting_review.md" \
   "$RUN_DIR/13_brief_accounting.md"
@@ -689,7 +658,6 @@ FINAL_PROMPT="$RUN_DIR/prompt_final.txt"
   echo "- Blocking issues (if any)"
   echo "- Accounting & reconciliation notes (Phase 5)"
   echo "- Security notes"
-  echo "- Data integrity / migrations notes"
   echo "- Suggested follow-ups (small, concrete)"
   echo "- Manual test plan (step-by-step)"
   echo
@@ -708,9 +676,6 @@ FINAL_PROMPT="$RUN_DIR/prompt_final.txt"
   echo
   echo "=== Brief: Security ==="
   cat "$RUN_DIR/11_brief_security.md"
-  echo
-  echo "=== Brief: Migrations ==="
-  cat "$RUN_DIR/12_brief_migrations.md" 2>/dev/null || echo "(none)"
   echo
   echo "=== Brief: Deep review ==="
   cat "$RUN_DIR/14_brief_deep.md"
