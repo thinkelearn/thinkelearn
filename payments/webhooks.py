@@ -34,7 +34,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from lms.models import EnrollmentRecord
-from payments.models import Payment
+from payments.models import Payment, PaymentLedgerEntry
 from payments.tasks import send_refund_confirmation_email
 
 logger = logging.getLogger(__name__)
@@ -140,6 +140,155 @@ def _get_payment_for_enrollment(
         )
 
     return None
+
+
+def _get_payment_for_charge(charge: dict, *, lock: bool = False) -> Payment | None:
+    payment_intent = charge.get("payment_intent")
+    if not payment_intent:
+        return None
+    queryset = Payment.objects
+    if lock:
+        queryset = queryset.select_for_update()
+    return queryset.filter(stripe_payment_intent_id=payment_intent).first()
+
+
+def _timestamp_to_datetime(timestamp: int | None) -> timezone.datetime | None:
+    if timestamp is None:
+        return None
+    return timezone.datetime.fromtimestamp(timestamp, tz=timezone.utc)
+
+
+def _sync_charge_metadata(payment: Payment, charge: dict) -> None:
+    charge_id = charge.get("id") or ""
+    balance_transaction = charge.get("balance_transaction") or ""
+    payment_updates = []
+
+    if charge_id and payment.stripe_charge_id != charge_id:
+        payment.stripe_charge_id = charge_id
+        payment_updates.append("stripe_charge_id")
+    if (
+        balance_transaction
+        and payment.stripe_balance_transaction_id != balance_transaction
+    ):
+        payment.stripe_balance_transaction_id = balance_transaction
+        payment_updates.append("stripe_balance_transaction_id")
+
+    if payment_updates:
+        payment.save(update_fields=payment_updates)
+
+
+def _ensure_charge_ledger_entry(payment: Payment, charge: dict) -> None:
+    charge_id = charge.get("id") or ""
+    if not charge_id:
+        return
+
+    amount = _cents_to_decimal(charge.get("amount")) or Decimal("0")
+    currency = (charge.get("currency") or payment.currency or "CAD").upper()
+    net_amount = _cents_to_decimal(charge.get("amount_captured"))
+    processed_at = _timestamp_to_datetime(charge.get("created"))
+
+    PaymentLedgerEntry.objects.get_or_create(
+        payment=payment,
+        entry_type=PaymentLedgerEntry.EntryType.CHARGE,
+        stripe_charge_id=charge_id,
+        defaults={
+            "amount": amount,
+            "currency": currency,
+            "net_amount": net_amount,
+            "stripe_balance_transaction_id": charge.get("balance_transaction") or "",
+            "processed_at": processed_at,
+            "metadata": {"charge_status": charge.get("status")},
+        },
+    )
+
+
+def _ensure_refund_ledger_entries(payment: Payment, charge: dict) -> None:
+    refunds = (charge.get("refunds") or {}).get("data") or []
+    charge_id = charge.get("id") or ""
+    if not refunds:
+        refund_amount = _cents_to_decimal(charge.get("amount_refunded"))
+        if refund_amount and refund_amount > 0:
+            PaymentLedgerEntry.objects.get_or_create(
+                payment=payment,
+                entry_type=PaymentLedgerEntry.EntryType.REFUND,
+                stripe_refund_id=charge_id or "",
+                defaults={
+                    "amount": refund_amount,
+                    "currency": (
+                        charge.get("currency") or payment.currency or "CAD"
+                    ).upper(),
+                    "stripe_charge_id": charge_id,
+                    "stripe_balance_transaction_id": charge.get(
+                        "balance_transaction"
+                    )
+                    or "",
+                    "processed_at": _timestamp_to_datetime(charge.get("created")),
+                    "metadata": {"fallback": True},
+                },
+            )
+        return
+
+    for refund in refunds:
+        refund_id = refund.get("id") or ""
+        if not refund_id:
+            continue
+        refund_amount = _cents_to_decimal(refund.get("amount")) or Decimal("0")
+        refund_currency = (
+            refund.get("currency")
+            or charge.get("currency")
+            or payment.currency
+            or "CAD"
+        ).upper()
+        PaymentLedgerEntry.objects.get_or_create(
+            payment=payment,
+            entry_type=PaymentLedgerEntry.EntryType.REFUND,
+            stripe_refund_id=refund_id,
+            defaults={
+                "amount": refund_amount,
+                "currency": refund_currency,
+                "stripe_charge_id": charge_id,
+                "stripe_balance_transaction_id": refund.get("balance_transaction")
+                or "",
+                "processed_at": _timestamp_to_datetime(refund.get("created")),
+                "metadata": {"status": refund.get("status")},
+            },
+        )
+
+
+def handle_charge_succeeded(event: dict) -> None:
+    """Record successful charge in ledger for accounting."""
+    charge = event["data"]["object"]
+    payment = _get_payment_for_charge(charge)
+    if not payment:
+        logger.warning(
+            "Charge succeeded but payment not found",
+            extra={
+                "event_id": event.get("id"),
+                "payment_intent": charge.get("payment_intent"),
+            },
+        )
+        return
+
+    with transaction.atomic():
+        payment = _get_payment_for_charge(charge, lock=True)
+        if not payment:
+            return
+        _sync_charge_metadata(payment, charge)
+        _ensure_charge_ledger_entry(payment, charge)
+        if payment.status in [Payment.Status.INITIATED, Payment.Status.PROCESSING]:
+            payment.status = Payment.Status.SUCCEEDED
+            payment.failure_reason = ""
+        payment.stripe_event_id = event.get("id", "")
+        payment.save(
+            update_fields=[
+                "status",
+                "failure_reason",
+                "stripe_event_id",
+                "stripe_charge_id",
+                "stripe_balance_transaction_id",
+            ]
+        )
+        payment.recalculate_totals()
 
 
 def handle_checkout_session_completed(event: dict) -> None:
@@ -452,10 +601,22 @@ def handle_charge_refunded(event: dict) -> None:
         # Still process payment status update but skip enrollment changes
         with transaction.atomic():
             payment = Payment.objects.select_for_update().get(id=payment.id)
+            _sync_charge_metadata(payment, charge)
+            _ensure_charge_ledger_entry(payment, charge)
+            _ensure_refund_ledger_entries(payment, charge)
             payment.status = Payment.Status.REFUNDED
             payment.stripe_event_id = event.get("id", "")
-            payment.failure_reason = "Partial refund" if not is_full_refund else ""
-            payment.save(update_fields=["status", "stripe_event_id", "failure_reason"])
+            payment.failure_reason = ""
+            payment.save(
+                update_fields=[
+                    "status",
+                    "stripe_event_id",
+                    "failure_reason",
+                    "stripe_charge_id",
+                    "stripe_balance_transaction_id",
+                ]
+            )
+            payment.recalculate_totals()
         return
 
     with transaction.atomic():
@@ -463,6 +624,9 @@ def handle_charge_refunded(event: dict) -> None:
         # Note: Can't use select_related with nullable relations when using select_for_update
         enrollment = EnrollmentRecord.objects.select_for_update().get(id=enrollment.id)
         payment = Payment.objects.select_for_update().get(id=payment.id)
+        _sync_charge_metadata(payment, charge)
+        _ensure_charge_ledger_entry(payment, charge)
+        _ensure_refund_ledger_entries(payment, charge)
 
         # Re-validate status after acquiring lock
         if enrollment.status not in [
@@ -501,8 +665,17 @@ def handle_charge_refunded(event: dict) -> None:
 
         payment.status = Payment.Status.REFUNDED
         payment.stripe_event_id = event.get("id", "")
-        payment.failure_reason = "Partial refund" if not is_full_refund else ""
-        payment.save(update_fields=["status", "stripe_event_id", "failure_reason"])
+        payment.failure_reason = ""
+        payment.save(
+            update_fields=[
+                "status",
+                "stripe_event_id",
+                "failure_reason",
+                "stripe_charge_id",
+                "stripe_balance_transaction_id",
+            ]
+        )
+        payment.recalculate_totals()
 
     # Re-fetch enrollment with related objects for email (avoid N+1 queries)
     # Transaction has committed, so we can use select_related safely
@@ -545,6 +718,7 @@ def handle_charge_refunded(event: dict) -> None:
 EVENT_HANDLERS = {
     "checkout.session.completed": handle_checkout_session_completed,
     "checkout.session.async_payment_failed": handle_checkout_session_async_payment_failed,
+    "charge.succeeded": handle_charge_succeeded,
     "charge.refunded": handle_charge_refunded,
 }
 

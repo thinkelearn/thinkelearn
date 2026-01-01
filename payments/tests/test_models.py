@@ -10,7 +10,7 @@ from lms.models import (
     EnrollmentRecord,
     ExtendedCoursePage,
 )
-from payments.models import Payment, WebhookEvent
+from payments.models import Payment, PaymentLedgerEntry, WebhookEvent
 
 
 class PaymentModelTest(TestCase):
@@ -49,6 +49,9 @@ class PaymentModelTest(TestCase):
 
         self.assertEqual(payment.status, Payment.Status.INITIATED)
         self.assertEqual(payment.currency, "CAD")
+        self.assertEqual(payment.amount_gross, Decimal("0"))
+        self.assertEqual(payment.amount_refunded, Decimal("0"))
+        self.assertEqual(payment.amount_net, Decimal("0"))
 
     def test_payment_status_updates(self):
         payment = Payment.objects.create(
@@ -69,6 +72,31 @@ class PaymentModelTest(TestCase):
         payment.refresh_from_db()
         self.assertEqual(payment.status, Payment.Status.FAILED)
         self.assertEqual(payment.failure_reason, "Card declined")
+
+    def test_payment_totals_from_ledger(self):
+        payment = Payment.objects.create(
+            enrollment_record=self.enrollment,
+            amount=Decimal("99.99"),
+        )
+        PaymentLedgerEntry.objects.create(
+            payment=payment,
+            entry_type=PaymentLedgerEntry.EntryType.CHARGE,
+            amount=Decimal("99.99"),
+            currency="CAD",
+        )
+        PaymentLedgerEntry.objects.create(
+            payment=payment,
+            entry_type=PaymentLedgerEntry.EntryType.REFUND,
+            amount=Decimal("20.00"),
+            currency="CAD",
+        )
+
+        payment.recalculate_totals()
+        payment.refresh_from_db()
+
+        self.assertEqual(payment.amount_gross, Decimal("99.99"))
+        self.assertEqual(payment.amount_refunded, Decimal("20.00"))
+        self.assertEqual(payment.amount_net, Decimal("79.99"))
 
 
 class WebhookEventModelTest(TestCase):
