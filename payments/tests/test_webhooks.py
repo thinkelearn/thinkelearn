@@ -15,7 +15,7 @@ from lms.models import (
     EnrollmentRecord,
     ExtendedCoursePage,
 )
-from payments.models import Payment, WebhookEvent
+from payments.models import Payment, PaymentLedgerEntry, WebhookEvent
 
 
 class StripeWebhookTests(TestCase):
@@ -195,6 +195,7 @@ class StripeWebhookTests(TestCase):
             "type": "charge.refunded",
             "data": {
                 "object": {
+                    "id": "ch_refund",
                     "payment_intent": "pi_refund",
                     "amount": 4900,
                     "amount_refunded": 4900,
@@ -212,6 +213,8 @@ class StripeWebhookTests(TestCase):
         self.assertEqual(enrollment.status, EnrollmentRecord.Status.REFUNDED)
         self.assertIsNone(enrollment.course_enrollment)
         self.assertEqual(payment.status, Payment.Status.REFUNDED)
+        self.assertEqual(payment.amount_refunded, Decimal("49.00"))
+        self.assertEqual(payment.amount_net, Decimal("0"))
         mock_send_email.assert_called_once()
         _, kwargs = mock_send_email.call_args
         self.assertEqual(kwargs["enrollment_id"], enrollment.id)
@@ -238,6 +241,7 @@ class StripeWebhookTests(TestCase):
             "type": "charge.refunded",
             "data": {
                 "object": {
+                    "id": "ch_partial",
                     "payment_intent": "pi_partial",
                     "amount": 4900,
                     "amount_refunded": 2000,
@@ -254,13 +258,21 @@ class StripeWebhookTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(enrollment.status, EnrollmentRecord.Status.ACTIVE)
         self.assertEqual(payment.status, Payment.Status.REFUNDED)
-        self.assertEqual(payment.failure_reason, "Partial refund")
+        self.assertEqual(payment.failure_reason, "")
         mock_send_email.assert_called_once()
         _, kwargs = mock_send_email.call_args
         self.assertEqual(kwargs["enrollment_id"], enrollment.id)
         self.assertEqual(kwargs["refund_amount"], Decimal("20.00"))
         self.assertEqual(kwargs["original_amount"], Decimal("49.00"))
         self.assertTrue(kwargs["is_partial"])
+        self.assertEqual(payment.amount_refunded, Decimal("20.00"))
+        self.assertEqual(payment.amount_net, Decimal("29.00"))
+        self.assertEqual(
+            PaymentLedgerEntry.objects.filter(
+                payment=payment, entry_type=PaymentLedgerEntry.EntryType.REFUND
+            ).count(),
+            1,
+        )
 
     @patch("payments.webhooks.send_refund_confirmation_email")
     def test_refund_outside_window_logs_warning(self, mock_send_email):
@@ -583,3 +595,450 @@ class StripeWebhookTests(TestCase):
             any("not in active/refunded status" in log.lower() for log in logs.output)
         )
         mock_send_email.assert_not_called()
+
+    @patch("payments.webhooks.send_refund_confirmation_email")
+    def test_refund_ledger_idempotent(self, mock_send_email):
+        enrollment = EnrollmentRecord.create_for_user(
+            self.user, self.product, amount=Decimal("49.00")
+        )
+        enrollment.mark_paid()
+        payment = Payment.objects.create(
+            enrollment_record=enrollment,
+            amount=enrollment.amount_paid,
+            currency=self.product.currency,
+            status=Payment.Status.SUCCEEDED,
+            stripe_payment_intent_id="pi_refund_dupe",
+        )
+        event_data = {
+            "id": "evt_refund_dupe",
+            "type": "charge.refunded",
+            "data": {
+                "object": {
+                    "id": "ch_dupe",
+                    "payment_intent": "pi_refund_dupe",
+                    "amount": 4900,
+                    "amount_refunded": 2000,
+                    "refunded": False,
+                    "refunds": {
+                        "data": [
+                            {
+                                "id": "re_dupe",
+                                "amount": 2000,
+                                "currency": "cad",
+                                "created": int(timezone.now().timestamp()),
+                            }
+                        ]
+                    },
+                }
+            },
+        }
+        event_data_retry = {
+            **event_data,
+            "id": "evt_refund_dupe_retry",
+        }
+
+        self._post_webhook(event_data)
+        response = self._post_webhook(event_data_retry)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            PaymentLedgerEntry.objects.filter(
+                payment=payment, entry_type=PaymentLedgerEntry.EntryType.REFUND
+            ).count(),
+            1,
+        )
+        mock_send_email.assert_called()
+
+    @patch("payments.webhooks.send_refund_confirmation_email")
+    def test_refund_recalculates_totals_on_early_return(self, mock_send_email):
+        """Test that recalculate_totals() is called even when enrollment status changes after lock.
+
+        This tests the critical bug where refund ledger entries are created but
+        denormalized totals aren't updated when the early return path is taken
+        (line 727 in webhooks.py).
+        """
+        enrollment = EnrollmentRecord.create_for_user(
+            self.user, self.product, amount=Decimal("49.00")
+        )
+        enrollment.mark_paid()
+
+        payment = Payment.objects.create(
+            enrollment_record=enrollment,
+            amount=enrollment.amount_paid,
+            currency=self.product.currency,
+            status=Payment.Status.SUCCEEDED,
+            stripe_payment_intent_id="pi_early_return",
+            stripe_charge_id="ch_early_return",
+        )
+
+        # Create initial charge ledger entry
+        PaymentLedgerEntry.objects.create(
+            payment=payment,
+            entry_type=PaymentLedgerEntry.EntryType.CHARGE,
+            amount=Decimal("49.00"),
+            currency=self.product.currency,
+            stripe_charge_id="ch_early_return",
+            processed_at=timezone.now(),
+        )
+        payment.recalculate_totals()
+        payment.refresh_from_db()
+
+        # Verify initial state
+        self.assertEqual(payment.amount_gross, Decimal("49.00"))
+        self.assertEqual(payment.amount_refunded, Decimal("0.00"))
+        self.assertEqual(payment.amount_net, Decimal("49.00"))
+
+        # Change enrollment to invalid status before refund webhook
+        # This simulates a race condition or admin action
+        enrollment.status = EnrollmentRecord.Status.PENDING_PAYMENT
+        enrollment.save()
+
+        event_data = {
+            "id": "evt_early_return",
+            "type": "charge.refunded",
+            "data": {
+                "object": {
+                    "id": "ch_early_return",
+                    "payment_intent": "pi_early_return",
+                    "amount": 4900,
+                    "amount_refunded": 4900,
+                    "refunded": True,
+                    "refunds": {
+                        "data": [
+                            {
+                                "id": "re_early_return",
+                                "amount": 4900,
+                                "currency": "cad",
+                                "created": int(timezone.now().timestamp()),
+                            }
+                        ]
+                    },
+                }
+            },
+        }
+
+        response = self._post_webhook(event_data)
+
+        enrollment.refresh_from_db()
+        payment.refresh_from_db()
+
+        # Verify the webhook succeeded
+        self.assertEqual(response.status_code, 200)
+
+        # Verify enrollment status didn't change (invalid status, early return path)
+        self.assertEqual(enrollment.status, EnrollmentRecord.Status.PENDING_PAYMENT)
+
+        # Verify payment status was updated
+        self.assertEqual(payment.status, Payment.Status.REFUNDED)
+
+        # CRITICAL: Verify denormalized totals were updated despite early return
+        # This is the bug being tested - without recalculate_totals() call,
+        # these values would be incorrect
+        self.assertEqual(payment.amount_gross, Decimal("49.00"))
+        self.assertEqual(payment.amount_refunded, Decimal("49.00"))
+        self.assertEqual(payment.amount_net, Decimal("0.00"))
+
+        # Verify refund ledger entry was created
+        refund_entries = PaymentLedgerEntry.objects.filter(
+            payment=payment, entry_type=PaymentLedgerEntry.EntryType.REFUND
+        )
+        self.assertEqual(refund_entries.count(), 1)
+        self.assertEqual(refund_entries.first().amount, Decimal("49.00"))
+
+        # Email should not be sent (invalid enrollment status)
+        mock_send_email.assert_not_called()
+
+    def test_charge_succeeded_creates_ledger_entry(self):
+        enrollment = EnrollmentRecord.create_for_user(
+            self.user, self.product, amount=Decimal("49.00")
+        )
+        payment = Payment.objects.create(
+            enrollment_record=enrollment,
+            amount=enrollment.amount_paid,
+            currency=self.product.currency,
+            status=Payment.Status.PROCESSING,
+            stripe_payment_intent_id="pi_charge",
+        )
+        event_data = {
+            "id": "evt_charge",
+            "type": "charge.succeeded",
+            "data": {
+                "object": {
+                    "id": "ch_123",
+                    "payment_intent": "pi_charge",
+                    "amount": 4900,
+                    "currency": "cad",
+                    "created": int(timezone.now().timestamp()),
+                }
+            },
+        }
+
+        response = self._post_webhook(event_data)
+
+        payment.refresh_from_db()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(payment.status, Payment.Status.SUCCEEDED)
+        self.assertEqual(payment.amount_gross, Decimal("49.00"))
+        self.assertEqual(
+            PaymentLedgerEntry.objects.filter(
+                payment=payment, entry_type=PaymentLedgerEntry.EntryType.CHARGE
+            ).count(),
+            1,
+        )
+
+    def test_charge_succeeded_syncs_stripe_ids(self):
+        """Test that charge.succeeded syncs stripe_charge_id and stripe_balance_transaction_id."""
+        enrollment = EnrollmentRecord.create_for_user(
+            self.user, self.product, amount=Decimal("49.00")
+        )
+        payment = Payment.objects.create(
+            enrollment_record=enrollment,
+            amount=enrollment.amount_paid,
+            currency=self.product.currency,
+            status=Payment.Status.PROCESSING,
+            stripe_payment_intent_id="pi_charge_sync",
+        )
+        event_data = {
+            "id": "evt_charge_sync",
+            "type": "charge.succeeded",
+            "data": {
+                "object": {
+                    "id": "ch_sync_123",
+                    "payment_intent": "pi_charge_sync",
+                    "amount": 4900,
+                    "currency": "cad",
+                    "created": int(timezone.now().timestamp()),
+                    "balance_transaction": "txn_balance_123",
+                }
+            },
+        }
+
+        response = self._post_webhook(event_data)
+
+        payment.refresh_from_db()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(payment.status, Payment.Status.SUCCEEDED)
+        # Verify Stripe metadata was synced
+        self.assertEqual(payment.stripe_charge_id, "ch_sync_123")
+        self.assertEqual(payment.stripe_balance_transaction_id, "txn_balance_123")
+        self.assertEqual(payment.amount_gross, Decimal("49.00"))
+
+    def test_charge_succeeded_idempotency(self):
+        """Test that processing charge.succeeded multiple times creates only one ledger entry."""
+        enrollment = EnrollmentRecord.create_for_user(
+            self.user, self.product, amount=Decimal("49.00")
+        )
+        payment = Payment.objects.create(
+            enrollment_record=enrollment,
+            amount=enrollment.amount_paid,
+            currency=self.product.currency,
+            status=Payment.Status.PROCESSING,
+            stripe_payment_intent_id="pi_charge_idem",
+        )
+        event_data = {
+            "id": "evt_charge_idem_1",
+            "type": "charge.succeeded",
+            "data": {
+                "object": {
+                    "id": "ch_idem_123",
+                    "payment_intent": "pi_charge_idem",
+                    "amount": 4900,
+                    "currency": "cad",
+                    "created": int(timezone.now().timestamp()),
+                }
+            },
+        }
+
+        # Process same charge twice with different event IDs
+        self._post_webhook(event_data)
+        event_data["id"] = "evt_charge_idem_2"  # Different event ID
+        response = self._post_webhook(event_data)
+
+        payment.refresh_from_db()
+
+        self.assertEqual(response.status_code, 200)
+        # Should only have one charge ledger entry despite two webhook events
+        self.assertEqual(
+            PaymentLedgerEntry.objects.filter(
+                payment=payment, entry_type=PaymentLedgerEntry.EntryType.CHARGE
+            ).count(),
+            1,
+        )
+        self.assertEqual(payment.amount_gross, Decimal("49.00"))
+
+    def test_charge_succeeded_already_succeeded_payment(self):
+        """Test that charge.succeeded doesn't overwrite status for already-succeeded payments."""
+        enrollment = EnrollmentRecord.create_for_user(
+            self.user, self.product, amount=Decimal("49.00")
+        )
+        payment = Payment.objects.create(
+            enrollment_record=enrollment,
+            amount=enrollment.amount_paid,
+            currency=self.product.currency,
+            status=Payment.Status.SUCCEEDED,  # Already succeeded
+            stripe_payment_intent_id="pi_charge_existing",
+        )
+        event_data = {
+            "id": "evt_charge_existing",
+            "type": "charge.succeeded",
+            "data": {
+                "object": {
+                    "id": "ch_existing_123",
+                    "payment_intent": "pi_charge_existing",
+                    "amount": 4900,
+                    "currency": "cad",
+                    "created": int(timezone.now().timestamp()),
+                }
+            },
+        }
+
+        response = self._post_webhook(event_data)
+
+        payment.refresh_from_db()
+
+        self.assertEqual(response.status_code, 200)
+        # Status should remain SUCCEEDED (not overwritten)
+        self.assertEqual(payment.status, Payment.Status.SUCCEEDED)
+        # Ledger entry should still be created
+        self.assertEqual(
+            PaymentLedgerEntry.objects.filter(
+                payment=payment, entry_type=PaymentLedgerEntry.EntryType.CHARGE
+            ).count(),
+            1,
+        )
+
+    def test_charge_succeeded_failed_payment(self):
+        """Test that charge.succeeded doesn't update status for failed payments."""
+        enrollment = EnrollmentRecord.create_for_user(
+            self.user, self.product, amount=Decimal("49.00")
+        )
+        payment = Payment.objects.create(
+            enrollment_record=enrollment,
+            amount=enrollment.amount_paid,
+            currency=self.product.currency,
+            status=Payment.Status.FAILED,  # Already failed
+            failure_reason="Card declined",
+            stripe_payment_intent_id="pi_charge_failed",
+        )
+        event_data = {
+            "id": "evt_charge_failed",
+            "type": "charge.succeeded",
+            "data": {
+                "object": {
+                    "id": "ch_failed_123",
+                    "payment_intent": "pi_charge_failed",
+                    "amount": 4900,
+                    "currency": "cad",
+                    "created": int(timezone.now().timestamp()),
+                }
+            },
+        }
+
+        response = self._post_webhook(event_data)
+
+        payment.refresh_from_db()
+
+        self.assertEqual(response.status_code, 200)
+        # Status should remain FAILED (not overwritten)
+        self.assertEqual(payment.status, Payment.Status.FAILED)
+        self.assertEqual(payment.failure_reason, "Card declined")
+        # Ledger entry should still be created for accounting
+        self.assertEqual(
+            PaymentLedgerEntry.objects.filter(
+                payment=payment, entry_type=PaymentLedgerEntry.EntryType.CHARGE
+            ).count(),
+            1,
+        )
+
+    @patch("payments.webhooks.send_refund_confirmation_email")
+    def test_multiple_partial_refunds(self, mock_send_email):
+        """Test that multiple partial refunds correctly aggregate in amount_refunded."""
+        enrollment = EnrollmentRecord.create_for_user(
+            self.user, self.product, amount=Decimal("49.00")
+        )
+        enrollment.mark_paid()
+        payment = Payment.objects.create(
+            enrollment_record=enrollment,
+            amount=Decimal("49.00"),
+            currency=self.product.currency,
+            status=Payment.Status.SUCCEEDED,
+            stripe_payment_intent_id="pi_multi_refund",
+        )
+
+        # First refund: $20.00
+        event1 = {
+            "id": "evt_refund_1",
+            "type": "charge.refunded",
+            "data": {
+                "object": {
+                    "id": "ch_multi",
+                    "payment_intent": "pi_multi_refund",
+                    "amount": 4900,
+                    "amount_refunded": 2000,
+                    "refunded": False,
+                    "refunds": {
+                        "data": [
+                            {
+                                "id": "re_1",
+                                "amount": 2000,
+                                "currency": "cad",
+                                "created": int(timezone.now().timestamp()),
+                            }
+                        ]
+                    },
+                }
+            },
+        }
+
+        # Second refund: $10.00
+        event2 = {
+            "id": "evt_refund_2",
+            "type": "charge.refunded",
+            "data": {
+                "object": {
+                    "id": "ch_multi",
+                    "payment_intent": "pi_multi_refund",
+                    "amount": 4900,
+                    "amount_refunded": 3000,
+                    "refunded": False,
+                    "refunds": {
+                        "data": [
+                            {
+                                "id": "re_1",
+                                "amount": 2000,
+                                "currency": "cad",
+                                "created": int(timezone.now().timestamp()),
+                            },
+                            {
+                                "id": "re_2",
+                                "amount": 1000,
+                                "currency": "cad",
+                                "created": int(timezone.now().timestamp()),
+                            },
+                        ]
+                    },
+                }
+            },
+        }
+
+        self._post_webhook(event1)
+        self._post_webhook(event2)
+
+        payment.refresh_from_db()
+
+        # Should have 2 separate refund entries
+        self.assertEqual(
+            PaymentLedgerEntry.objects.filter(
+                payment=payment, entry_type=PaymentLedgerEntry.EntryType.REFUND
+            ).count(),
+            2,
+        )
+
+        # Total refunded should be $30.00
+        self.assertEqual(payment.amount_refunded, Decimal("30.00"))
+        self.assertEqual(payment.amount_net, Decimal("19.00"))
+        # Enrollment should still be active (partial refund)
+        enrollment.refresh_from_db()
+        self.assertEqual(enrollment.status, EnrollmentRecord.Status.ACTIVE)

@@ -20,7 +20,7 @@ THINK eLearn is a **production-ready Django/Wagtail educational technology platf
   - `portfolio`: PortfolioIndexPage, ProjectPage, PortfolioCategory models with unified client work and capability demonstration system
   - `blog`: Full BlogIndexPage and BlogPage with categories, tags, and pagination
   - `communications`: Advanced Twilio SMS/voicemail system with admin workflow
-  - `payments`: Stripe payment integration (background tasks planned for future)
+  - `payments`: Complete Stripe payment integration with accounting ledger system
   - `search`: Built-in Wagtail search functionality
 
 ## ⚠️ Background Tasks - PLANNED FOR FUTURE
@@ -604,6 +604,173 @@ The unified portfolio system showcases both client work and educational content 
 - Category filtering and related projects
 - End-to-end workflow integration
 - Client work differentiation functionality
+
+## Payment System
+
+### Overview
+
+Complete Stripe payment integration for course enrollments with accounting-grade ledger system. Supports multiple pricing models (free, fixed-price, pay-what-you-can) with automated refund handling and comprehensive financial tracking.
+
+**Status:** Phases 1-5 COMPLETE (Ready for production preparation)
+
+### Key Features
+
+- **Pricing Models**: Free courses, fixed-price, and pay-what-you-can (PWYC)
+- **Payment Flow**: Stripe Checkout Session (hosted redirect flow)
+- **Currency**: Canadian Dollar (CAD) with multi-currency design
+- **Refunds**: Automated 30-day refund window (configurable per product)
+- **Accounting**: Full double-entry ledger system with charge/refund/fee/adjustment entries
+- **Admin**: Comprehensive admin interface with inline ledger entries and refund filters
+- **Security**: PCI DSS compliant, webhook signature verification, authorization checks
+
+### Models
+
+**CourseProduct (lms/models.py):**
+- Three pricing types: FREE, FIXED, PAY_WHAT_YOU_CAN
+- Configurable refund windows (30 days default, max 365)
+- Amount validation with detailed error messages
+- Multi-currency ready (CAD for launch)
+
+**EnrollmentRecord (lms/models.py):**
+- State machine: PENDING_PAYMENT → ACTIVE, PAYMENT_FAILED, CANCELLED, REFUNDED
+- Stripe integration fields (checkout_session_id, payment_intent_id)
+- Idempotency keys prevent duplicate enrollments
+- Business methods: `create_for_user()`, `mark_paid()`, `transition_to()`
+
+**Payment (payments/models.py):**
+- Payment states: INITIATED, PROCESSING, SUCCEEDED, FAILED, REFUNDED
+- **Immutable field**: `amount` (original enrollment amount)
+- **Denormalized totals**: `amount_gross`, `amount_refunded`, `amount_net` (calculated from ledger)
+- Stripe references: charge_id, balance_transaction_id, payment_intent_id
+- Business method: `recalculate_totals(save=True)` aggregates ledger entries
+
+**PaymentLedgerEntry (payments/models.py):**
+- Entry types: CHARGE, REFUND, ADJUSTMENT, FEE
+- Complete audit trail of all money movements
+- Stripe references for reconciliation (charge_id, refund_id, balance_transaction_id)
+- Unique constraints ensure idempotency (one entry per Stripe charge/refund)
+- Supports partial refunds and multiple refunds per payment
+
+**WebhookEvent (payments/models.py):**
+- Idempotency tracking (unique stripe_event_id)
+- Raw event data storage for debugging
+- Success/error tracking
+
+### Payment Flow
+
+**1. Checkout Initiation:**
+- User selects course, enters amount (if PWYC)
+- System validates eligibility (prerequisites, enrollment limits, pricing)
+- Creates EnrollmentRecord in PENDING_PAYMENT status
+- Creates Payment record in INITIATED status
+- Redirects to Stripe Checkout Session
+
+**2. Payment Processing:**
+- Stripe handles payment collection (PCI compliant)
+- User redirected to success/cancel/failure page
+- Webhook `checkout.session.completed` processes successful payment
+
+**3. Enrollment Activation (via webhook):**
+- Validates enrollment status (only PENDING_PAYMENT or PAYMENT_FAILED)
+- Creates charge ledger entry
+- Updates payment status to SUCCEEDED
+- Transitions enrollment to ACTIVE
+- Creates CourseEnrollment (grants access)
+- Recalculates payment totals
+
+**4. Refund Handling:**
+- Admin or automated refund initiates `charge.refunded` webhook
+- Creates refund ledger entry/entries (supports partial refunds)
+- Recalculates payment totals
+- Transitions enrollment to REFUNDED (if full refund)
+- Deletes CourseEnrollment (revokes access)
+- Sends refund confirmation email
+
+### Webhook Handlers
+
+**payments/webhooks.py** implements:
+
+- `handle_checkout_session_completed()` - Activates enrollment, creates charge ledger entry
+- `handle_async_payment_failed()` - Marks enrollment as PAYMENT_FAILED
+- `handle_charge_succeeded()` - Records charge in ledger (for accounting)
+- `handle_charge_refunded()` - Processes refunds, updates ledger, revokes access
+
+**Key Design Decisions:**
+- Pre-check/lock/re-validate pattern prevents race conditions
+- Idempotent processing (WebhookEvent model + unique constraints)
+- Atomic transactions with row-level locking
+- Graceful handling of invalid states (late/duplicate webhooks)
+- Denormalized totals for performance (updated via `recalculate_totals()`)
+
+### Admin Interface
+
+**EnrollmentRecord Admin:**
+- List filters: status, product, refund eligibility
+- Bulk actions: cancel enrollments, mark as failed
+- Inline: related payments
+
+**Payment Admin:**
+- List filters: status, refund state (full/partial/none), date range
+- Read-only fields: amount_gross, amount_refunded, amount_net
+- Inline: PaymentLedgerEntry (shows complete audit trail)
+- Custom `RefundStateFilter` for accounting workflows
+
+**PaymentLedgerEntry Inline:**
+- Shows entry type, amount, Stripe IDs, processed date
+- Read-only (ledger entries are immutable)
+- Limited to 20 most recent entries per payment
+
+### Testing
+
+**49 comprehensive payment tests** covering:
+
+- **Model Tests** (6 tests): Payment defaults, status updates, totals calculation with all entry types
+- **Checkout Flow** (6 tests): Success, Stripe failures, invalid amounts, duplicate enrollments, eligibility checks
+- **Webhook Tests** (25 tests): Success/failure handlers, refunds (full/partial/multiple), idempotency, charge.succeeded, early return regression
+- **Email Tests** (1 test): Refund confirmation delivery
+- **Free Enrollment** (1 test): Bypasses Stripe for $0 courses
+- **Frontend Tests** (3 tests): Success/cancel/failure pages
+- **Error Handling** (3 tests): Stripe API errors, retries, rate limiting
+- **Tasks Tests** (3 tests): Cleanup command, synchronous email sending
+
+**Key Test Coverage:**
+- 100% business logic coverage on payments/models.py
+- All webhook handlers tested with mocked Stripe events
+- Regression test for critical bug (missing recalculate_totals() call)
+- Idempotency verification for webhooks and ledger entries
+- Test fixtures avoid framework over-testing
+
+### Management Commands
+
+- `cleanup_abandoned_enrollments` - Cancels PENDING_PAYMENT enrollments older than 24 hours
+
+### Security & Compliance
+
+- **PCI DSS Compliant**: Never stores card details (Stripe handles all sensitive data)
+- **Webhook Verification**: Signature validation prevents spoofing
+- **Authorization**: User ownership checks before payment processing
+- **Idempotency**: Unique constraints prevent duplicate charges/refunds
+- **Atomic Transactions**: All database updates are atomic
+- **Audit Trail**: Complete payment history via WebhookEvent and PaymentLedgerEntry
+
+### Production Readiness
+
+**Phases 1-5 COMPLETE:**
+- ✅ Data models with comprehensive tests
+- ✅ Checkout Session flow with Stripe integration
+- ✅ Webhook processing with idempotency
+- ✅ Automated refund handling with emails
+- ✅ Error handling and frontend integration
+- ✅ Accounting ledger system with denormalized totals
+
+**Remaining for Production (Phases 6-7):**
+- ⏳ Security audit and penetration testing
+- ⏳ Performance testing and optimization
+- ⏳ Monitoring and alerting setup
+- ⏳ Production deployment to Railway
+- ⏳ Controlled rollout with feature flags
+
+**See:** `docs/lms-implementation-plan.md` for complete implementation details and timeline
 
 ## Development Workflow
 
