@@ -6,6 +6,9 @@ module.exports = {
     './search/templates/**/*.html',
     './blog/templates/**/*.html',
     './portfolio/templates/**/*.html',
+    './lms/templates/**/*.html',
+    './payments/templates/**/*.html',
+    './communications/templates/**/*.html',
     './thinkelearn/static/js/**/*.js',
   ],
   theme: {
