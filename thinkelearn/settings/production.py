@@ -2,7 +2,6 @@ import os
 
 import dj_database_url
 import sentry_sdk
-from django.core.exceptions import ImproperlyConfigured
 from sentry_sdk.integrations.django import DjangoIntegration
 
 from .base import *  # noqa: F403,F405
@@ -39,6 +38,7 @@ ALLOWED_HOSTS = [
     ".railway.app",
 ]
 
+# Stripe is optional for initial deployment - payments won't work without real credentials
 required_stripe_settings = [
     "STRIPE_SECRET_KEY",
     "STRIPE_PUBLISHABLE_KEY",
@@ -48,8 +48,12 @@ missing_stripe_settings = [
     key for key in required_stripe_settings if not os.environ.get(key)
 ]
 if missing_stripe_settings:
-    raise ImproperlyConfigured(
-        f"Missing required Stripe settings: {', '.join(missing_stripe_settings)}"
+    import warnings
+
+    warnings.warn(
+        f"Stripe settings not configured: {', '.join(missing_stripe_settings)}. "
+        "Payment functionality will not work until these are set.",
+        stacklevel=2,
     )
 
 # Redis is optional - if not provided, webhooks run synchronously via CELERY_TASK_ALWAYS_EAGER
