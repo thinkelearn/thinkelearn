@@ -1,5 +1,39 @@
 # CLAUDE.md
 
+## 🔴 CRITICAL COMPLIANCE BLOCKER
+
+**COPPA/PIPEDA Compliance for Children Under 13**
+
+⚠️ **CANNOT launch courses for children under 13** until compliance requirements are met.
+
+- **Strategy:** OAuth-based approach using Google Family Link and Microsoft Family
+- **Status:** Legal docs ready, technical implementation required (5 weeks)
+- **Compliance Deadline:** April 22, 2026 (COPPA amendments)
+- **Penalties:** Up to $50,120 per violation
+- **Full Details:** `/docs/coppa-pipeda-compliance-plan.md`
+- **Quick Reference:** `/docs/coppa-compliance-quick-reference.md`
+
+**Required Before Launch (OAuth Approach):**
+- [ ] Legal counsel review (~$1K-2K, OAuth approach)
+- [ ] Age verification at signup (DOB field)
+- [ ] OAuth-only enforcement for under-13
+- [ ] Microsoft OAuth provider added
+- [ ] Feature restrictions (no Stripe, no SMS for children)
+- [ ] Data deletion workflow for parent requests
+
+**Updated Legal Documents (Ready):**
+- ✅ Privacy Policy - OAuth-based Children's Privacy section
+- ✅ Terms and Conditions - OAuth enrollment requirements for under-13
+- ✅ Compliance strategy - Leverage Google/Microsoft COPPA compliance
+
+**Benefits of OAuth Approach:**
+- 75% reduction in time (5 weeks vs 11-12 weeks)
+- 75% reduction in legal costs ($1K-2K vs $5K-10K)
+- No custom school agreements or parent consent workflows
+- Parents use familiar Family Link/Microsoft Family tools
+
+---
+
 ## Project Overview
 
 Production-ready Django 6.0/Wagtail 7.2.1 educational platform with SCORM LMS, Stripe payments, Twilio SMS/voicemail, unified portfolio, blog, and contact systems.
@@ -15,7 +49,7 @@ Production-ready Django 6.0/Wagtail 7.2.1 educational platform with SCORM LMS, S
 
 ## Authentication
 
-**django-allauth**: Email-only (no username), Google OAuth with auto-account linking by verified email, honeypot spam protection (`phone_number` field), mandatory email verification.
+**django-allauth**: Email-only (no username), Google OAuth with auto-account linking by verified email, honeypot spam protection (`website` field), mandatory email verification.
 
 **Custom**: `SocialAccountAdapter` in `thinkelearn/backends/allauth.py` (14 tests, 100% coverage)
 
