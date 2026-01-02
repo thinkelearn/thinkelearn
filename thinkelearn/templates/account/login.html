@@ -75,20 +75,22 @@
             </a>
         </div>
 
-        <div class="text-center text-sm text-neutral-600 mt-6">
-            {% trans "New here?" %}
-            {% if redirect_field_value %}
-                <a href="{% url 'account_signup' %}?next={{ redirect_field_value|urlencode }}"
-                   class="font-medium text-secondary-600 hover:text-secondary-500">
-                    {% trans "Create an account" %}
-                </a>
-            {% else %}
-                <a href="{% url 'account_signup' %}"
-                   class="font-medium text-secondary-600 hover:text-secondary-500">
-                    {% trans "Create an account" %}
-                </a>
-            {% endif %}
-        </div>
+        {% if ACCOUNT_ALLOW_REGISTRATION %}
+            <div class="text-center text-sm text-neutral-600 mt-6">
+                {% trans "New here?" %}
+                {% if redirect_field_value %}
+                    <a href="{% url 'account_signup' %}?next={{ redirect_field_value|urlencode }}"
+                       class="font-medium text-secondary-600 hover:text-secondary-500">
+                        {% trans "Create an account" %}
+                    </a>
+                {% else %}
+                    <a href="{% url 'account_signup' %}"
+                       class="font-medium text-secondary-600 hover:text-secondary-500">
+                        {% trans "Create an account" %}
+                    </a>
+                {% endif %}
+            </div>
+        {% endif %}
     </div>
 </div>
 {% endblock %}

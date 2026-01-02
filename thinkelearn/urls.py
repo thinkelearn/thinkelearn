@@ -22,6 +22,20 @@ urlpatterns = [
     path("lms/", include("wagtail_lms.urls")),
     # django-allauth authentication URLs - must be before Wagtail catch-all
     # Reserved path: avoid other "accounts/" URL patterns to prevent conflicts
+]
+
+# Block signup URLs when registration is disabled
+if not settings.ACCOUNT_ALLOW_REGISTRATION:
+    urlpatterns += [
+        path("accounts/signup/", views.signup_closed, name="account_signup"),
+        path(
+            "accounts/3rdparty/signup/",
+            views.signup_closed,
+            name="socialaccount_signup",
+        ),
+    ]
+
+urlpatterns += [
     path("accounts/", include("allauth.urls")),
 ]
 

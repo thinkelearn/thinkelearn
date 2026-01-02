@@ -88,6 +88,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "thinkelearn.context_processors.registration_settings",
             ],
         },
     },
@@ -140,6 +141,10 @@ ACCOUNT_UNIQUE_EMAIL = True
 ACCOUNT_USER_MODEL_USERNAME_FIELD = None  # Tell allauth to ignore username
 LOGIN_REDIRECT_URL = "/dashboard/"  # Redirect to dashboard after successful login
 ACCOUNT_LOGOUT_REDIRECT_URL = "/"
+# Control registration availability (default False for soft launch, set ACCOUNT_ALLOW_REGISTRATION=true in Railway)
+ACCOUNT_ALLOW_REGISTRATION = os.environ.get(
+    "ACCOUNT_ALLOW_REGISTRATION", "false"
+).lower() in ("true", "1", "yes")
 SOCIALACCOUNT_ADAPTER = "thinkelearn.backends.allauth.SocialAccountAdapter"
 
 SOCIALACCOUNT_PROVIDERS = {
