@@ -52,13 +52,16 @@ if missing_stripe_settings:
         f"Missing required Stripe settings: {', '.join(missing_stripe_settings)}"
     )
 
+# Redis is optional - if not provided, webhooks run synchronously via CELERY_TASK_ALWAYS_EAGER
 redis_url = os.environ.get("REDIS_URL")
-if not redis_url:
-    raise ImproperlyConfigured("Missing required Redis setting: REDIS_URL")
-
-CELERY_BROKER_URL = redis_url
-CELERY_RESULT_BACKEND = redis_url
-CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+if redis_url:
+    CELERY_BROKER_URL = redis_url
+    CELERY_RESULT_BACKEND = redis_url
+    CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+else:
+    # Run tasks synchronously without Redis/Celery worker
+    CELERY_TASK_ALWAYS_EAGER = True
+    CELERY_TASK_EAGER_PROPAGATES = True
 
 # Database configuration - Railway provides both DATABASE_URL and individual vars
 if os.environ.get("DATABASE_URL"):
