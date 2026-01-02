@@ -961,7 +961,7 @@ class EnrollmentRecordTest(TestCase):
                 amount=Decimal("99.99"),
             )
 
-        self.assertIn("already have an enrollment", str(cm.exception))
+        self.assertIn("active or pending enrollment", str(cm.exception))
 
     def test_create_for_user_idempotency_key_unique(self):
         """Test idempotency key uniqueness"""
@@ -1078,23 +1078,42 @@ class EnrollmentRecordTest(TestCase):
         self.assertIn("cancelled/refunded", str(cm.exception))
 
     def test_unique_together_constraint(self):
-        """Test database enforces unique user/product constraint"""
-        EnrollmentRecord.objects.create(user=self.user, product=self.product)
+        """Test database enforces unique user/product constraint for active/pending"""
+        EnrollmentRecord.objects.create(
+            user=self.user,
+            product=self.product,
+            status=EnrollmentRecord.Status.PENDING_PAYMENT,
+        )
 
         with self.assertRaises(IntegrityError):
-            EnrollmentRecord.objects.create(user=self.user, product=self.product)
+            EnrollmentRecord.objects.create(
+                user=self.user,
+                product=self.product,
+                status=EnrollmentRecord.Status.PENDING_PAYMENT,
+            )
 
-    def test_can_user_enroll_blocks_cancelled_refunded(self):
-        """Test can_user_enroll blocks users with cancelled/refunded enrollment"""
-        # Create cancelled/refunded enrollment
+    def test_can_user_enroll_respects_refund_limit(self):
+        """Test can_user_enroll allows re-enrolls up to refund limit"""
+        self.product.max_refunds_per_user = 1
+        self.product.save(update_fields=["max_refunds_per_user"])
+
+        # First refund/cancellation allowed
         EnrollmentRecord.objects.create(
             user=self.user,
             product=self.product,
             status=EnrollmentRecord.Status.REFUNDED,
+            has_refund=True,
         )
 
-        # Users with cancelled/refunded enrollments cannot re-enroll automatically
-        # They must contact support for manual re-enrollment
+        can_enroll = self.course.can_user_enroll(self.user)
+        self.assertTrue(can_enroll)
+
+        # Second refund/cancellation exceeds limit
+        EnrollmentRecord.objects.create(
+            user=self.user,
+            product=self.product,
+            status=EnrollmentRecord.Status.CANCELLED,
+        )
         can_enroll = self.course.can_user_enroll(self.user)
         self.assertFalse(can_enroll)
 

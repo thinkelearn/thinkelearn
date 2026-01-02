@@ -121,28 +121,21 @@ Backend behavior:
 
 ## Background Tasks
 
-**Current Implementation: Synchronous**
+**Current Implementation: Celery + Redis**
 
-Refund emails and enrollment cleanup are currently executed synchronously (not in background tasks). This is a temporary approach due to dependency compatibility issues:
+Webhook processing and refund emails run via Celery to keep Stripe webhooks fast
+and retryable. A separate worker service is required in production.
 
-- Django 6.0 requires `django-tasks` 0.10.0+
-- Wagtail 7.2.1 requires `django-tasks` <0.10
-- These requirements are incompatible
+**Required Services:**
 
-**When Wagtail Updates:**
+- Redis (broker + result backend)
+- Celery worker (`celery -A thinkelearn worker -l info`)
 
-When Wagtail releases a version compatible with `django-tasks` 0.10.0+, background task processing will be added:
+**Behavior:**
 
-1. Install `django-tasks` 0.10.0+
-2. Add task decorators back to functions in `payments/tasks.py`
-3. Update webhook calls to use `.enqueue()`
-4. Configure and deploy task worker service
-
-**Current Behavior:**
-
-- Refund emails sent synchronously during webhook processing
-- Enrollment cleanup can be triggered manually or via cron job
-- No separate worker service needed
+- Stripe webhooks persist the event and enqueue async processing
+- Refund emails are sent from background tasks
+- Enrollment cleanup remains callable manually (or via a scheduled task)
 
 ---
 

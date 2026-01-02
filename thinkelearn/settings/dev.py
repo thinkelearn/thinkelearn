@@ -11,6 +11,9 @@ SECRET_KEY = "django-insecure-+b*&pr)e-cccn-$kw35u-tv1r89%t92k#(&*no#^dj72w)ymz_
 # SECURITY WARNING: define the correct hosts in production!
 ALLOWED_HOSTS = ["*"]
 
+# Store full Stripe webhook payloads in development for debugging
+STRIPE_WEBHOOK_STORE_FULL_PAYLOAD = True
+
 # Email configuration for development with Mailpit
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_HOST = "mailpit"

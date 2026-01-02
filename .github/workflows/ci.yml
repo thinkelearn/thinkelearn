@@ -1,9 +1,5 @@
 name: CI/CD Pipeline
 
-# Streamlined CI focusing on business logic testing
-# Tests: 25 focused business logic tests (Twilio workflows, custom methods)
-# No framework over-testing (Django/Wagtail core functionality not tested)
-
 on:
   push:
     branches: [ main, develop ]
@@ -97,9 +93,7 @@ jobs:
         DJANGO_SETTINGS_MODULE: thinkelearn.settings.test
         DATABASE_URL: postgres://postgres:postgres@localhost:5432/test_thinkelearn
       run: |
-        echo "Running 25 focused business logic tests (no framework over-testing)"
         uv run python manage.py test --verbosity=2 --keepdb --failfast
-        echo "✅ All tests focus on custom business logic, not Django/Wagtail framework functionality"
 
   lint:
     runs-on: ubuntu-latest

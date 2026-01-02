@@ -83,12 +83,14 @@ class PaymentModelTest(TestCase):
             entry_type=PaymentLedgerEntry.EntryType.CHARGE,
             amount=Decimal("99.99"),
             currency="CAD",
+            stripe_charge_id="ch_test_1",
         )
         PaymentLedgerEntry.objects.create(
             payment=payment,
             entry_type=PaymentLedgerEntry.EntryType.REFUND,
             amount=Decimal("20.00"),
             currency="CAD",
+            stripe_refund_id="re_test_1",
         )
 
         payment.recalculate_totals()
@@ -109,6 +111,7 @@ class PaymentModelTest(TestCase):
             entry_type=PaymentLedgerEntry.EntryType.CHARGE,
             amount=Decimal("100.00"),
             currency="CAD",
+            stripe_charge_id="ch_test_2",
         )
         PaymentLedgerEntry.objects.create(
             payment=payment,
@@ -136,6 +139,7 @@ class PaymentModelTest(TestCase):
             entry_type=PaymentLedgerEntry.EntryType.CHARGE,
             amount=Decimal("100.00"),
             currency="CAD",
+            stripe_charge_id="ch_test_3",
         )
         PaymentLedgerEntry.objects.create(
             payment=payment,
@@ -162,6 +166,7 @@ class PaymentModelTest(TestCase):
             entry_type=PaymentLedgerEntry.EntryType.CHARGE,
             amount=Decimal("100.00"),
             currency="CAD",
+            stripe_charge_id="ch_test_4",
         )
         PaymentLedgerEntry.objects.create(
             payment=payment,
@@ -174,6 +179,7 @@ class PaymentModelTest(TestCase):
             entry_type=PaymentLedgerEntry.EntryType.REFUND,
             amount=Decimal("20.00"),
             currency="CAD",
+            stripe_refund_id="re_test_2",
         )
         PaymentLedgerEntry.objects.create(
             payment=payment,

@@ -62,6 +62,10 @@ uv run python manage.py createsuperuser
 # Start servers
 uv run python manage.py runserver  # Terminal 1
 npm run build-css                  # Terminal 2
+
+# Background tasks (Celery)
+redis-server                       # Terminal 3
+celery -A thinkelearn worker -l info  # Terminal 4
 ```
 
 ## Prerequisites

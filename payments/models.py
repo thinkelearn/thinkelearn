@@ -1,7 +1,7 @@
 from decimal import Decimal
 
 from django.db import models
-from django.db.models import Q, Sum
+from django.db.models import F, Q, Sum
 
 
 class Payment(models.Model):
@@ -41,7 +41,7 @@ class Payment(models.Model):
     currency = models.CharField(max_length=10, default="CAD")
     status = models.CharField(
         max_length=20,
-        choices=Status.choices,
+        choices=Status,
         default=Status.INITIATED,
     )
     stripe_checkout_session_id = models.CharField(
@@ -71,6 +71,12 @@ class Payment(models.Model):
         ordering = ["-created_at"]
         indexes = [
             models.Index(fields=["status", "created_at"]),
+        ]
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(amount_refunded__lte=F("amount_gross")),
+                name="payment_refunded_lte_gross",
+            ),
         ]
 
     def recalculate_totals(self, *, save: bool = True) -> None:
@@ -170,6 +176,27 @@ class PaymentLedgerEntry(models.Model):
             models.Index(fields=["entry_type", "processed_at"]),
         ]
         constraints = [
+            models.CheckConstraint(
+                condition=(
+                    Q(entry_type__in=["charge", "refund", "fee"], amount__gte=0)
+                    | Q(entry_type="adjustment")
+                ),
+                name="ledger_entry_amount_non_negative",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    Q(entry_type="charge") & ~Q(stripe_charge_id="")
+                    | ~Q(entry_type="charge")
+                ),
+                name="ledger_entry_charge_requires_stripe_charge_id",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    Q(entry_type="refund") & ~Q(stripe_refund_id="")
+                    | ~Q(entry_type="refund")
+                ),
+                name="ledger_entry_refund_requires_stripe_refund_id",
+            ),
             models.UniqueConstraint(
                 fields=["entry_type", "stripe_charge_id"],
                 condition=Q(entry_type="charge") & ~Q(stripe_charge_id=""),

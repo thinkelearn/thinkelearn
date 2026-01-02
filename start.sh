@@ -99,8 +99,8 @@ start_containers() {
     docker network prune -f > /dev/null 2>&1 || true
 
     # Start main services
-    print_status "Starting web server, database, pgAdmin, and Mailpit..."
-    docker-compose up -d web db pgadmin mailpit
+    print_status "Starting web server, database, Redis, Celery, pgAdmin, and Mailpit..."
+    docker-compose up -d web db redis celery pgadmin mailpit
 
     # Start CSS build process
     print_status "Starting Tailwind CSS build process..."
@@ -120,6 +120,7 @@ start_containers() {
     echo "  📧 Mailpit (email testing): http://localhost:8025"
     echo "  🗄️  pgAdmin (database): http://localhost:5050"
     echo "  📊 Database: postgres://postgres:postgres@localhost:5432/thinkelearn"
+    echo "  🧰 Redis: redis://localhost:6379/0"
     echo "  🎨 CSS: Tailwind is watching for changes"
     echo ""
     print_status "Admin interfaces:"
