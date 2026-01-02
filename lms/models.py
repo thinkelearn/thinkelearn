@@ -18,7 +18,7 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import IntegrityError, models, transaction
-from django.db.models import Avg
+from django.db.models import Avg, Q
 from django.urls import reverse
 from django.utils import timezone
 from modelcluster.fields import ParentalKey, ParentalManyToManyField
@@ -96,6 +96,11 @@ class CourseProduct(models.Model):
         default=30,
         help_text="Number of days customers can request refunds (max 365 days)",
         validators=[MinValueValidator(0), MaxValueValidator(365)],
+    )
+    max_refunds_per_user = models.IntegerField(
+        default=1,
+        help_text="Maximum refunds/cancellations allowed per user for this product",
+        validators=[MinValueValidator(0)],
     )
     is_active = models.BooleanField(
         default=True,
@@ -261,6 +266,10 @@ class EnrollmentRecord(models.Model):
         blank=True,
         db_index=True,
     )
+    has_refund = models.BooleanField(
+        default=False,
+        help_text="True if any refund was processed for this enrollment",
+    )
     idempotency_key = models.CharField(
         max_length=255,
         unique=True,
@@ -276,7 +285,8 @@ class EnrollmentRecord(models.Model):
         constraints = [
             models.UniqueConstraint(
                 fields=["user", "product"],
-                name="unique_user_product_enrolment",
+                condition=Q(status__in=["pending_payment", "active"]),
+                name="unique_active_or_pending_enrollment",
             ),
         ]
         indexes = [
@@ -313,8 +323,8 @@ class EnrollmentRecord(models.Model):
         Create a new enrollment for a user.
 
         This method creates a new enrollment record and will NOT update existing
-        enrollments. If an enrollment already exists (active, pending, or cancelled),
-        this method will raise a ValidationError to prevent unintended state changes.
+        enrollments. Active or pending enrollments block duplicate creation. Cancelled
+        or refunded enrollments are allowed based on refund/cancellation limits.
 
         For free enrollments (amount=0), this automatically creates the corresponding
         CourseEnrollment and sets status to ACTIVE. For paid enrollments (amount>0),
@@ -356,12 +366,20 @@ class EnrollmentRecord(models.Model):
         if not is_valid:
             raise ValidationError(message)
 
-        # Check if enrollment already exists (any status)
-        existing = cls.objects.filter(user=user, product=product).first()
-        if existing:
+        existing = cls.objects.filter(user=user, product=product)
+        if existing.filter(
+            status__in=[cls.Status.PENDING_PAYMENT, cls.Status.ACTIVE]
+        ).exists():
             raise ValidationError(
-                f"You already have an enrollment for this course (status: {existing.status})."
+                "You already have an active or pending enrollment for this course."
             )
+
+        refund_count = existing.filter(
+            Q(status__in=[cls.Status.CANCELLED, cls.Status.REFUNDED])
+            | Q(has_refund=True)
+        ).count()
+        if refund_count > product.max_refunds_per_user:
+            raise ValidationError("Refund/cancellation limit reached for this course.")
 
         # Validate user can enroll (prerequisites, limits, etc.)
         if not product.course.can_user_enroll(user):
@@ -786,25 +804,39 @@ class ExtendedCoursePage(CoursePage):
         Check if user can enroll in this course.
 
         This checks:
-        - User doesn't have any enrollment record (active, pending, or cancelled)
+        - User doesn't have any active or pending enrollment record
         - User is not already enrolled via CourseEnrollment
         - Enrollment limit hasn't been reached
         - All prerequisite courses are completed
 
-        Note: Users with cancelled or refunded enrollments cannot automatically
-        re-enroll and must contact support for manual re-enrollment.
+        Note: Cancelled/refunded enrollments are allowed up to the product's
+        max_refunds_per_user limit.
 
         Returns:
             bool: True if user can enroll, False otherwise
         """
-        # Check for any existing enrollment record (including cancelled/refunded)
+        # Check for active or pending enrollment record
         product = getattr(self, "product", None)
         if product:
-            has_enrollment = EnrollmentRecord.objects.filter(
-                user=user, product=product
-            ).exists()
+            enrollments = EnrollmentRecord.objects.filter(user=user, product=product)
+            if enrollments.filter(
+                status__in=[
+                    EnrollmentRecord.Status.PENDING_PAYMENT,
+                    EnrollmentRecord.Status.ACTIVE,
+                ]
+            ).exists():
+                return False
 
-            if has_enrollment:
+            refund_count = enrollments.filter(
+                Q(
+                    status__in=[
+                        EnrollmentRecord.Status.CANCELLED,
+                        EnrollmentRecord.Status.REFUNDED,
+                    ]
+                )
+                | Q(has_refund=True)
+            ).count()
+            if refund_count > product.max_refunds_per_user:
                 return False
 
         # Check if already enrolled directly via CourseEnrollment

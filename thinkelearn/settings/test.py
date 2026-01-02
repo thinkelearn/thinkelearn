@@ -108,3 +108,6 @@ SILENCED_SYSTEM_CHECKS = [
     "security.W020",  # SECURE_REFERRER_POLICY
     "security.W021",  # SECURE_CROSS_ORIGIN_OPENER_POLICY
 ]
+
+# Store full Stripe webhook payloads in tests for easier assertions
+STRIPE_WEBHOOK_STORE_FULL_PAYLOAD = True

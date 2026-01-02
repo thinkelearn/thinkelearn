@@ -20,6 +20,74 @@ from payments.tasks import process_stripe_webhook_event
 
 logger = logging.getLogger(__name__)
 
+ALLOWED_STRIPE_METADATA_KEYS = {
+    "enrollment_record_id",
+    "user_id",
+    "product_id",
+}
+
+SAFE_STRIPE_OBJECT_KEYS = {
+    "id",
+    "object",
+    "amount",
+    "amount_refunded",
+    "amount_total",
+    "currency",
+    "payment_intent",
+    "balance_transaction",
+    "refunded",
+    "status",
+    "payment_status",
+}
+
+
+def _sanitize_stripe_event(event_data: dict) -> dict:
+    """Minimize Stripe webhook payload storage to reduce PII exposure."""
+    if settings.STRIPE_WEBHOOK_STORE_FULL_PAYLOAD:
+        return event_data
+
+    data_object = (event_data.get("data") or {}).get("object") or {}
+    sanitized_object = {
+        key: data_object.get(key)
+        for key in SAFE_STRIPE_OBJECT_KEYS
+        if key in data_object
+    }
+
+    metadata = data_object.get("metadata") or {}
+    if metadata:
+        sanitized_object["metadata"] = {
+            key: value
+            for key, value in metadata.items()
+            if key in ALLOWED_STRIPE_METADATA_KEYS
+        }
+
+    refunds = data_object.get("refunds")
+    if isinstance(refunds, dict):
+        refund_items = refunds.get("data") or []
+        sanitized_refunds = []
+        for refund in refund_items:
+            if not isinstance(refund, dict):
+                continue
+            sanitized_refunds.append(
+                {
+                    "id": refund.get("id"),
+                    "amount": refund.get("amount"),
+                    "currency": refund.get("currency"),
+                    "balance_transaction": refund.get("balance_transaction"),
+                    "created": refund.get("created"),
+                    "status": refund.get("status"),
+                }
+            )
+        sanitized_object["refunds"] = {"data": sanitized_refunds}
+
+    return {
+        "id": event_data.get("id"),
+        "type": event_data.get("type"),
+        "created": event_data.get("created"),
+        "livemode": event_data.get("livemode"),
+        "data": {"object": sanitized_object},
+    }
+
 
 def get_stripe_client() -> StripeClient:
     """
@@ -284,7 +352,10 @@ def create_checkout_session(request):
     except ValidationError as exc:
         error_message = str(exc)
         # Check if this is a duplicate enrollment error
-        if "already have an enrollment" in error_message:
+        if (
+            "already have an enrollment" in error_message
+            or "active or pending enrollment" in error_message
+        ):
             logger.warning(
                 "Duplicate enrollment attempt",
                 extra={
@@ -400,6 +471,7 @@ def stripe_webhook(request):
         return JsonResponse({"error": "Invalid signature."}, status=400)
 
     event_data = event.to_dict()
+    stored_event_data = _sanitize_stripe_event(event_data)
     event_id = event_data.get("id")
     event_type = event_data.get("type")
 
@@ -422,7 +494,7 @@ def stripe_webhook(request):
                 webhook_event = WebhookEvent.objects.create(
                     stripe_event_id=event_id,
                     event_type=event_type or "unknown",
-                    raw_event_data=event_data,
+                    raw_event_data=stored_event_data,
                     success=False,
                 )
                 created = True
@@ -438,11 +510,11 @@ def stripe_webhook(request):
         else:
             if not created:
                 webhook_event.event_type = event_type or webhook_event.event_type
-                webhook_event.raw_event_data = event_data
-                webhook_event.error_message = ""
-                webhook_event.save(
-                    update_fields=["event_type", "raw_event_data", "error_message"]
-                )
+            webhook_event.raw_event_data = stored_event_data
+            webhook_event.error_message = ""
+            webhook_event.save(
+                update_fields=["event_type", "raw_event_data", "error_message"]
+            )
             webhook_event_id = webhook_event.id
 
     if already_processed:
@@ -460,7 +532,10 @@ def stripe_webhook(request):
         return JsonResponse({"status": "error"}, status=500)
 
     try:
-        process_stripe_webhook_event.delay(webhook_event_id)
+        if getattr(settings, "CELERY_TASK_ALWAYS_EAGER", False):
+            process_stripe_webhook_event.apply(args=[webhook_event_id])
+        else:
+            process_stripe_webhook_event.delay(webhook_event_id)
     except Exception:
         logger.exception(
             "Stripe webhook enqueue failed",

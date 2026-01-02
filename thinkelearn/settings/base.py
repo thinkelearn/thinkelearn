@@ -160,6 +160,9 @@ STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY", "")
 STRIPE_PUBLISHABLE_KEY = os.environ.get("STRIPE_PUBLISHABLE_KEY", "")
 STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
 STRIPE_CURRENCY = os.environ.get("STRIPE_CURRENCY", "cad")
+STRIPE_WEBHOOK_STORE_FULL_PAYLOAD = os.environ.get(
+    "STRIPE_WEBHOOK_STORE_FULL_PAYLOAD", "false"
+).lower() in {"1", "true", "yes"}
 
 # Celery configuration
 REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")

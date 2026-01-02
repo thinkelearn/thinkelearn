@@ -659,6 +659,16 @@ if not course.can_user_enroll(request.user):
 - [x] Webhook processing is idempotent
 - [x] Complete documentation for maintainability
 
+**Reconciliation Readiness Checklist:**
+
+- Ledger entries store `stripe_charge_id`, `stripe_refund_id`, and
+  `stripe_balance_transaction_id` for matching.
+- Refund entries are idempotent and do not double-count when webhook payloads
+  evolve from fallback to full refund objects.
+- Denormalized totals (`amount_gross`, `amount_refunded`, `amount_net`) derive
+  exclusively from ledger aggregation.
+- Webhook events are persisted before processing and are safe to replay.
+
 **Reporting Examples (Business Outcomes, post-launch UI):**
 
 - **Course revenue (monthly):** Sum ledger CHARGE entries per course minus REFUND entries

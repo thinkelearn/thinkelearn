@@ -253,9 +253,9 @@ def _ensure_refund_ledger_entries(payment: Payment, charge: dict) -> None:
     charge_id = charge.get("id") or ""
     if not refunds:
         refund_amount = _cents_to_decimal(charge.get("amount_refunded"))
-        if refund_amount and refund_amount > 0:
+        if refund_amount and refund_amount > 0 and charge_id:
             # Use composite ID for fallback to avoid unique constraint conflict
-            fallback_refund_id = f"{charge_id}:fallback" if charge_id else ""
+            fallback_refund_id = f"{charge_id}:fallback"
             PaymentLedgerEntry.objects.get_or_create(
                 payment=payment,
                 entry_type=PaymentLedgerEntry.EntryType.REFUND,
@@ -673,6 +673,9 @@ def handle_charge_refunded(event: dict) -> None:
         # Still process payment status update but skip enrollment changes
         with transaction.atomic():
             payment = Payment.objects.select_for_update().get(id=payment.id)
+            enrollment = EnrollmentRecord.objects.select_for_update().get(
+                id=enrollment.id
+            )
 
             # Sync metadata fields and collect all updates for single save
             metadata_updates = _sync_charge_metadata(payment, charge)
@@ -690,6 +693,10 @@ def handle_charge_refunded(event: dict) -> None:
                 "failure_reason",
             ] + metadata_updates
             payment.save(update_fields=update_fields)
+
+            if not enrollment.has_refund:
+                enrollment.has_refund = True
+                enrollment.save(update_fields=["has_refund"])
 
             payment.recalculate_totals()
         return
@@ -732,6 +739,10 @@ def handle_charge_refunded(event: dict) -> None:
             payment.save(update_fields=update_fields)
             payment.recalculate_totals()
             return
+
+        if not enrollment.has_refund:
+            enrollment.has_refund = True
+            enrollment.save(update_fields=["has_refund"])
 
         if is_full_refund:
             if enrollment.status != EnrollmentRecord.Status.REFUNDED:
