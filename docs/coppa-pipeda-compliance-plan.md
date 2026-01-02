@@ -1,6 +1,6 @@
 # COPPA & PIPEDA Compliance Plan for Children Under 13
 
-**Strategy:** OAuth-Based Approach (Google Family Link & Microsoft Family)
+**Strategy:** OAuth-Based Approach (Google Family Link & Microsoft Family Safety)
 **Status:** 🔴 BLOCKER FOR PRODUCTION RELEASE
 **Priority:** CRITICAL
 **Compliance Deadline:** April 22, 2026 (COPPA amendments)
@@ -37,7 +37,7 @@ THINK eLearn is building courses for children under 13. This triggers strict com
 Instead of building custom school agreements and parental consent workflows, we are leveraging **COPPA-compliant third-party identity providers** that have already obtained verifiable parental consent:
 
 - **Google Family Link** - Parent-managed accounts for children under 13
-- **Microsoft Family** - Parent-managed accounts for children under 13
+- **Microsoft Family Safety** - Parent-managed accounts for children under 13
 
 **Key Insight:** Google and Microsoft are already COPPA-compliant. Parents have already provided verifiable consent when creating family accounts. We rely on their consent mechanism.
 
@@ -62,7 +62,7 @@ Instead of building custom school agreements and parental consent workflows, we 
 ✅ Updated Privacy Policy with OAuth-based Children's Privacy section
 ✅ Updated Terms and Conditions with OAuth enrollment requirements
 ✅ Documented OAuth-based compliance strategy
-✅ Identified Google Family Link and Microsoft Family as approved providers
+✅ Identified Google Family Link and Microsoft Family Safety as approved providers
 ✅ Researched COPPA compliance of third-party providers
 
 ### What We Need To Do
@@ -108,17 +108,17 @@ Instead of building custom school agreements and parental consent workflows, we 
 - Parent manages child's account through Family Link dashboard
 - Google is COPPA-compliant (certified by TRUSTe, audited regularly)
 
-**Microsoft Family:**
+**Microsoft Family Safety:**
 
-- Parent creates child account within Microsoft Family
+- Parent creates child account within Microsoft Family Safety
 - Microsoft obtains verifiable parental consent during account creation
 - Parent reviews Microsoft's privacy policy and children's data practices
-- Parent manages child's account through Microsoft Family dashboard
+- Parent manages child's account through Microsoft Family Safety dashboard
 - Microsoft is COPPA-compliant
 
 #### 2. We Rely on Their Consent Mechanism
 
-When a child signs in to THINK eLearn using Google Family Link or Microsoft Family:
+When a child signs in to THINK eLearn using Google Family Link or Microsoft Family Safety:
 
 1. Parent has already provided verifiable consent to Google/Microsoft
 2. Parent has already reviewed privacy policies for children's services
@@ -200,7 +200,7 @@ Even though we leverage third-party consent, we still have obligations:
 
 **For Parents:**
 
-- Use familiar tools (Family Link, Microsoft Family)
+- Use familiar tools (Family Link, Microsoft Family Safety)
 - Centralized management of child's online accounts
 - No need to learn new consent/management system
 - Can revoke access instantly through family dashboard
@@ -310,7 +310,7 @@ Even though we leverage third-party consent, we still have obligations:
 
 - ✅ Comprehensive "Children's Privacy" section (lines 287-509)
 - ✅ Third-Party Identity Provider Requirement explained
-- ✅ Google Family Link and Microsoft Family details
+- ✅ Google Family Link and Microsoft Family Safety details
 - ✅ Information collection transparency
 - ✅ Parental rights and controls documentation
 - ✅ Links to Google/Microsoft privacy policies
@@ -411,7 +411,7 @@ Even though we leverage third-party consent, we still have obligations:
 2. **Signup Flow Modification**
    - Detect age during signup form submission
    - If age < 13 and signup method = email/password:
-     - Show error message: "Children under 13 must use Google Family Link or Microsoft Family"
+     - Show error message: "Children under 13 must use Google Family Link or Microsoft Family Safety"
      - Display OAuth buttons with family account instructions
      - Link to help documentation
    - If age >= 13: allow any signup method
@@ -442,7 +442,7 @@ Even though we leverage third-party consent, we still have obligations:
 
 ### Phase 3: Family Account Detection (Week 2-3)
 
-**Goal:** Detect Google Family Link and Microsoft Family accounts
+**Goal:** Detect Google Family Link and Microsoft Family Safety accounts
 
 **Tasks:**
 
@@ -452,7 +452,7 @@ Even though we leverage third-party consent, we still have obligations:
    - Check if age-related claims are available
    - Store detection result in User model (optional field: `family_account_provider`)
 
-2. **Microsoft Family Detection**
+2. **Microsoft Family Safety Detection**
    - Research Microsoft OAuth claims for Family accounts
    - Check for family-related claims in ID token
    - Store detection result in User model
@@ -472,7 +472,7 @@ Even though we leverage third-party consent, we still have obligations:
 **Testing:**
 
 - Test with real Google Family Link account (create test family)
-- Test with real Microsoft Family account (create test family)
+- Test with real Microsoft Family Safety account (create test family)
 - Verify claims are logged correctly
 
 ### Phase 4: Feature Restrictions (Week 3-4)
@@ -527,7 +527,7 @@ Even though we leverage third-party consent, we still have obligations:
 
 1. **Parent Documentation**
    - Create help page: "Managing Your Child's THINK eLearn Account"
-   - Include links to Google Family Link and Microsoft Family dashboards
+   - Include links to Google Family Link and Microsoft Family Safety dashboards
    - Explain how to view child's activity
    - Explain how to revoke access
    - Explain how to request data deletion
@@ -641,7 +641,7 @@ Even though we leverage third-party consent, we still have obligations:
 
 **Quarterly Reviews:**
 
-- Review Google Family Link and Microsoft Family policy changes
+- Review Google Family Link and Microsoft Family Safety policy changes
 - Check for COPPA/PIPEDA regulatory updates
 - Audit child account flagging accuracy
 - Review parent support tickets for compliance issues
@@ -659,7 +659,7 @@ Even though we leverage third-party consent, we still have obligations:
 **Monitor Changes:**
 
 - Subscribe to Google Family Link developer updates
-- Subscribe to Microsoft Family developer updates
+- Subscribe to Microsoft Family Safety developer updates
 - Review OAuth API changes quarterly
 - Update implementation if consent mechanism changes
 
@@ -699,7 +699,7 @@ Even though we leverage third-party consent, we still have obligations:
 **Week 3: Detection & Restrictions (Part 1)**
 
 - [ ] Research Google Family Link OAuth claims
-- [ ] Research Microsoft Family OAuth claims
+- [ ] Research Microsoft Family Safety OAuth claims
 - [ ] Implement family account detection (if possible)
 - [ ] Add logging for OAuth flow
 - [ ] Start feature restrictions implementation
@@ -767,7 +767,7 @@ Even though we leverage third-party consent, we still have obligations:
 - [ ] Legal counsel approved Terms and Conditions
 - [ ] Written legal opinion obtained and filed
 - [ ] Google Family Link COPPA compliance verified (public certifications reviewed)
-- [ ] Microsoft Family COPPA compliance verified (public certifications reviewed)
+- [ ] Microsoft Family Safety COPPA compliance verified (public certifications reviewed)
 
 ### Before Launch: Technical
 
@@ -923,10 +923,10 @@ Even though we leverage third-party consent, we still have obligations:
 - Family Link Help Center: <https://support.google.com/families/>
 - Google's COPPA Compliance: <https://www.google.com/intl/en/policies/privacy/>
 
-**Microsoft Family:**
+**Microsoft Family Safety:**
 
-- Microsoft Family Privacy Statement: <https://privacy.microsoft.com/en-us/privacystatement#mainnoticetoendusersmodule>
-- Microsoft Family Help: <https://support.microsoft.com/en-us/account-billing/getting-started-with-microsoft-family-safety-b6280c9d-38d7-82ff-0e4f-a6cb7e659344>
+- Microsoft Family Safety Privacy Statement: <https://privacy.microsoft.com/en-us/privacystatement#mainnoticetoendusersmodule>
+- Microsoft Family Safety Help: <https://support.microsoft.com/en-us/account-billing/getting-started-with-microsoft-family-safety-b6280c9d-38d7-82ff-0e4f-a6cb7e659344>
 - Microsoft's COPPA Compliance: <https://www.microsoft.com/en-us/trust-center/privacy/coppa>
 
 ### Case Studies & Best Practices
@@ -1002,7 +1002,7 @@ class User(AbstractUser):
         blank=True,
         choices=[
             ('google_family_link', 'Google Family Link'),
-            ('microsoft_family', 'Microsoft Family'),
+            ('microsoft_family', 'Microsoft Family Safety'),
         ],
         help_text="Third-party family account provider (if applicable)"
     )
@@ -1074,7 +1074,7 @@ class CustomSignupForm(SignupForm):
         # If under 13, prevent email/password signup
         if age < 13:
             raise forms.ValidationError(
-                "Children under 13 must sign up using Google Family Link or Microsoft Family. "
+                "Children under 13 must sign up using Google Family Link or Microsoft Family Safety. "
                 "Please use one of the OAuth options below."
             )
 
@@ -1197,7 +1197,7 @@ class Command(BaseCommand):
 
 ## Summary
 
-This OAuth-based compliance plan provides a **pragmatic, cost-effective, and legally sound** approach to COPPA/PIPEDA compliance for children under 13. By leveraging Google Family Link and Microsoft Family:
+This OAuth-based compliance plan provides a **pragmatic, cost-effective, and legally sound** approach to COPPA/PIPEDA compliance for children under 13. By leveraging Google Family Link and Microsoft Family Safety:
 
 - ✅ **75% reduction in development time** (5 weeks vs 11-12 weeks)
 - ✅ **75% reduction in legal costs** ($1K-2K vs $5K-10K)

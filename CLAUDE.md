@@ -6,7 +6,7 @@
 
 ⚠️ **CANNOT launch courses for children under 13** until compliance requirements are met.
 
-- **Strategy:** OAuth-based approach using Google Family Link and Microsoft Family
+- **Strategy:** OAuth-based approach using Google Family Link and Microsoft Family Safety
 - **Status:** Legal docs ready, technical implementation required (5 weeks)
 - **Compliance Deadline:** April 22, 2026 (COPPA amendments)
 - **Penalties:** Up to $50,120 per violation
@@ -30,7 +30,7 @@
 - 75% reduction in time (5 weeks vs 11-12 weeks)
 - 75% reduction in legal costs ($1K-2K vs $5K-10K)
 - No custom school agreements or parent consent workflows
-- Parents use familiar Family Link/Microsoft Family tools
+- Parents use familiar Family Link/Microsoft Family Safety tools
 
 ---
 

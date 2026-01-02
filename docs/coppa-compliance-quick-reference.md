@@ -12,7 +12,7 @@
 4. Feature restrictions (no Stripe, no SMS, etc.)
 5. Microsoft OAuth provider added
 
-**Strategy:** Rely on Google Family Link and Microsoft Family for parental consent
+**Strategy:** Rely on Google Family Link and Microsoft Family Safety for parental consent
 
 **Penalties:** Up to $50,120 per violation (each child = violation)
 
@@ -42,7 +42,7 @@
 
 3. **Family Account Detection** (Week 2-3)
    - Detect Google Family Link accounts during OAuth flow
-   - Detect Microsoft Family accounts during OAuth flow
+   - Detect Microsoft Family Safety accounts during OAuth flow
    - Verify family account status (optional enhancement)
 
 4. **Feature Restrictions** (Week 3-4)
@@ -52,7 +52,7 @@
    - Hide payment methods in dashboard
 
 5. **Parent Communication** (Week 4-5)
-   - Create parent documentation (how to use Family Link/Microsoft Family)
+   - Create parent documentation (how to use Family Link/Microsoft Family Safety)
    - Add enrollment confirmation emails for parents
    - Link to family account dashboards in emails
 
@@ -99,7 +99,7 @@
 
 **For Children Under 13:**
 
-- [ ] Parent has created Google Family Link OR Microsoft Family account
+- [ ] Parent has created Google Family Link OR Microsoft Family Safety account
 - [ ] Parent has reviewed Google/Microsoft privacy policies
 - [ ] Parent has consented through family account setup
 - [ ] Child signs in via OAuth only
@@ -112,7 +112,7 @@
 
 ### DO ✅
 
-- **Require** Google Family Link or Microsoft Family for under-13
+- **Require** Google Family Link or Microsoft Family Safety for under-13
 - Get parental consent THROUGH identity provider (Google/Microsoft)
 - Collect MINIMUM information needed (name, email, progress only)
 - Use data ONLY for educational purposes
@@ -141,7 +141,7 @@
 
 - Google and Microsoft are already COPPA-compliant
 - They handle verifiable parental consent
-- Parents manage accounts through Family Link/Microsoft Family dashboards
+- Parents manage accounts through Family Link/Microsoft Family Safety dashboards
 - We rely on their consent mechanism (no custom workflows needed)
 - Significantly reduces development time (5 weeks vs 11-12 weeks)
 - Reduces legal review costs (75% less complex)
@@ -150,7 +150,7 @@
 **What We Leverage:**
 
 - Google Family Link parental consent and management
-- Microsoft Family parental consent and management
+- Microsoft Family Safety parental consent and management
 - Industry-standard OAuth 2.0 authentication
 - Their privacy policy reviews and compliance teams
 - Their data protection infrastructure
@@ -185,7 +185,7 @@
 **Family Account Support:**
 
 - Google Family Link: <https://families.google.com/>
-- Microsoft Family: <https://account.microsoft.com/family>
+- Microsoft Family Safety: <https://account.microsoft.com/family>
 
 ---
 
@@ -200,9 +200,9 @@
 **Family Account Providers:**
 
 - Google Family Link: <https://families.google.com/familylink/>
-- Microsoft Family: <https://www.microsoft.com/en-us/microsoft-365/family-safety>
+- Microsoft Family Safety: <https://www.microsoft.com/en-us/microsoft-365/family-safety>
 - Google Family Link Privacy: <https://families.google.com/familylink/privacy/notice/>
-- Microsoft Family Privacy: <https://privacy.microsoft.com/en-us/privacystatement>
+- Microsoft Family Safety Privacy: <https://privacy.microsoft.com/en-us/privacystatement>
 
 **Regulations:**
 
