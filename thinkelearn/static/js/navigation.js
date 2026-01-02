@@ -57,6 +57,10 @@ function initUserDropdown() {
     userMenuButton.addEventListener('keydown', handleButtonKeydown);
     userMenuDropdown.addEventListener('keydown', handleMenuKeydown);
 
+    // Reposition dropdown on scroll/resize
+    window.addEventListener('scroll', repositionDropdown, { passive: true });
+    window.addEventListener('resize', repositionDropdown);
+
     /**
      * Toggle dropdown on button click
      */
@@ -68,6 +72,17 @@ function initUserDropdown() {
             closeUserMenu();
         } else {
             openUserMenu();
+        }
+    }
+
+    /**
+     * Reposition dropdown menu
+     */
+    function repositionDropdown() {
+        if (userMenuButton.getAttribute('aria-expanded') === 'true') {
+            const buttonRect = userMenuButton.getBoundingClientRect();
+            userMenuDropdown.style.top = `${buttonRect.bottom}px`;
+            userMenuDropdown.style.right = `${window.innerWidth - buttonRect.right}px`;
         }
     }
 
@@ -142,6 +157,11 @@ function initUserDropdown() {
      * Open user menu and update ARIA state
      */
     function openUserMenu() {
+        // Position dropdown relative to button
+        const buttonRect = userMenuButton.getBoundingClientRect();
+        userMenuDropdown.style.top = `${buttonRect.bottom}px`;
+        userMenuDropdown.style.right = `${window.innerWidth - buttonRect.right}px`;
+        
         userMenuDropdown.classList.remove('hidden');
         userMenuButton.setAttribute('aria-expanded', 'true');
 
