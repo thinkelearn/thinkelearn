@@ -90,7 +90,7 @@
     {% wagtailuserbar %}
 
     <div class="min-h-full">
-        {% include 'includes/header.html' %}
+        {% include 'includes/navigation.html' %}
 
         <main>
             {% block content %}{% endblock %}
@@ -104,19 +104,8 @@
 
     {% block extra_js %}{% endblock %}
 
-    <!-- Mobile menu toggle script -->
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const mobileMenuButton = document.getElementById('mobile-menu-button');
-            const mobileMenu = document.getElementById('mobile-menu');
-
-            if (mobileMenuButton && mobileMenu) {
-                mobileMenuButton.addEventListener('click', function() {
-                    mobileMenu.classList.toggle('hidden');
-                });
-            }
-        });
-    </script>
+    <!-- Navigation components (mobile menu + user dropdown) -->
+    <script src="{% static 'js/navigation.js' %}" defer></script>
 
     <!-- Google Analytics - loaded after page content -->
     <script>

@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Verify Your Email" %}{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-neutral-50 flex items-center justify-center px-4 py-12">
+    <div class="w-full max-w-lg bg-white shadow-lg rounded-2xl p-8">
+        <div class="text-center">
+            <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-cyan-100 mb-6">
+                <i class="fa-solid fa-envelope text-2xl text-cyan-600"></i>
+            </div>
+            <h1 class="text-3xl font-bold text-primary-800">{% trans "Verify your email" %}</h1>
+            <p class="text-neutral-600 mt-4">
+                {% trans "We've sent a verification email to your address. Please click the link in the email to activate your account." %}
+            </p>
+            <p class="text-neutral-500 mt-2 text-sm">
+                {% trans "If you don't receive an email within a few minutes, check your spam folder." %}
+            </p>
+        </div>
+
+        <div class="mt-8 text-center">
+            <a href="{% url 'account_login' %}"
+               class="text-sm font-medium text-secondary-600 hover:text-secondary-500">
+                {% trans "Return to sign in" %}
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

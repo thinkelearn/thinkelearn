@@ -1,605 +1,138 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-
 ## Project Overview
 
-THINK eLearn is a **production-ready Django/Wagtail educational technology platform** with advanced CMS capabilities, professional design system, and comprehensive communications integration. The platform features complete blog, portfolio, and contact systems with Twilio SMS/voicemail integration.
+Production-ready Django 6.0/Wagtail 7.2.1 educational platform with SCORM LMS, Stripe payments, Twilio SMS/voicemail, unified portfolio, blog, and contact systems.
 
 ## Architecture
 
-- **Framework**: Django 5.2.3 with Wagtail 7.0.1 CMS
-- **Development Environment**: Docker Compose (web, PostgreSQL, pgAdmin, Mailpit, CSS builder)
-- **Database**: PostgreSQL (Docker for development, Railway managed for production)
-- **Styling**: Tailwind CSS with custom brown/orange design system (auto-built in Docker)
-- **Deployment**: Railway with nixpacks containerization
-- **Communications**: Twilio SMS and voicemail integration
-- **Apps**:
-  - `home`: HomePage, AboutPage, ContactPage models
-  - `lms`: Learning Management System with SCORM support, course catalog, prerequisites, reviews, and dashboard
-  - `portfolio`: PortfolioIndexPage, ProjectPage, PortfolioCategory models with unified client work and capability demonstration system
-  - `blog`: Full BlogIndexPage and BlogPage with categories, tags, and pagination
-  - `communications`: Advanced Twilio SMS/voicemail system with admin workflow
-  - `search`: Built-in Wagtail search functionality
+- **Dev Environment**: Docker Compose (PRIMARY) - PostgreSQL, pgAdmin, Mailpit, CSS builder
+- **Deployment**: Railway with nixpacks
+- **Styling**: Tailwind CSS (auto-built in Docker)
+- **Apps**: home, lms (SCORM, prerequisites, payments), portfolio (unified client/educational), blog, communications (Twilio), payments (Stripe ledger), search
+- **Settings**: `thinkelearn/settings/{base,dev,production}.py`
+- **Background Tasks**: Planned for future (django.tasks) - currently synchronous in `payments/tasks.py`
 
-## Settings Structure
+## Authentication
 
-Split settings configuration:
-
-- `thinkelearn/settings/base.py`: Base configuration shared across environments
-- `thinkelearn/settings/dev.py`: Development settings (DEBUG=True, console email backend)
-- `thinkelearn/settings/production.py`: Production settings (DEBUG=False)
-- Default: Development settings loaded by `manage.py`
+**django-allauth**: Email-only (no username), Google OAuth with auto-account linking by verified email, honeypot spam protection (`phone_number` field), mandatory email verification.
 
-## Key Commands
+**Custom**: `SocialAccountAdapter` in `thinkelearn/backends/allauth.py` (14 tests, 100% coverage)
 
-### Development (Docker - RECOMMENDED)
+**Env Vars**: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` - Setup at console.cloud.google.com with redirect URIs for localhost/production
 
-**Docker is the recommended development environment** as it ensures consistent setup across all machines and includes all services (PostgreSQL, Mailpit, pgAdmin).
+**URLs**: `/accounts/{login,signup,logout,password/reset,email,3rdparty,google/login}`
 
-```bash
-# Quick start - Start all services
-./start.sh                   # Start web, database, pgAdmin, Mailpit, CSS builder
+## Commands
 
-# Full setup - Start + create admin + setup pages
-./start.sh setup            # Includes admin user and initial pages
+**Docker (PRIMARY)**: `./start.sh [setup|stop|reset|clean|rebuild]` - All commands use `docker-compose exec web python manage.py <cmd>`
 
-# Management commands (run inside Docker container)
-docker-compose exec web python manage.py migrate
-docker-compose exec web python manage.py makemigrations
-docker-compose exec web python manage.py createsuperuser
+**Setup**: `setup_lms --with-categories --with-tags`, `setup_portfolio`
 
-# LMS setup
-docker-compose exec web python manage.py setup_lms --with-categories --with-tags
+**Testing**: Docker uses `python manage.py test`, local uses `uv run pytest` + quality tools (ruff, mypy, safety, bandit)
 
-# Portfolio setup
-docker-compose exec web python manage.py setup_portfolio
+**Services**: localhost:8000 (web/admin), :8025 (Mailpit), :5050 (pgAdmin admin@thinkelearn.com/admin)
 
-# Static files (handled automatically by CSS service)
-docker-compose exec web python manage.py collectstatic
-
-# Container management
-./start.sh stop              # Stop all containers
-./start.sh reset             # Reset without removing database
-./start.sh clean             # Remove everything including database
-./start.sh rebuild           # Full rebuild
-./start.sh status            # Show container status
-./start.sh logs              # View logs
-
-# View logs
-docker-compose logs -f                    # All services
-docker-compose logs -f web                # Web server only
-docker-compose logs -f css                # CSS build process only
-
-# Access services
-# 🌐 Web: http://localhost:8000
-# 📝 Wagtail Admin: http://localhost:8000/admin/
-# ⚙️  Django Admin: http://localhost:8000/django-admin/
-# 📧 Mailpit: http://localhost:8025
-# 🗄️  pgAdmin: http://localhost:5050 (admin@thinkelearn.com / admin)
-# 📊 PostgreSQL: postgres://postgres:postgres@localhost:5432/thinkelearn
-```
-
-### Local Development (Alternative)
-
-For local development without Docker (requires manual PostgreSQL/Node.js setup):
-
-```bash
-# Start development server
-python manage.py runserver
-
-# Database management
-python manage.py migrate
-python manage.py makemigrations
-python manage.py createsuperuser
-
-# Static files
-python manage.py collectstatic
-
-# Install/update dependencies
-uv sync
-uv add <package-name>
-
-# CSS build (Tailwind)
-npm run build-css          # Development with watch mode
-npm run build-css-prod     # Production build with minification
-
-# LMS setup
-python manage.py setup_lms --with-categories --with-tags
-
-# Portfolio setup
-python manage.py setup_portfolio
-```
-
-### Testing
+**Railway Env Vars**: DATABASE_URL, SECRET_KEY, ALLOWED_HOSTS, MAILTRAP_API_TOKEN, GOOGLE_CLIENT_ID/SECRET, TWILIO_*, optional AWS_*
 
-**The test suite focuses on business logic only, not framework functionality.**
+## Design System (Tailwind)
 
-**Testing with Docker:**
+**Colors**:
+- Primary: Warm brown (#361612-#784421) - Headers/nav use `text/bg-primary-800`
+- Secondary: Orange (#ff6600) - CTAs use `bg-secondary-500 hover:bg-secondary-600`, links use `text-secondary-500`
+- Accent: Mint/cyan (cyan-50 to cyan-600) - Modern sections use `bg-cyan-600` or `bg-cyan-50`
+- Neutral: Warm gray (#1c1917-#fafaf9) - Body text `text-neutral-700`, backgrounds `bg-neutral-50`, borders `border-neutral-200`
 
-```bash
-# Run all tests (Django test command - uv/pytest not available in Docker)
-docker-compose exec web python manage.py test
+**Typography**: Inter (body), Poppins (headings)
 
-# Run specific app tests
-docker-compose exec web python manage.py test home
-docker-compose exec web python manage.py test portfolio
-docker-compose exec web python manage.py test lms
-docker-compose exec web python manage.py test communications
+## LMS (wagtail-lms + custom)
 
-# Run specific test class
-docker-compose exec web python manage.py test lms.tests.ExtendedCoursePageTest
-
-# Run with verbosity
-docker-compose exec web python manage.py test --verbosity=2
-
-# Note: Code quality tools (ruff, mypy, etc.) are not available in Docker container
-# Run these locally with uv (see "Testing locally" section below)
-```
+**Features**: SCORM 1.2/2004, prerequisites validation, enrollment limits, reviews (moderation required), ratings, instructor profiles, student dashboard
 
-**Testing locally (without Docker):**
+**Models**: ExtendedCoursePage (categories, tags, duration, difficulty, prerequisites, enrollment limits), CourseCategory, CourseTag, CourseInstructor, CourseReview (is_approved=False default), LearnerDashboardPage, EnrollmentRecord (states: PENDING_PAYMENT→ACTIVE/PAYMENT_FAILED/CANCELLED/REFUNDED)
 
-```bash
-# Run all tests with pytest (RECOMMENDED)
-uv run pytest
-
-# Run specific app tests
-uv run pytest home/tests
-uv run pytest portfolio/tests
-uv run pytest lms/tests
-uv run pytest communications/tests
+**URLs**: `/courses/`, `/courses/<slug>/`, `/dashboard/`, `/lms/course/<id>/play/`, `/lms/scorm-content/<package>/<file>`
 
-# Run specific test
-uv run pytest home/tests/test_models.py::HomePageTest::test_homepage_defaults
-uv run pytest lms/tests.py::ExtendedCoursePageTest::test_can_user_enroll_prerequisites_completed
-
-# Code quality checks
-uv run ruff check .          # Linting
-uv run ruff format .         # Code formatting
-uv run mypy .                # Type checking
-uv run safety check          # Security vulnerability check
-uv run bandit -r .           # Security linting
-```
-
-**Testing Philosophy:**
-
-- ✅ Test custom business logic (Twilio workflows, ZIP handling, custom methods, business validation, prerequisites validation)
-- ❌ Don't test framework functionality (Django/Wagtail handle model creation, page constraints, routing)
-- **Result:** Faster, more reliable tests focusing on what actually matters
-
-**Test Coverage:**
-- 32 comprehensive tests for LMS (100% coverage on lms/models.py)
-- Focus on prerequisites validation, enrollment limits, ratings, completion tracking
-- Overall project coverage: 55%+
+**Performance**: `select_related("user")` for reviews (line 272), `prefetch_related("categories","tags")` for listings (lines 108,283), `select_related("course")` for dashboard (line 423)
 
-### Production/Railway Deployment
+**Security**: Review moderation, SCORM iframe sandboxing
 
-```bash
-# Deploy with Railway CLI (nixpacks-based)
-railway login
-railway link [project-id]
-railway up
-
-# Local nixpacks testing (if nixpacks CLI installed)
-nixpacks build . --name thinkelearn
-docker run -p 8000:8000 thinkelearn
+**Tests**: 32 tests in `lms/tests.py` (100% business logic coverage) - prerequisites, enrollment, ratings, completion tracking
 
-# Environment variables for Railway:
-# - DATABASE_URL (automatically set by Railway)
-# - SECRET_KEY
-# - ALLOWED_HOSTS
-# - MAILTRAP_API_TOKEN (required for email - Railway blocks SMTP)
-# - DEFAULT_FROM_EMAIL (optional, defaults to hello@thinkelearn.com)
-# - TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER
-# - VOICEMAIL_NOTIFICATION_EMAILS, SMS_NOTIFICATION_EMAILS
-# - AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_STORAGE_BUCKET_NAME (optional for S3)
-```
-
-## Dependencies
-
-The project uses `uv` for dependency management:
-
-- Core dependencies in `pyproject.toml`
-- Full dependency tree locked in `uv.lock`
-- Requirements exported to `requirements.txt` for Docker
-
-Key dependencies:
-
-- **Django/Wagtail**: CMS and web framework
-- **psycopg**: PostgreSQL database adapter for production
-- **gunicorn**: WSGI HTTP server for production
-- **whitenoise**: Static file serving
-- **mailtrap**: Email delivery via HTTPS API (required for Railway)
-- **Tailwind CSS**: Utility-first CSS framework (via npm)
-
-## Site Structure
-
-### Page Types
-
-- **HomePage**: Landing page with hero, features, testimonials ✅
-- **AboutPage**: Company story, team, mission/values ✅
-- **BlogIndexPage & BlogPage**: Content marketing and articles ✅
-- **PortfolioIndexPage & ProjectPage**: Unified system for both client work and educational content demonstrations with ZIP packages, videos, galleries ✅
-- **ContactPage**: Contact form, locations, social links ✅
-- **ServicePage**: Future service offerings
-
-### URL Structure
-
-- `/admin/`: Wagtail admin interface
-- `/django-admin/`: Django admin interface
-- `/search/`: Search functionality
-- `/documents/`: Document serving
-- `/blog/`: Blog section
-- `/portfolio/`: Unified portfolio showcasing both client work and educational content demonstrations
-- `/contact/`: Contact page
-- All other URLs handled by Wagtail's page serving
-
-## Styling & Frontend
-
-### Tailwind CSS Setup
-
-- Source CSS: `thinkelearn/static/css/src/input.css`
-- Built CSS: `thinkelearn/static/css/thinkelearn.css`
-- Config: `tailwind.config.js` with custom brand colors and typography
-- Build process: npm scripts for development and production
-
-### Design System
-
-- **Primary colors**: Warm brown theme (#361612 to #784421 variants) - Professional, educational feel
-- **Secondary colors**: Orange accent theme (#ff6600 variants) - Brand highlight color matching logo
-- **Accent colors**: Mint/cyan theme (cyan-50 to cyan-600) - Modern accent for sections and CTAs
-- **Neutral colors**: Warm gray theme (#1c1917 to #fafaf9 variants) - Better harmony with brown palette
-- **Typography**: Inter (body), Poppins (headings)
-- **Components**: Buttons, cards, forms with consistent styling using warm and mint color palettes
-- **Responsive**: Mobile-first approach with Tailwind breakpoints
-
-#### Color Usage Guidelines
-
-- **Headers/Navigation**: `text-primary-800` or `bg-primary-800` (dark brown)
-- **Buttons/CTAs**: `bg-secondary-500 hover:bg-secondary-600` (orange) or `bg-cyan-600` (mint) for modern sections
-- **Links**: `text-secondary-500 hover:text-secondary-600` (orange)
-- **Body text**: `text-neutral-700` (warm dark gray)
-- **Light backgrounds**: `bg-neutral-50` (warm off-white) or `bg-cyan-50` (light mint)
-- **Section backgrounds**: `bg-primary-50` (very light brown tint) or `bg-cyan-600` (mint accent)
-- **Borders**: `border-neutral-200` or `border-primary-200` (warm grays)
-
-## Learning Management System (LMS)
+## Portfolio (Unified client/educational)
 
-### Overview
+**Models**: PortfolioCategory (Font Awesome icons), PortfolioIndexPage (hero image, filtering), ProjectPage (`is_client_work` boolean, `client_name`, StreamField blocks: PackagedContentBlock, VideoContentBlock, GalleryContentBlock, InteractiveContentBlock)
 
-THINK eLearn features a comprehensive Learning Management System built on wagtail-lms with extensive custom enhancements for delivering SCORM-based courses.
+**Security**: ZIP path traversal protection, secure extraction to `/media/portfolio_extracted/`
 
-### Key Features
-
-- **SCORM Compliance**: Full support for SCORM 1.2 and 2004 standards
-- **Course Catalog**: Searchable course library with categories, tags, and filtering
-- **Prerequisites**: Course dependency management with automatic validation
-- **Reviews & Ratings**: 5-star rating system with moderation
-- **Instructors**: Course instructor profiles with photos and bios
-- **Enrollment Management**: Enrollment limits and eligibility checks
-- **Progress Tracking**: Student dashboard with completion statistics
-- **Full-Screen Player**: Dedicated SCORM player with auto-save functionality
-
-### Models
-
-- **CourseCategory**: Organize courses by category with Font Awesome icons
-- **CourseTag**: Tag courses with technologies and topics
-- **CoursesIndexPage**: Course catalog landing page with filtering
-- **ExtendedCoursePage**: Enhanced course model extending wagtail-lms CoursePage with:
-  - Categories and tags
-  - Duration and difficulty levels
-  - Prerequisites (course dependencies)
-  - Learning objectives
-  - Related courses
-  - Enrollment limits
-  - Publishing controls
-  - Instructor assignments
-- **CourseInstructor**: Instructor information with photos and bios
-- **CourseReview**: Student ratings and reviews (1-5 stars with moderation)
-- **LearnerDashboardPage**: Student progress dashboard
-
-### Management Commands
+**Features**: GLightbox galleries, category filtering, technology tags, video embedding
 
-- **setup_lms**: Creates LMS structure with default categories and tags
-
-  ```bash
-  # Docker (recommended)
-  docker-compose exec web python manage.py setup_lms --with-categories --with-tags
+**URLs**: `/portfolio/`, `/portfolio/<slug>/`, `/portfolio/package/<page_id>/<document_id>/`
 
-  # Local
-  python manage.py setup_lms --with-categories --with-tags
-  ```
+**Tests**: 22 tests - ZIP validation, StreamField blocks, category filtering, client work differentiation
 
-### URL Structure
+## Payments (Stripe + Ledger)
 
-- `/courses/`: Course catalog with filtering and search
-- `/courses/<course-slug>/`: Individual course pages
-- `/dashboard/`: Student dashboard (requires authentication)
-- `/lms/course/<id>/play/`: SCORM player
-- `/lms/scorm-content/<package>/<file>`: SCORM content serving
+**Status**: Phases 1-5 COMPLETE (ready for production prep: security audit, perf testing, monitoring)
 
-### Templates
+**Pricing**: FREE, FIXED, PAY_WHAT_YOU_CAN (CAD, 30-day refund window configurable per product)
 
-- `lms/courses_index_page.html`: Course catalog with grid layout
-- `lms/extended_course_page.html`: Enhanced course detail page
-- `lms/learner_dashboard_page.html`: Student dashboard
-- `wagtail_lms/course_page.html`: Base course page (styled override)
-- `wagtail_lms/scorm_player.html`: Full-screen SCORM player (styled override)
+**Models**:
+- CourseProduct (lms/models.py): pricing types, refund windows
+- EnrollmentRecord (lms/models.py): states PENDING_PAYMENT→ACTIVE/PAYMENT_FAILED/CANCELLED/REFUNDED, idempotency keys, methods: `create_for_user()`, `mark_paid()`, `transition_to()`
+- Payment (payments/models.py): states INITIATED→SUCCEEDED/FAILED/REFUNDED, immutable `amount`, denormalized `amount_gross/refunded/net`, `recalculate_totals(save=True)`
+- PaymentLedgerEntry (payments/models.py): types CHARGE/REFUND/ADJUSTMENT/FEE, unique constraints for idempotency, supports partial refunds
+- WebhookEvent (payments/models.py): idempotency tracking (unique stripe_event_id)
 
-### Testing
+**Webhooks** (payments/webhooks.py): `handle_checkout_session_completed()`, `handle_async_payment_failed()`, `handle_charge_succeeded()`, `handle_charge_refunded()` - Uses pre-check/lock/re-validate pattern, atomic transactions, row-level locking
 
-**32 comprehensive tests in `lms/tests.py`** with 100% coverage on business logic:
+**Security**: PCI DSS (Stripe handles cards), webhook signature verification, authorization checks, atomic transactions, audit trail
 
-- **Model Tests**: String representations, ordering, unique constraints
-- **Prerequisites Validation**: Not met, incomplete, completed, multiple prerequisites
-- **Enrollment Logic**: Already enrolled, limit enforcement, unlimited enrollment
-- **Rating System**: Average calculations, no reviews, multiple reviews
-- **Completion Tracking**: Rate calculations, dashboard statistics
-- **Context Generation**: Authenticated/anonymous users, filtering, search
-- **Related Courses**: Live/public filtering with query optimization
+**Admin**: EnrollmentRecord (filters: status/product/refund eligibility), Payment (filters: status/refund state/date, inline ledger entries, RefundStateFilter)
 
-**Performance Optimizations**:
-- `select_related("user")` for review queries (line 272)
-- `prefetch_related("categories", "tags")` for course listings (lines 108, 283)
-- Optimized dashboard queries with `select_related("course")` (line 423)
+**Management**: `cleanup_abandoned_enrollments` - cancels PENDING_PAYMENT >24hrs
 
-**Security Enhancements**:
-- Reviews require manual approval by default (`is_approved=False`)
-- SCORM iframe sandboxing with restricted permissions
-- CSP recommendations documented for server configuration
+**Tests**: 49 tests (100% business logic) - models, checkout, webhooks (full/partial/multiple refunds), emails, idempotency, regression for recalculate_totals() bug
 
-**Run tests**:
+## Testing Philosophy
 
-```bash
-# Docker
-docker-compose exec web uv run pytest lms/tests.py -v
+**Test business logic only** - Not framework functionality (Django/Wagtail handle model creation, page hierarchy, routing, CRUD)
 
-# Local
-uv run pytest lms/tests.py -v
-```
+**Test**: Custom methods, prerequisites validation, enrollment limits, rating calculations, Twilio workflows, ZIP security, StreamField validation, category filtering, performance optimizations (select_related/prefetch_related)
 
-**See**: `docs/lms-implementation-status.md` for detailed implementation information
+**Coverage**: 55%+ overall, 100% on lms/models.py business logic. 32 LMS tests, 22 portfolio tests, 49 payment tests, plus home/blog/communications
 
-## Portfolio System
+**Files**: `home/tests/test_models.py`, `lms/tests.py`, `portfolio/tests.py`, `blog/tests/`, `communications/tests/`, `payments/tests/`, `test_integration.py`
 
-### Overview
+## CI/CD
 
-The unified portfolio system showcases both client work and educational content capabilities:
+**GitHub Actions** (`.github/workflows/ci.yml`): Test (PostgreSQL), Lint (ruff/mypy), Security (safety/bandit), Build (CSS/static), Docker (PR only)
 
-- **Client Work Differentiation**: Boolean field to distinguish client projects from capability demonstrations
-- **Project Categories**: Organize projects by type, technology, or industry (Learning Modules, Video Content, Interactive Media, Visual Design)
-- **Flexible Content Types**: ZIP packages, videos, image galleries, interactive content, and rich text sections
-- **Technology Tags**: Track technologies and tools used
-- **Advanced Content**: ZIP package extraction with security measures, video embedding, interactive galleries
+**Railway**: Auto-deploy from `main` branch, nixpacks build, migrations auto-run, whitenoise serves static files
 
-### Key Features
+**Config**: `nixpacks.toml`, `railway.toml`, `pyproject.toml`, `conftest.py`
 
-- **Unified System**: Single interface for both client work and educational content demonstrations
-- **StreamField Content**: Flexible content blocks (PackagedContentBlock, VideoContentBlock, GalleryContentBlock, InteractiveContentBlock)
-- **ZIP Package Security**: Path traversal protection and secure file extraction to `/media/portfolio_extracted/`
-- **Category Filtering**: Organize and filter projects by categories with Font Awesome icons
-- **Client Work Fields**: `is_client_work` boolean and `client_name` for client project identification
-- **Professional Galleries**: GLightbox integration for image galleries with lightbox functionality
-- **Enhanced Index Page**: Hero image support with responsive layout, mint/cyan theme consistency, optimized spacing
-- **Responsive Design**: Professional presentation across all devices
-- **SEO Optimized**: Built-in Wagtail SEO fields for better search visibility
+## Key Files
 
-### Models
+**Docs**: `/docs/{site-plan,wagtail-models,tailwind-setup,ci-cd-plan,lms-implementation-plan}.md`
 
-- **PortfolioCategory**: Content categories with Font Awesome icons (replaces both ProjectCategory and ShowcaseCategory)
-- **PortfolioIndexPage**: Main portfolio landing page with category filtering
-- **ProjectPage**: Individual project pages supporting both client work and educational demonstrations
+**Templates**: App-specific directories (Wagtail conventions)
 
-### Management Commands
+**Static**: `<app>/static/`, `thinkelearn/static/`
 
-- **setup_portfolio**: Creates portfolio structure with default categories (Learning Modules, Video Content, Interactive Media, Visual Design)
+## CRITICAL CONSTRAINTS
 
-  ```bash
-  # Docker (recommended)
-  docker-compose exec web python manage.py setup_portfolio
+**PRODUCTION-READY** - All core functionality COMPLETE. Do NOT recreate existing functionality.
 
-  # Local
-  python manage.py setup_portfolio
-  ```
+**Use Docker (PRIMARY)** - Always `docker-compose exec web python manage.py <cmd>`. Quick start: `./start.sh [setup]`
 
-### URL Structure
+**Existing Features** (check before building):
 
-- `/portfolio/`: Main portfolio index page
-- `/portfolio/<project-slug>/`: Individual project pages
-- `/portfolio/package/<page_id>/<document_id>/`: ZIP package viewer
-- `/media/portfolio_extracted/<document_id>/<file_path>`: Extracted content serving
+- LMS: SCORM, prerequisites, enrollment, payments, reviews/ratings, dashboard (32 tests, 100% coverage)
+- Portfolio: Unified client/educational with ZIP security, videos, galleries (22 tests)
+- Payments: Stripe checkout, ledger, refunds (49 tests)
+- Auth: django-allauth email-only + Google OAuth with auto-linking
+- Blog: Categories, tags, pagination
+- Communications: Twilio SMS/voicemail
 
-### Testing
-
-22 comprehensive tests covering:
-
-- Custom business methods (`get_technologies_list`, URL generation)
-- ZIP file validation and security measures
-- StreamField block validation
-- Category filtering and related projects
-- End-to-end workflow integration
-- Client work differentiation functionality
-
-## Development Workflow
-
-1. **Backend changes**: Edit Django/Wagtail code, run migrations if needed
-2. **Frontend changes**: Edit templates and CSS, Tailwind auto-rebuilds
-3. **Testing**: Run comprehensive test suite with pytest
-4. **Code Quality**: Use ruff for linting/formatting, mypy for type checking
-5. **Production**: Automated deployment via GitHub Actions and Railway
-
-## CI/CD Pipeline
-
-### Continuous Integration (GitHub Actions)
-
-The project uses GitHub Actions for automated testing and quality checks:
-
-**`.github/workflows/ci.yml`** runs on every push and pull request:
-
-- **Test Job**: Runs full test suite with PostgreSQL database
-- **Lint Job**: Code quality checks with ruff and mypy
-- **Security Job**: Vulnerability scanning with safety and bandit
-- **Build Test Job**: Verifies CSS builds and static file generation
-- **Docker Build Job**: Tests Docker image builds (PR only)
-
-**Triggered on**: Push to `main`/`develop`, all pull requests
-
-**Dependencies**:
-
-- PostgreSQL 15 service
-- Python 3.13 + uv package manager
-- Node.js 20 for CSS builds
-
-### Continuous Deployment
-
-**Railway Integration**:
-
-- Automatic deployments from `main` branch
-- Uses nixpacks for efficient builds (replaces Docker)
-- Environment-specific configurations via `railway.toml`
-
-**Deployment Process**:
-
-1. Code pushed to GitHub `main` branch
-2. GitHub Actions CI pipeline validates changes
-3. Railway automatically triggers deployment
-4. nixpacks builds application with CSS compilation
-5. Static files collected and served via whitenoise
-6. Database migrations run automatically
-7. Health checks verify deployment success
-
-### Testing Strategy
-
-**Streamlined Testing Approach** - Focus on business logic, not framework functionality:
-
-**Test Organization**:
-
-- `home/tests/test_models.py`: Focused tests for custom methods and business defaults
-- `lms/tests.py`: **32 comprehensive tests** for LMS with 100% coverage on business logic (prerequisites, enrollment, ratings, completion tracking)
-- `portfolio/tests.py`: 22 focused tests for unified portfolio workflows covering both client work and educational content with ZIP security
-- `communications/tests/test_models.py`: Focused tests for Twilio workflow logic
-
-**What We Test** (Business Logic Only):
-
-- **Custom Methods**: `get_recent_posts()`, `get_technologies_list()`, `get_average_rating()`, `can_user_enroll()`, custom context logic
-- **LMS Business Logic**: Prerequisites validation (multiple scenarios), enrollment limits, rating calculations, completion rates, dashboard statistics
-- **Twilio Workflows**: SMS/voicemail assignment, status tracking, complete customer workflows
-- **ZIP Security**: Path traversal protection, file validation, secure extraction
-- **Content Workflows**: Category filtering, related projects/courses, StreamField validation, client work differentiation
-- **Business Defaults**: Custom default values specific to business requirements (e.g., review moderation)
-- **Integration Logic**: Cross-app functionality and custom business processes
-- **Performance**: Query optimization with `select_related()` and `prefetch_related()`
-
-**What We DON'T Test** (Framework Handles This):
-
-- Basic model creation/validation (Django handles this)
-- Page hierarchy constraints (Wagtail handles this)
-- URL routing and basic admin functionality (Django/Wagtail handle this)
-- Simple CRUD operations and field assignments
-
-**Results**:
-
-- **Before**: 180+ tests, 107 failing due to framework over-testing
-- **After**: Focused tests covering all business logic across home, lms, portfolio, and communications apps
-- **Test Count**: 32 LMS tests + 22 portfolio tests + home/blog/communications tests
-- **Coverage**: 55%+ overall, 100% on lms/models.py business logic
-- **Benefits**: Faster execution, easier maintenance, reliable test results
-
-## Important Files
-
-- **Documentation**: `/docs/` directory contains detailed planning documents
-  - `site-plan.md`: Overall project plan and content strategy
-  - `wagtail-models.md`: Detailed page model specifications
-  - `tailwind-setup.md`: Complete Tailwind integration guide
-  - `ci-cd-plan.md`: Complete CI/CD implementation plan
-- **CI/CD Configuration**:
-  - `.github/workflows/ci.yml`: GitHub Actions pipeline
-  - `nixpacks.toml`: Railway deployment configuration
-  - `railway.toml`: Railway service settings
-  - `pyproject.toml`: Tool configurations (pytest, ruff, mypy, coverage)
-  - `conftest.py`: Shared test fixtures
-- **Testing**:
-  - `home/tests/`: Homepage and related functionality tests
-  - `lms/tests.py`: **32 comprehensive LMS tests** with 100% business logic coverage (prerequisites, enrollment, ratings, completion)
-  - `portfolio/tests.py`: Portfolio app tests with 22 comprehensive tests covering client work, educational content, and ZIP security
-  - `blog/tests/`: Blog system tests
-  - `communications/tests/`: Twilio integration tests
-  - `test_integration.py`: End-to-end integration tests
-- **Templates**: Follow Wagtail conventions in app-specific template directories
-- **Static files**: App-specific in `<app>/static/`, project-wide in `thinkelearn/static/`
-
-## Production Considerations
-
-- **Security**: DEBUG=False, proper SECRET_KEY, ALLOWED_HOSTS configuration
-- **Database**: PostgreSQL via Railway's managed database
-- **Static files**: Collected and served via whitenoise
-- **Performance**: CSS minification, image optimization, caching strategies
-- **SEO**: Wagtail's built-in SEO fields, structured data, meta tags
-
-## Current Status: PRODUCTION-READY ✅
-
-**All core development is COMPLETE**. The platform is ready for immediate production deployment.
-
-### ✅ Implemented Features
-
-1. **Complete CMS**: All page models with StreamFields implemented
-2. **Professional Design**: Tailwind CSS with brown/orange primary theme and mint/cyan accent theme for modern consistency
-3. **Learning Management System**: Full SCORM-compliant LMS with course catalog, prerequisites, reviews, ratings, instructors, and student dashboard
-4. **Advanced Communications**: Twilio SMS/voicemail integration with admin workflow
-5. **Full Blog System**: Categories, tags, pagination, related posts
-6. **Unified Portfolio System**: Consolidates client work and educational content with ZIP package handling, video embedding, galleries, hero images, and optimized layout
-7. **Contact System**: Forms with email integration and FAQ sections
-8. **Production CI/CD**: Comprehensive GitHub Actions pipeline with quality gates
-9. **Testing Suite**: Comprehensive tests with 100% business logic coverage across all apps
-
-### 🚀 Ready for Launch
-
-- **Technical**: All functionality tested and quality-assured
-- **Infrastructure**: Railway deployment with nixpacks configured
-- **Content**: CMS ready for content population
-- **Security**: Production security measures implemented
-
-### 📋 Launch Checklist
-
-1. **Content Creation**: Add real content, images, testimonials
-2. **Domain Setup**: Configure thinkelearn.com (infrastructure ready)
-3. **Final Testing**: Verify all functionality in production environment
-4. **Go Live**: Deploy to production using existing CI/CD pipeline
-
-### 💡 Future Enhancements (Optional)
-
-- Advanced search with faceting
-- User authentication for client portals
-- E-commerce for course sales
-- Advanced analytics integration
-
-# important-instruction-reminders
-
-**IMPORTANT**: This project is PRODUCTION-READY with comprehensive features implemented.
-
-## Development Environment
-
-- **Use Docker for all development commands** - This is the PRIMARY development environment
-- **Commands**: Always use `docker-compose exec web python manage.py <command>` instead of bare `python manage.py`
-- **Quick start**: Use `./start.sh` or `./start.sh setup` for initial setup
-- **Local development is ALTERNATIVE only** - Docker provides consistent PostgreSQL, Mailpit, pgAdmin environment
-
-## Existing Functionality
-
-- **All core functionality is COMPLETE** - focus on content creation and deployment
-- **LMS system FULLY IMPLEMENTED** with 32 comprehensive tests (100% business logic coverage): SCORM support, prerequisites, enrollment limits, reviews/ratings, dashboard
-- **Unified portfolio system FULLY IMPLEMENTED** consolidating client work and educational content with ZIP security, video embedding, and galleries
-- **Portfolio/showcase consolidation COMPLETE** with improved architecture and maintainability
-- **Comprehensive test coverage** across all apps (55%+ overall) - no framework over-testing
-- **Performance optimizations** implemented with `select_related()` and `prefetch_related()`
-- **Security enhancements** implemented: review moderation, SCORM sandboxing, logging
-
-## Best Practices
-
-- **Do NOT recreate existing functionality** - models, views, templates all exist
-- **Use existing admin interface** for content management
-- **Focus on content population** rather than additional development
-- **The platform exceeds original requirements** and is ready for immediate launch
-- **Always check Docker commands first** - most examples in CLAUDE.md show Docker syntax
-
-When asked about features, check implementation first - most functionality already exists!
+**Focus on**: Content creation and deployment, NOT additional development

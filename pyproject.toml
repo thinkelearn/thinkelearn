@@ -5,14 +5,19 @@ description = "THINK eLearn"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "celery>=5.6.0",
     "dj-database-url>=3.0.0",
+    "django>=6.0",
+    "django-allauth[socialaccount]>=65.13.1",
     "django-storages[s3]>=1.14.6",
     "gunicorn>=23.0.0",
     "mailtrap>=2.4.0",
     "psycopg[binary]>=3.2.9",
+    "redis>=7.0.0",
     "sentry-sdk[django]>=2.31.0",
+    "stripe>=14.1.0",
     "twilio>=9.6.3",
-    "wagtail>=7.0.1",
+    "wagtail>=7.2.1",
     "wagtail-lms>=0.4.0",
     "whitenoise>=6.9.0",
 ]
@@ -134,7 +139,14 @@ DJANGO_SETTINGS_MODULE = "thinkelearn.settings.test"
 python_files = ["tests.py", "test_*.py", "*_tests.py"]
 python_classes = ["Test*", "*Tests"]
 python_functions = ["test_*"]
-testpaths = ["home/tests", "blog/tests", "communications/tests", "portfolio", "lms"]
+testpaths = [
+    "home/tests",
+    "blog/tests",
+    "communications/tests",
+    "portfolio",
+    "lms",
+    "payments",
+]
 addopts = [
     "--verbose",
     "--tb=short",
@@ -156,7 +168,7 @@ markers = [
 ]
 filterwarnings = [
     "ignore::DeprecationWarning",
-    "ignore::django.utils.deprecation.RemovedInDjango60Warning",
+    "ignore::django.utils.deprecation.RemovedInDjango61Warning",
     "ignore::PendingDeprecationWarning",
 ]
 
@@ -165,3 +177,9 @@ py-modules = []
 
 [tool.setuptools.packages.find]
 include = ["home*", "blog*", "communications*", "search*", "thinkelearn*"]
+
+[dependency-groups]
+dev = [
+    "playwright>=1.57.0",
+    "pytest-playwright>=0.7.2",
+]

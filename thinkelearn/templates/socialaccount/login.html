@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Sign In" %}{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-neutral-50 flex items-center justify-center px-4 py-12">
+    <div class="w-full max-w-lg bg-white shadow-lg rounded-2xl p-8">
+        <div class="text-center mb-6">
+            {% if process == "connect" %}
+                <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-cyan-100 mb-6">
+                    <i class="fa-solid fa-link text-2xl text-cyan-600"></i>
+                </div>
+                <h1 class="text-3xl font-bold text-primary-800">
+                    {% blocktrans with provider.name as provider %}Connect {{ provider }}{% endblocktrans %}
+                </h1>
+                <p class="text-neutral-600 mt-4">
+                    {% blocktrans with provider.name as provider %}You are about to connect a new third-party account from {{ provider }}.{% endblocktrans %}
+                </p>
+            {% else %}
+                <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-secondary-100 mb-6">
+                    <i class="fa-brands fa-google text-2xl text-secondary-600"></i>
+                </div>
+                <h1 class="text-3xl font-bold text-primary-800">
+                    {% blocktrans with provider.name as provider %}Sign in with {{ provider }}{% endblocktrans %}
+                </h1>
+                <p class="text-neutral-600 mt-4">
+                    {% blocktrans with provider.name as provider %}You are about to sign in using a third-party account from {{ provider }}.{% endblocktrans %}
+                </p>
+            {% endif %}
+        </div>
+
+        <form method="post" class="space-y-4">
+            {% csrf_token %}
+            <button type="submit"
+                    class="w-full inline-flex items-center justify-center rounded-md bg-secondary-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-secondary-600">
+                {% trans "Continue" %}
+            </button>
+        </form>
+
+        <div class="text-center text-sm text-neutral-600 mt-6">
+            <a href="{% url 'account_login' %}"
+               class="font-medium text-secondary-600 hover:text-secondary-500">
+                {% trans "Cancel" %}
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -73,6 +73,22 @@
   .hero-gradient {
     @apply bg-gradient-to-r from-primary-900 via-primary-600 to-primary-300;
   }
+
+  /* Form input styling for allauth and other forms */
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  input[type="tel"],
+  input[type="url"],
+  textarea,
+  select {
+    @apply w-full rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 placeholder-neutral-400 focus:border-secondary-500 focus:outline-none focus:ring-1 focus:ring-secondary-500;
+  }
+
+  input[type="checkbox"] {
+    @apply h-4 w-4 rounded border-neutral-300 text-secondary-600 focus:ring-secondary-500;
+  }
 }
 
 /* Wagtail admin compatibility */

@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Refund confirmation</title>
+  </head>
+  <body>
+    <p>Hi {{ enrollment.user.first_name|default:enrollment.user.username }},</p>
+    <p>
+      {% if is_partial %}
+        We have processed a partial refund for your enrollment in
+        <strong>{{ course_name }}</strong>.
+      {% else %}
+        We have processed a refund for your enrollment in
+        <strong>{{ course_name }}</strong>.
+      {% endif %}
+    </p>
+    <p>
+      Refund amount: <strong>${{ refund_amount }} CAD</strong><br />
+      Original payment: <strong>${{ original_amount }} CAD</strong><br />
+      Refund date: <strong>{{ refund_date|date:"F j, Y" }}</strong>
+    </p>
+    <p>
+      Refunds typically appear on your statement within 5-10 business days.
+    </p>
+    <p>
+      Need help? Contact us at
+      <a href="mailto:{{ support_email }}">{{ support_email }}</a>.
+    </p>
+    <p>Thanks,<br />{{ site_name }}</p>
+  </body>
+</html>

@@ -62,6 +62,7 @@ railway variables
 # Set variable
 railway variables --set "KEY=value"
 railway variables --set "DATABASE_URL=postgresql://user:pass@host:port/db"
+railway variables --set "REDIS_URL=redis://:password@host:port/0"
 
 # Remove variable
 railway variables --remove KEY
@@ -114,13 +115,25 @@ railway link
 # 2. Add PostgreSQL database
 railway add --database postgres
 
-# 3. Set environment variables
+# 3. Add Redis
+railway add --database redis
+
+# 4. Set environment variables
 railway variables --set "SECRET_KEY=your-secret-key"
 railway variables --set "DEBUG=False"
+railway variables --set "REDIS_URL=redis://:password@host:port/0"
 
 # 4. Deploy
 railway up
 ```
+
+### Celery Worker Service
+
+Use a separate Railway service for background tasks:
+
+1. Duplicate the web service in Railway and name it `worker`.
+2. Set the start command to: `celery -A thinkelearn worker -l info`.
+3. Ensure the worker has the same env vars as web, including `REDIS_URL`.
 
 ### Database Setup
 

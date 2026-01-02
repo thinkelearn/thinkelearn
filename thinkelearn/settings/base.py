@@ -30,6 +30,7 @@ INSTALLED_APPS = [
     "communications",
     "portfolio",
     "lms",
+    "payments",
     "wagtail.contrib.forms",
     "wagtail.contrib.redirects",
     "wagtail.embeds",
@@ -45,6 +46,11 @@ INSTALLED_APPS = [
     "modelcluster",
     "taggit",
     "django_filters",
+    # allauth apps before Django contrib apps for proper template resolution
+    "allauth",
+    "allauth.account",
+    "allauth.socialaccount",
+    "allauth.socialaccount.providers.google",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -52,6 +58,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "django.contrib.sites",
+    "django.contrib.postgres",
 ]
 
 MIDDLEWARE = [
@@ -59,6 +66,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "allauth.account.middleware.AccountMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "django.middleware.security.SecurityMiddleware",
@@ -80,6 +88,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "thinkelearn.context_processors.registration_settings",
             ],
         },
     },
@@ -117,6 +126,57 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+AUTHENTICATION_BACKENDS = [
+    "django.contrib.auth.backends.ModelBackend",
+    "allauth.account.auth_backends.AuthenticationBackend",
+]
+
+# django-allauth configuration (email-only, no username)
+# https://docs.allauth.org/en/dev/account/configuration.html
+ACCOUNT_LOGIN_METHODS = {"email"}  # Login with email only
+ACCOUNT_SIGNUP_FIELDS = ["email*", "password1*", "password2*"]  # No username field
+ACCOUNT_SIGNUP_FORM_HONEYPOT_FIELD = "phone_number"
+ACCOUNT_EMAIL_VERIFICATION = "mandatory"
+ACCOUNT_UNIQUE_EMAIL = True
+ACCOUNT_USER_MODEL_USERNAME_FIELD = None  # Tell allauth to ignore username
+LOGIN_REDIRECT_URL = "/dashboard/"  # Redirect to dashboard after successful login
+ACCOUNT_LOGOUT_REDIRECT_URL = "/"
+# Control registration availability (default False for soft launch, set ACCOUNT_ALLOW_REGISTRATION=true in Railway)
+ACCOUNT_ALLOW_REGISTRATION = os.environ.get(
+    "ACCOUNT_ALLOW_REGISTRATION", "false"
+).lower() in ("true", "1", "yes")
+SOCIALACCOUNT_ADAPTER = "thinkelearn.backends.allauth.SocialAccountAdapter"
+
+SOCIALACCOUNT_PROVIDERS = {
+    "google": {
+        "SCOPE": ["profile", "email"],
+        "AUTH_PARAMS": {"access_type": "online"},
+        "APP": {
+            # Use None to fail loudly if credentials are missing
+            "client_id": os.environ.get("GOOGLE_CLIENT_ID"),
+            "secret": os.environ.get("GOOGLE_CLIENT_SECRET"),
+            "key": None,
+        },
+    }
+}
+
+# Stripe configuration
+STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY", "")
+STRIPE_PUBLISHABLE_KEY = os.environ.get("STRIPE_PUBLISHABLE_KEY", "")
+STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
+STRIPE_CURRENCY = os.environ.get("STRIPE_CURRENCY", "cad")
+STRIPE_WEBHOOK_STORE_FULL_PAYLOAD = os.environ.get(
+    "STRIPE_WEBHOOK_STORE_FULL_PAYLOAD", "false"
+).lower() in {"1", "true", "yes"}
+
+# Celery configuration
+REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
+CELERY_BROKER_URL = REDIS_URL
+CELERY_RESULT_BACKEND = REDIS_URL
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
 
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
@@ -208,7 +268,10 @@ TWILIO_PHONE_NUMBER = os.environ.get("TWILIO_PHONE_NUMBER")
 
 # Communication notifications
 SITE_NAME = "THINK eLearn"
+DEFAULT_DOMAIN = os.environ.get("DEFAULT_DOMAIN", "thinkelearn.com")
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "noreply@thinkelearn.com")
+CONTACT_EMAIL = os.environ.get("CONTACT_EMAIL", "info@thinkelearn.com")
+SUPPORT_EMAIL = os.environ.get("SUPPORT_EMAIL", "support@thinkelearn.com")
 
 # Email notification recipients
 VOICEMAIL_NOTIFICATION_EMAILS = [

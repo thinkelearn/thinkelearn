@@ -51,6 +51,9 @@ Thumbs.db
 /static/
 /staticfiles/
 
+# Compiled CSS (build artifact - generated from src/input.css)
+thinkelearn/static/css/thinkelearn.css
+
 # Media files (user uploads)
 /media/
 
@@ -72,3 +75,9 @@ safety_report.json
 
 # MCP
 .playwright-mcp/
+
+# Temporary files
+.tmp/
+
+# Claude local config
+.claude/

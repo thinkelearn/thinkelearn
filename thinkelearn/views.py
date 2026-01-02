@@ -1,4 +1,17 @@
+from django.http import HttpResponse
 from django.shortcuts import render
+from django.views.decorators.http import require_http_methods
+
+
+@require_http_methods(["GET", "POST"])
+def signup_closed(request):
+    """Return 403 Forbidden when registration is disabled."""
+    return HttpResponse(
+        "<h1>Registration Closed</h1>"
+        "<p>We're not accepting new registrations at this time. Please check back later.</p>",
+        status=403,
+        content_type="text/html",
+    )
 
 
 def privacy_policy(request):
