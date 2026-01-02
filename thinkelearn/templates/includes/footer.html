@@ -65,8 +65,8 @@
                     © {% now "Y" %} THINK eLearn Inc. All rights reserved.
                 </p>
                 <div class="flex space-x-6 mt-4 md:mt-0">
-                    <a href="/privacy/" class="text-neutral-300 hover:text-cream-200 text-sm transition-colors">Privacy Policy</a>
-                    <a href="/terms/" class="text-neutral-300 hover:text-cream-200 text-sm transition-colors">Terms of Service</a>
+                    <a href="{% url 'privacy_policy' %}" class="text-neutral-300 hover:text-cream-200 text-sm transition-colors">Privacy Policy</a>
+                    <a href="{% url 'terms_and_conditions' %}" class="text-neutral-300 hover:text-cream-200 text-sm transition-colors">Terms of Service</a>
                 </div>
             </div>
         </div>

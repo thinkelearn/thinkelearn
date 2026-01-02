@@ -48,7 +48,7 @@ class ContactFormSpamProtectionTest(TestCase):
             "email": "tester@example.com",
             "subject": "Hello",
             "message": "I have a question about your services.",
-            "honeypot": "",
+            "website": "",
             "timestamp": str(time.time() - 5),
         }
         form_data.update(overrides)
@@ -59,9 +59,9 @@ class ContactFormSpamProtectionTest(TestCase):
         self.assertTrue(form.is_valid())
 
     def test_honeypot_submission_is_rejected(self):
-        form = self._build_form(honeypot="bot payload")
+        form = self._build_form(website="bot payload")
         self.assertFalse(form.is_valid())
-        self.assertIn("Invalid submission.", form.errors["honeypot"])
+        self.assertIn("Invalid submission.", form.errors["website"])
 
     def test_fast_submission_is_rejected(self):
         form = self._build_form(timestamp=str(time.time()))

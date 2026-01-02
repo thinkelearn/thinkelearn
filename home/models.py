@@ -495,7 +495,7 @@ class ContactPage(AbstractEmailForm):
         link_threshold = self.max_links_allowed
 
         class SpamProtectedForm(base_form_class):
-            honeypot = forms.CharField(
+            website = forms.CharField(
                 required=False,
                 widget=forms.HiddenInput,
                 label="Leave this field empty",
@@ -505,8 +505,8 @@ class ContactPage(AbstractEmailForm):
                 widget=forms.HiddenInput,
             )
 
-            def clean_honeypot(self):
-                value = self.cleaned_data.get("honeypot")
+            def clean_website(self):
+                value = self.cleaned_data.get("website")
                 if value:
                     raise ValidationError("Invalid submission.")
                 return value
