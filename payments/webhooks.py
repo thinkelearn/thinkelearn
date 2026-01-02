@@ -27,7 +27,7 @@ This prevents invalid state transitions from:
 """
 
 import logging
-from datetime import UTC
+from datetime import UTC, datetime
 from decimal import Decimal
 
 from django.core.exceptions import ObjectDoesNotExist
@@ -156,13 +156,13 @@ def _get_payment_for_charge(charge: dict, *, lock: bool = False) -> Payment | No
     payment_intent = charge.get("payment_intent")
     if not payment_intent:
         return None
-    queryset = Payment.objects
+    queryset = Payment.objects.filter(stripe_payment_intent_id=payment_intent)
     if lock:
         queryset = queryset.select_for_update()
-    return queryset.filter(stripe_payment_intent_id=payment_intent).first()
+    return queryset.first()
 
 
-def _timestamp_to_datetime(timestamp: int | None) -> timezone.datetime | None:
+def _timestamp_to_datetime(timestamp: int | None) -> datetime | None:
     """Convert Unix timestamp to timezone-aware datetime.
 
     Args:
@@ -173,7 +173,7 @@ def _timestamp_to_datetime(timestamp: int | None) -> timezone.datetime | None:
     """
     if timestamp is None:
         return None
-    return timezone.datetime.fromtimestamp(timestamp, tz=UTC)
+    return datetime.fromtimestamp(timestamp, tz=UTC)
 
 
 def _sync_charge_metadata(payment: Payment, charge: dict) -> list[str]:
