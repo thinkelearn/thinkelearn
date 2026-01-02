@@ -16,7 +16,7 @@ from django.views.decorators.http import require_POST
 from lms.models import CourseProduct, EnrollmentRecord
 from payments.models import Payment, WebhookEvent
 from payments.stripe_client import StripeClient, StripeClientError
-from payments.webhooks import dispatch_event
+from payments.tasks import process_stripe_webhook_event
 
 logger = logging.getLogger(__name__)
 
@@ -407,6 +407,9 @@ def stripe_webhook(request):
         logger.warning("Stripe webhook missing event ID")
         return JsonResponse({"error": "Missing event ID."}, status=400)
 
+    already_processed = False
+    webhook_event_id = None
+
     with transaction.atomic():
         # Handle race conditions: try get first, create if not found, retry get if create races
         try:
@@ -431,35 +434,39 @@ def stripe_webhook(request):
                 created = False
 
         if not created and webhook_event.success:
-            logger.info(
-                "Stripe webhook already processed",
-                extra={"event_id": event_id, "event_type": event_type},
-            )
-            return JsonResponse({"status": "ignored"}, status=200)
+            already_processed = True
+        else:
+            if not created:
+                webhook_event.event_type = event_type or webhook_event.event_type
+                webhook_event.raw_event_data = event_data
+                webhook_event.error_message = ""
+                webhook_event.save(
+                    update_fields=["event_type", "raw_event_data", "error_message"]
+                )
+            webhook_event_id = webhook_event.id
 
-        if not created:
-            webhook_event.event_type = event_type or webhook_event.event_type
-            webhook_event.raw_event_data = event_data
-            webhook_event.error_message = ""
-            webhook_event.save(
-                update_fields=["event_type", "raw_event_data", "error_message"]
-            )
+    if already_processed:
+        logger.info(
+            "Stripe webhook already processed",
+            extra={"event_id": event_id, "event_type": event_type},
+        )
+        return JsonResponse({"status": "ignored"}, status=200)
 
-        try:
-            dispatch_event(event_data)
-        except Exception as exc:
-            logger.exception(
-                "Stripe webhook processing failed",
-                extra={"event_id": event_id, "event_type": event_type},
-            )
-            webhook_event.success = False
-            webhook_event.error_message = str(exc)
-            webhook_event.save(update_fields=["success", "error_message"])
-            # Return 200 to prevent Stripe retries (error already logged and saved)
-            return JsonResponse({"status": "error"}, status=200)
+    if webhook_event_id is None:
+        logger.error(
+            "Stripe webhook event ID missing after persistence",
+            extra={"event_id": event_id, "event_type": event_type},
+        )
+        return JsonResponse({"status": "error"}, status=500)
 
-        webhook_event.success = True
-        webhook_event.save(update_fields=["success"])
+    try:
+        process_stripe_webhook_event.delay(webhook_event_id)
+    except Exception:
+        logger.exception(
+            "Stripe webhook enqueue failed",
+            extra={"event_id": event_id, "event_type": event_type},
+        )
+        return JsonResponse({"status": "error"}, status=503)
 
     return JsonResponse({"status": "ok"}, status=200)
 

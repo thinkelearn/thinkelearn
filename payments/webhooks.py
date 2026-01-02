@@ -274,6 +274,14 @@ def _ensure_refund_ledger_entries(payment: Payment, charge: dict) -> None:
             )
         return
 
+    fallback_refund_id = f"{charge_id}:fallback" if charge_id else ""
+    if fallback_refund_id:
+        PaymentLedgerEntry.objects.filter(
+            payment=payment,
+            entry_type=PaymentLedgerEntry.EntryType.REFUND,
+            stripe_refund_id=fallback_refund_id,
+        ).delete()
+
     # Optimize with bulk_create for multiple refunds
     entries_to_create = []
     existing_refund_ids = set(
@@ -762,11 +770,11 @@ def handle_charge_refunded(event: dict) -> None:
 
     # Send refund confirmation email (don't fail webhook if email fails)
     try:
-        send_refund_confirmation_email(
+        send_refund_confirmation_email.delay(
             enrollment_id=enrollment.id,
-            refund_amount=refund_amount,
-            original_amount=original_amount,
-            refund_date=timezone.now(),
+            refund_amount=str(refund_amount),
+            original_amount=str(original_amount),
+            refund_date=timezone.now().isoformat(),
             is_partial=not is_full_refund,
         )
     except Exception as exc:

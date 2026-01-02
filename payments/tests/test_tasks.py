@@ -94,9 +94,9 @@ class PaymentTaskTests(TestCase):
         with patch("payments.tasks.send_refund_confirmation") as mock_send:
             send_refund_confirmation_email(
                 enrollment_id=enrollment.id,
-                refund_amount=Decimal("10.00"),
-                original_amount=Decimal("49.00"),
-                refund_date=refund_date,
+                refund_amount="10.00",
+                original_amount="49.00",
+                refund_date=refund_date.isoformat(),
                 is_partial=True,
             )
 

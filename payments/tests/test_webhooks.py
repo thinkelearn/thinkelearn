@@ -144,6 +144,82 @@ class StripeWebhookTests(TestCase):
             1,
         )
 
+    @patch("payments.webhooks.send_refund_confirmation_email.delay")
+    def test_refund_fallback_replaced_by_refund_ids(self, mock_send_email):
+        enrollment = EnrollmentRecord.create_for_user(
+            self.user, self.product, amount=Decimal("49.00")
+        )
+        enrollment.mark_paid()
+        payment = Payment.objects.create(
+            enrollment_record=enrollment,
+            amount=enrollment.amount_paid,
+            currency=self.product.currency,
+            status=Payment.Status.SUCCEEDED,
+            stripe_payment_intent_id="pi_refund_fallback",
+        )
+
+        fallback_event = {
+            "id": "evt_refund_fallback",
+            "type": "charge.refunded",
+            "data": {
+                "object": {
+                    "id": "ch_refund_fallback",
+                    "payment_intent": "pi_refund_fallback",
+                    "amount": 4900,
+                    "amount_refunded": 2000,
+                    "refunded": False,
+                }
+            },
+        }
+        self._post_webhook(fallback_event)
+
+        self.assertEqual(
+            PaymentLedgerEntry.objects.filter(
+                payment=payment, stripe_refund_id="ch_refund_fallback:fallback"
+            ).count(),
+            1,
+        )
+
+        detailed_event = {
+            "id": "evt_refund_fallback_details",
+            "type": "charge.refunded",
+            "data": {
+                "object": {
+                    "id": "ch_refund_fallback",
+                    "payment_intent": "pi_refund_fallback",
+                    "amount": 4900,
+                    "amount_refunded": 2000,
+                    "refunded": False,
+                    "refunds": {
+                        "data": [
+                            {
+                                "id": "re_1",
+                                "amount": 2000,
+                                "currency": "cad",
+                                "created": 1_700_000_000,
+                                "status": "succeeded",
+                            }
+                        ]
+                    },
+                }
+            },
+        }
+        self._post_webhook(detailed_event)
+
+        self.assertEqual(
+            PaymentLedgerEntry.objects.filter(
+                payment=payment, stripe_refund_id="ch_refund_fallback:fallback"
+            ).count(),
+            0,
+        )
+        self.assertEqual(
+            PaymentLedgerEntry.objects.filter(
+                payment=payment, stripe_refund_id="re_1"
+            ).count(),
+            1,
+        )
+        mock_send_email.assert_called()
+
     def test_async_payment_failed_marks_enrollment_failed(self):
         enrollment = EnrollmentRecord.create_for_user(
             self.user, self.product, amount=Decimal("49.00")
@@ -176,7 +252,7 @@ class StripeWebhookTests(TestCase):
         self.assertEqual(payment.status, Payment.Status.FAILED)
         self.assertEqual(payment.failure_reason, "unpaid")
 
-    @patch("payments.webhooks.send_refund_confirmation_email")
+    @patch("payments.webhooks.send_refund_confirmation_email.delay")
     def test_charge_refunded_revokes_access(self, mock_send_email):
         enrollment = EnrollmentRecord.create_for_user(
             self.user, self.product, amount=Decimal("49.00")
@@ -218,11 +294,12 @@ class StripeWebhookTests(TestCase):
         mock_send_email.assert_called_once()
         _, kwargs = mock_send_email.call_args
         self.assertEqual(kwargs["enrollment_id"], enrollment.id)
-        self.assertEqual(kwargs["refund_amount"], Decimal("49.00"))
-        self.assertEqual(kwargs["original_amount"], Decimal("49.00"))
+        self.assertEqual(kwargs["refund_amount"], "49.00")
+        self.assertEqual(kwargs["original_amount"], "49.00")
+        self.assertIn("refund_date", kwargs)
         self.assertFalse(kwargs["is_partial"])
 
-    @patch("payments.webhooks.send_refund_confirmation_email")
+    @patch("payments.webhooks.send_refund_confirmation_email.delay")
     def test_partial_refund_keeps_enrollment_active(self, mock_send_email):
         enrollment = EnrollmentRecord.create_for_user(
             self.user, self.product, amount=Decimal("49.00")
@@ -262,8 +339,9 @@ class StripeWebhookTests(TestCase):
         mock_send_email.assert_called_once()
         _, kwargs = mock_send_email.call_args
         self.assertEqual(kwargs["enrollment_id"], enrollment.id)
-        self.assertEqual(kwargs["refund_amount"], Decimal("20.00"))
-        self.assertEqual(kwargs["original_amount"], Decimal("49.00"))
+        self.assertEqual(kwargs["refund_amount"], "20.00")
+        self.assertEqual(kwargs["original_amount"], "49.00")
+        self.assertIn("refund_date", kwargs)
         self.assertTrue(kwargs["is_partial"])
         self.assertEqual(payment.amount_refunded, Decimal("20.00"))
         self.assertEqual(payment.amount_net, Decimal("29.00"))
@@ -274,7 +352,7 @@ class StripeWebhookTests(TestCase):
             1,
         )
 
-    @patch("payments.webhooks.send_refund_confirmation_email")
+    @patch("payments.webhooks.send_refund_confirmation_email.delay")
     def test_refund_outside_window_logs_warning(self, mock_send_email):
         self.product.refund_window_days = 0
         self.product.save(update_fields=["refund_window_days"])
@@ -506,7 +584,7 @@ class StripeWebhookTests(TestCase):
             any("missing payment_intent" in log.lower() for log in logs.output)
         )
 
-    @patch("payments.webhooks.send_refund_confirmation_email")
+    @patch("payments.webhooks.send_refund_confirmation_email.delay")
     def test_refund_user_without_email(self, mock_send_email):
         """Test refund email handling when user has no email address."""
         user_no_email = User.objects.create_user(
@@ -550,7 +628,7 @@ class StripeWebhookTests(TestCase):
 
         mock_send_email.assert_called_once()
 
-    @patch("payments.webhooks.send_refund_confirmation_email")
+    @patch("payments.webhooks.send_refund_confirmation_email.delay")
     def test_refund_invalid_enrollment_status(self, mock_send_email):
         """Test refund for enrollment in invalid status (not ACTIVE/REFUNDED)."""
         enrollment = EnrollmentRecord.create_for_user(
@@ -596,7 +674,7 @@ class StripeWebhookTests(TestCase):
         )
         mock_send_email.assert_not_called()
 
-    @patch("payments.webhooks.send_refund_confirmation_email")
+    @patch("payments.webhooks.send_refund_confirmation_email.delay")
     def test_refund_ledger_idempotent(self, mock_send_email):
         enrollment = EnrollmentRecord.create_for_user(
             self.user, self.product, amount=Decimal("49.00")
@@ -649,7 +727,7 @@ class StripeWebhookTests(TestCase):
         )
         mock_send_email.assert_called()
 
-    @patch("payments.webhooks.send_refund_confirmation_email")
+    @patch("payments.webhooks.send_refund_confirmation_email.delay")
     def test_refund_recalculates_totals_on_early_return(self, mock_send_email):
         """Test that recalculate_totals() is called even when enrollment status changes after lock.
 
@@ -952,7 +1030,7 @@ class StripeWebhookTests(TestCase):
             1,
         )
 
-    @patch("payments.webhooks.send_refund_confirmation_email")
+    @patch("payments.webhooks.send_refund_confirmation_email.delay")
     def test_multiple_partial_refunds(self, mock_send_email):
         """Test that multiple partial refunds correctly aggregate in amount_refunded."""
         enrollment = EnrollmentRecord.create_for_user(
