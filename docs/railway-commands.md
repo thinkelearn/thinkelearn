@@ -1,13 +1,43 @@
 # Railway CLI Commands Reference
 
+## Quick Start: SSH into Deployed Service
+
+**IMPORTANT**: Use this workflow to run Django management commands in the deployed Railway environment.
+
+```bash
+# 1. Link to your project (only need to do this once)
+railway link -p thinkelearn -s web -e production
+# OR use interactive mode:
+railway link
+
+# 2. SSH into the deployed service
+railway ssh
+
+# 3. Inside the Railway SSH session, run Django commands with uv:
+uv run python manage.py createsuperuser
+uv run python manage.py setup_lms --with-categories --with-tags
+uv run python manage.py setup_portfolio
+uv run python manage.py migrate
+uv run python manage.py collectstatic --noinput
+
+# 4. Exit SSH session
+exit
+```
+
+**Why `uv run`?** Railway uses `uv` to manage dependencies in a virtual environment. You MUST prefix Python commands with `uv run` to access installed packages.
+
+**Common Mistake**: Don't use `railway run python manage.py <command>` - this runs on your LOCAL machine and can't connect to Railway's internal database (`postgres.railway.internal`). Always use `railway ssh` first, THEN run commands inside the SSH session.
+
 ## Project Management
 
 ```bash
 # Login to Railway
 railway login
 
-# Link to existing project
+# Link to existing project (interactive)
 railway link
+# OR link with specific parameters
+railway link -p thinkelearn -s web -e production
 
 # Initialize new project
 railway init
@@ -82,16 +112,49 @@ railway redeploy
 railway open
 ```
 
+## SSH Access (Recommended for Django Commands)
+
+```bash
+# SSH into deployed service
+railway ssh
+
+# SSH with specific service/environment
+railway ssh -s web -e production
+
+# SSH into a specific deployment instance
+railway ssh -d <deployment-instance-id>
+
+# SSH with tmux session (persists across disconnections)
+railway ssh --session
+
+# Run a single command and exit
+railway ssh "uv run python manage.py check"
+```
+
+**Use SSH for**:
+
+- Running Django management commands
+- Debugging production issues
+- Checking logs in real-time
+- Inspecting the deployed environment
+
 ## Local Development
 
 ```bash
-# Run command with Railway environment
+# ⚠️  CAUTION: railway run downloads Railway env vars but runs LOCALLY
+# This ONLY works for commands that don't need database access
 railway run <command>
-railway run python manage.py migrate
 railway run npm start
 
-# Shell with Railway environment
+# Shell with Railway environment variables (still local)
 railway shell
+
+# ❌ DON'T USE for Django commands (database won't be accessible):
+# railway run python manage.py migrate  # FAILS - can't reach Railway's internal DB
+
+# ✅ DO USE railway ssh instead:
+railway ssh
+uv run python manage.py migrate  # Works - runs in Railway environment
 ```
 
 ## Volume Management
@@ -138,18 +201,19 @@ Use a separate Railway service for background tasks:
 ### Database Setup
 
 ```bash
-# 1. Switch to database service to get connection details
-railway service Postgres
-railway variables  # Copy DATABASE_URL
+# 1. Link to your project
+railway link -p thinkelearn -s web -e production
 
-# 2. Switch to web service and set DATABASE_URL
-railway service web
-railway variables --set "DATABASE_URL=postgresql://..."
+# 2. SSH into the web service
+railway ssh
 
-# 3. Run migrations
-railway run python manage.py migrate
-railway run python manage.py createsuperuser
+# 3. Inside SSH session, run migrations and setup
+uv run python manage.py migrate
+uv run python manage.py createsuperuser
+uv run python manage.py setup_lms --with-categories --with-tags
 ```
+
+**Note**: DATABASE_URL is automatically set by Railway when you add a PostgreSQL database service. You don't need to manually configure it.
 
 ### Troubleshooting
 
