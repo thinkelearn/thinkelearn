@@ -3,7 +3,9 @@
 <!-- Combined Navigation: Sticky wrapper for topbar + main nav -->
 <div class="sticky top-0 z-50">
     <!-- Secondary top bar for authentication and quick links -->
-    <div class="bg-primary-50 border-b border-primary-100">
+    <div
+        id="topbar-container"
+        class="bg-primary-50 border-b border-primary-100 overflow-hidden max-h-10 opacity-100 transition-[max-height,opacity] duration-300">
         <div class="max-w-7xl mx-auto container-padding">
             <div class="flex justify-end items-center h-10 text-sm">
                 {% if user.is_authenticated %}

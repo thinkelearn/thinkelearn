@@ -13,6 +13,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize both navigation components
     initMobileMenu();
     initUserDropdown();
+    initTopbarScroll();
 });
 
 /**
@@ -160,4 +161,51 @@ function initUserDropdown() {
             userMenuIcon.style.transform = `rotate(${CHEVRON_ROTATION_CLOSED})`;
         }
     }
+}
+
+/**
+ * Hide the topbar on scroll down and reveal it when at the top.
+ */
+function initTopbarScroll() {
+    const topbar = document.getElementById('topbar-container');
+
+    if (!topbar) {
+        return;
+    }
+
+    const hiddenClasses = ['max-h-0', 'opacity-0', 'border-b-0'];
+    const visibleClasses = ['max-h-10', 'opacity-100', 'border-b', 'border-primary-100'];
+    const showThreshold = 4;
+    let lastScrollY = window.scrollY;
+    let isTicking = false;
+
+    function showTopbar() {
+        topbar.classList.remove(...hiddenClasses);
+        topbar.classList.add(...visibleClasses);
+    }
+
+    function hideTopbar() {
+        topbar.classList.remove(...visibleClasses);
+        topbar.classList.add(...hiddenClasses);
+    }
+
+    function handleScroll() {
+        const currentScrollY = window.scrollY;
+
+        if (currentScrollY <= showThreshold) {
+            showTopbar();
+        } else if (currentScrollY > lastScrollY) {
+            hideTopbar();
+        }
+
+        lastScrollY = currentScrollY;
+        isTicking = false;
+    }
+
+    window.addEventListener('scroll', function() {
+        if (!isTicking) {
+            window.requestAnimationFrame(handleScroll);
+            isTicking = true;
+        }
+    }, { passive: true });
 }
