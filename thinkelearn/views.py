@@ -1,17 +1,4 @@
-from django.http import HttpResponse
 from django.shortcuts import render
-from django.views.decorators.http import require_http_methods
-
-
-@require_http_methods(["GET", "POST"])
-def signup_closed(request):
-    """Return 403 Forbidden when registration is disabled."""
-    return HttpResponse(
-        "<h1>Registration Closed</h1>"
-        "<p>We're not accepting new registrations at this time. Please check back later.</p>",
-        status=403,
-        content_type="text/html",
-    )
 
 
 def privacy_policy(request):
@@ -34,5 +21,17 @@ def terms_and_conditions(request):
         {
             "page_title": "Terms and Conditions",
             "meta_description": "Read our terms and conditions to understand the legal agreement governing your use of THINK eLearn services.",
+        },
+    )
+
+
+def parent_help(request):
+    """Render the parent help page."""
+    return render(
+        request,
+        "parent_help.html",
+        {
+            "page_title": "Parent Help",
+            "meta_description": "Guidance for parents using Google Family Link or Microsoft Family Safety with THINK eLearn.",
         },
     )

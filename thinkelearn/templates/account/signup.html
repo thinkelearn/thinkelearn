@@ -11,6 +11,12 @@
             <p class="text-neutral-600 mt-2">{% trans "Join THINK eLearn to enroll in courses." %}</p>
         </div>
 
+        <!-- OAuth-only signup (this page only renders when ACCOUNT_ALLOW_REGISTRATION=True) -->
+        <div class="rounded-lg border border-cyan-200 bg-cyan-50 px-4 py-3 text-sm text-cyan-900 mb-6">
+            <p class="font-semibold">{% trans "OAuth-only signup for better security and privacy." %}</p>
+            <p>{% trans "We do not collect or store passwords." %}</p>
+        </div>
+
         {% get_providers as socialaccount_providers %}
         {% if socialaccount_providers %}
             <div class="space-y-3 mb-6">
@@ -19,50 +25,23 @@
                     <i class="fa-brands fa-google mr-2"></i>
                     {% trans "Sign up with Google" %}
                 </a>
-            </div>
-            <div class="flex items-center gap-3 text-sm text-neutral-400 mb-6">
-                <span class="flex-1 h-px bg-neutral-200"></span>
-                <span>{% trans "or" %}</span>
-                <span class="flex-1 h-px bg-neutral-200"></span>
+                <a href="{% provider_login_url 'microsoft' process='signup' next=redirect_field_value %}"
+                   class="w-full inline-flex items-center justify-center rounded-md border border-neutral-200 px-4 py-2.5 text-sm font-medium text-neutral-700 hover:bg-neutral-50">
+                    <i class="fa-brands fa-microsoft mr-2"></i>
+                    {% trans "Sign up with Microsoft" %}
+                </a>
             </div>
         {% endif %}
 
-        <form method="post" action="{% url 'account_signup' %}" class="space-y-4">
-            {% csrf_token %}
-
-            {% for field in form.hidden_fields %}
-                {{ field }}
-            {% endfor %}
-
-            {% if form.non_field_errors %}
-                <div class="rounded-md bg-red-50 text-red-700 px-4 py-3 text-sm">
-                    {{ form.non_field_errors }}
-                </div>
-            {% endif %}
-
-            {% for field in form.visible_fields %}
-                <div>
-                    <label class="block text-sm font-medium text-neutral-700" for="{{ field.id_for_label }}">
-                        {{ field.label }}
-                    </label>
-                    <div class="mt-1">
-                        {{ field }}
-                    </div>
-                    {% if field.errors %}
-                        <p class="text-sm text-red-600 mt-1">{{ field.errors }}</p>
-                    {% endif %}
-                </div>
-            {% endfor %}
-
-            {% if redirect_field_value %}
-                <input type="hidden" name="{{ redirect_field_name }}" value="{{ redirect_field_value }}">
-            {% endif %}
-
-            <button type="submit"
-                    class="w-full inline-flex items-center justify-center rounded-md bg-secondary-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-secondary-600">
-                {% trans "Create account" %}
-            </button>
-        </form>
+        <div class="rounded-lg border border-neutral-200 bg-white px-4 py-3 text-sm text-neutral-700 mb-6">
+            <p class="font-semibold">{% trans "Parents of children under 13" %}</p>
+            <p class="mt-1">
+                {% trans "Use family-managed accounts through Google Family Link or Microsoft Family Safety." %}
+                <a href="{% url 'parent_help' %}" class="text-secondary-600 hover:text-secondary-500 font-medium">
+                    {% trans "Learn more" %}
+                </a>
+            </p>
+        </div>
 
         <div class="text-center text-sm text-neutral-600 mt-6">
             {% trans "Already have an account?" %}

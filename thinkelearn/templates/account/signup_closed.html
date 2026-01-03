@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Sign Up Closed" %}{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-neutral-50 flex items-center justify-center px-4 py-12">
+    <div class="w-full max-w-lg bg-white shadow-lg rounded-2xl p-8">
+        <div class="text-center mb-6">
+            <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-amber-100 mb-6">
+                <i class="fa-solid fa-lock text-2xl text-amber-600"></i>
+            </div>
+            <h1 class="text-3xl font-bold text-primary-800">{% trans "Sign Up Closed" %}</h1>
+            <p class="text-neutral-600 mt-4">
+                {% trans "We are sorry, but sign up is currently closed." %}
+            </p>
+        </div>
+
+        <div class="rounded-lg border border-neutral-200 bg-neutral-50 px-4 py-4 text-sm text-neutral-700 mb-6">
+            <p class="font-semibold mb-2">{% trans "Registration is temporarily unavailable" %}</p>
+            <p>
+                {% trans "If you already have an account, please sign in. For parent-managed accounts, review our family account guidance." %}
+            </p>
+        </div>
+
+        <div class="flex flex-col sm:flex-row gap-3 mb-6">
+            <a href="{% url 'account_login' %}"
+               class="flex-1 inline-flex items-center justify-center rounded-md bg-secondary-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-secondary-600 transition-colors">
+                <i class="fa-solid fa-right-to-bracket mr-2"></i>{% trans "Sign In" %}
+            </a>
+            <a href="{% url 'parent_help' %}"
+               class="flex-1 inline-flex items-center justify-center rounded-md border border-neutral-200 px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-white transition-colors">
+                <i class="fa-solid fa-users mr-2"></i>{% trans "Parent Help" %}
+            </a>
+        </div>
+
+        <div class="text-center text-sm text-neutral-600">
+            <a href="/" class="font-medium text-secondary-600 hover:text-secondary-500">
+                <i class="fa-solid fa-home mr-1"></i>{% trans "Return to homepage" %}
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
