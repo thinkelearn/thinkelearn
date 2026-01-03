@@ -21,13 +21,15 @@ Production-ready Django 6.0/Wagtail 7.2.1 educational platform with SCORM LMS, S
 
 ## Authentication
 
-**django-allauth**: Email-only (no username), Google OAuth with auto-account linking by verified email, honeypot spam protection (`website` field), mandatory email verification.
+**django-allauth**: Email-only login (username=email internally), Google/Microsoft OAuth with auto-account linking by email, honeypot spam protection (`website` field), mandatory email verification for direct signups.
 
-**Custom**: `SocialAccountAdapter` in `thinkelearn/backends/allauth.py` (14 tests, 100% coverage)
+**OAuth Trust Model**: Google/Microsoft trusted implicitly for email verification (COPPA compliance trust > email verification). Microsoft uses `mail`/`userPrincipalName` fields.
 
-**Env Vars**: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` - Setup at console.cloud.google.com with redirect URIs for localhost/production
+**Custom**: `SocialAccountAdapter`, `AccountAdapter` in `thinkelearn/backends/allauth.py` (28 tests)
 
-**URLs**: `/accounts/{login,signup,logout,password/reset,email,3rdparty,google/login}`
+**Env Vars**: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `MICROSOFT_CLIENT_ID`, `MICROSOFT_CLIENT_SECRET`
+
+**URLs**: `/accounts/{login,signup,logout,password/reset,email,3rdparty,google/login,microsoft/login}`
 
 ## Commands
 
@@ -39,7 +41,7 @@ Production-ready Django 6.0/Wagtail 7.2.1 educational platform with SCORM LMS, S
 
 **Services**: localhost:8000 (web/admin), :8025 (Mailpit), :5050 (pgAdmin admin@thinkelearn.com/admin)
 
-**Railway Env Vars**: DATABASE_URL, SECRET_KEY, ALLOWED_HOSTS, MAILTRAP_API_TOKEN, GOOGLE_CLIENT_ID/SECRET, TWILIO_*, optional AWS_*
+**Railway Env Vars**: DATABASE_URL, SECRET_KEY, ALLOWED_HOSTS, MAILTRAP_API_TOKEN, GOOGLE_CLIENT_ID/SECRET, MICROSOFT_CLIENT_ID/SECRET, TWILIO_*, optional AWS_*
 
 ## Design System (Tailwind)
 
@@ -106,9 +108,9 @@ Production-ready Django 6.0/Wagtail 7.2.1 educational platform with SCORM LMS, S
 
 **Test**: Custom methods, prerequisites validation, enrollment limits, rating calculations, Twilio workflows, ZIP security, StreamField validation, category filtering, performance optimizations (select_related/prefetch_related)
 
-**Coverage**: 55%+ overall, 100% on lms/models.py business logic. 32 LMS tests, 22 portfolio tests, 49 payment tests, plus home/blog/communications
+**Coverage**: 55%+ overall, 100% on lms/models.py business logic. 32 LMS tests, 22 portfolio tests, 49 payment tests, 28 auth/adapter tests, plus home/blog/communications
 
-**Files**: `home/tests/test_models.py`, `lms/tests.py`, `portfolio/tests.py`, `blog/tests/`, `communications/tests/`, `payments/tests/`, `test_integration.py`
+**Files**: `home/tests/test_models.py`, `lms/tests.py`, `portfolio/tests.py`, `blog/tests/`, `communications/tests/`, `payments/tests/`, `thinkelearn/tests/test_{social,account}_adapter.py`, `test_integration.py`
 
 ## CI/CD
 
@@ -137,7 +139,7 @@ Production-ready Django 6.0/Wagtail 7.2.1 educational platform with SCORM LMS, S
 - LMS: SCORM, prerequisites, enrollment, payments, reviews/ratings, dashboard (32 tests, 100% coverage)
 - Portfolio: Unified client/educational with ZIP security, videos, galleries (22 tests)
 - Payments: Stripe checkout, ledger, refunds (49 tests)
-- Auth: django-allauth email-only + Google OAuth with auto-linking
+- Auth: django-allauth email-only + Google/Microsoft OAuth with auto-linking (28 tests)
 - Blog: Categories, tags, pagination
 - Communications: Twilio SMS/voicemail
 
