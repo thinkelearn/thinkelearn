@@ -45,7 +45,7 @@ class Command(BaseCommand):
             courses_page = CoursesIndexPage(
                 title="Courses",
                 slug="courses",
-                intro="<p>Explore our comprehensive course catalog. Learn at your own pace with expert-led SCORM courses.</p>",
+                intro="<p>Explore our comprehensive course catalogue. Learn at your own pace with expert-led SCORM courses.</p>",
             )
             home_page.add_child(instance=courses_page)
             courses_page.save_revision().publish()
