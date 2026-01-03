@@ -26,7 +26,6 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
         return normalize_email(
             extra.get("email")
             or extra.get("mail")
-            or extra.get("preferred_username")
             or extra.get("userPrincipalName")
             or getattr(sociallogin.user, "email", "")
         )
