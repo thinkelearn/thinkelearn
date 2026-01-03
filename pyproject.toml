@@ -146,6 +146,7 @@ testpaths = [
     "portfolio",
     "lms",
     "payments",
+    "thinkelearn/tests",
 ]
 addopts = [
     "--verbose",
@@ -157,6 +158,7 @@ addopts = [
     "--cov=communications",
     "--cov=portfolio",
     "--cov=lms",
+    "--cov=thinkelearn",
     "--cov-report=term-missing",
     "--cov-report=html:htmlcov",
     "--cov-fail-under=50",
