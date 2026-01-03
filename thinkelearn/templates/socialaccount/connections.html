@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load i18n %}
+{% load socialaccount_extras %}
 
 {% block title %}{% trans "Social Accounts" %}{% endblock %}
 
@@ -49,7 +50,7 @@
                                         {% endif %}
                                         <div>
                                             <div class="font-medium text-neutral-800">
-                                                {{ base_account.extra_data.email|default:base_account.uid }}
+                                                {{ base_account|social_account_display_name }}
                                             </div>
                                             <div class="text-sm text-neutral-500">
                                                 {{ base_account.provider|title }} Account

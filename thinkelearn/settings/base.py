@@ -133,29 +133,40 @@ AUTHENTICATION_BACKENDS = [
     "allauth.account.auth_backends.AuthenticationBackend",
 ]
 
-# django-allauth configuration (email-only, no username)
-# https://docs.allauth.org/en/dev/account/configuration.html
-ACCOUNT_LOGIN_METHODS = {"email"}  # Login with email only
-ACCOUNT_SIGNUP_FIELDS = ["email*", "password1*", "password2*"]  # No username field
+# Account (email/password)
+ACCOUNT_LOGIN_METHODS = {"email"}  # allauth uses email-only login UI
+ACCOUNT_SIGNUP_FIELDS = ["email*", "password1*", "password2*"]  # no username field
 ACCOUNT_SIGNUP_FORM_HONEYPOT_FIELD = "website"
+
 ACCOUNT_EMAIL_VERIFICATION = "mandatory"
 ACCOUNT_UNIQUE_EMAIL = True
-ACCOUNT_USER_MODEL_USERNAME_FIELD = None  # Tell allauth to ignore username
-LOGIN_REDIRECT_URL = "/dashboard/"  # Redirect to dashboard after successful login
+
+# IMPORTANT: we are using Django's default User model, which has username.
+# We must tell allauth the username field exists (even if we don't show it in the UI).
+ACCOUNT_USER_MODEL_USERNAME_FIELD = "username"
+
+LOGIN_REDIRECT_URL = "/dashboard/"
 ACCOUNT_LOGOUT_REDIRECT_URL = "/"
-# Control registration availability (default False for soft launch, set ACCOUNT_ALLOW_REGISTRATION=true in Railway)
+
+# Custom convenience setting (not an allauth setting)
 ACCOUNT_ALLOW_REGISTRATION = os.environ.get(
     "ACCOUNT_ALLOW_REGISTRATION", "false"
 ).lower() in ("true", "1", "yes")
+
 ACCOUNT_ADAPTER = "thinkelearn.backends.allauth.AccountAdapter"
 SOCIALACCOUNT_ADAPTER = "thinkelearn.backends.allauth.SocialAccountAdapter"
+
+# Social accounts
+SOCIALACCOUNT_EMAIL_REQUIRED = True
+SOCIALACCOUNT_EMAIL_VERIFICATION = (
+    "none"  # prevents the "Verify your email" interstitial
+)
 
 SOCIALACCOUNT_PROVIDERS = {
     "google": {
         "SCOPE": ["profile", "email"],
         "AUTH_PARAMS": {"access_type": "online"},
         "APP": {
-            # Use None to fail loudly if credentials are missing
             "client_id": os.environ.get("GOOGLE_CLIENT_ID"),
             "secret": os.environ.get("GOOGLE_CLIENT_SECRET"),
             "key": None,
@@ -164,7 +175,6 @@ SOCIALACCOUNT_PROVIDERS = {
     "microsoft": {
         "SCOPE": ["User.Read"],
         "APP": {
-            # Use None to fail loudly if credentials are missing
             "client_id": os.environ.get("MICROSOFT_CLIENT_ID"),
             "secret": os.environ.get("MICROSOFT_CLIENT_SECRET"),
             "key": None,
