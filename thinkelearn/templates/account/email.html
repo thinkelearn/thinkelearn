@@ -4,6 +4,7 @@
 {% block title %}{% trans "Email Addresses" %}{% endblock %}
 
 {% block content %}
+{% get_social_accounts user as social_accounts %}
 <div class="min-h-screen bg-neutral-50 flex items-center justify-center px-4 py-12">
     <div class="w-full max-w-2xl bg-white shadow-lg rounded-2xl p-8">
         <!-- Header -->
@@ -13,7 +14,6 @@
             </div>
             <h1 class="text-3xl font-bold text-primary-800">{% trans "Email Addresses" %}</h1>
             <p class="text-neutral-600 mt-4">
-                {% get_social_accounts user as social_accounts %}
                 {% if social_accounts and not user.has_usable_password %}
                     {% trans "Your email address is managed through your connected OAuth account." %}
                 {% else %}
@@ -37,7 +37,6 @@
             <h2 class="text-xl font-semibold text-primary-800 mb-4">{% trans "Your Email Addresses" %}</h2>
 
             {% if emailaddresses %}
-                {% get_social_accounts user as social_accounts %}
                 <div class="space-y-3">
                     {% for emailaddress in emailaddresses %}
                         <div class="flex items-center justify-between p-4 border border-neutral-200 rounded-lg {% if emailaddress.primary %}bg-cyan-50 border-cyan-200{% endif %}">
@@ -111,7 +110,6 @@
         </div>
 
         <!-- Add Email Address -->
-        {% get_social_accounts user as social_accounts %}
         {% if not social_accounts or user.has_usable_password %}
         <div class="border-t border-neutral-200 pt-8">
             <h2 class="text-xl font-semibold text-primary-800 mb-4">{% trans "Add Email Address" %}</h2>
@@ -151,7 +149,6 @@
         <!-- Quick Links -->
         <div class="mt-8 pt-8 border-t border-neutral-200">
             <h3 class="text-sm font-semibold text-neutral-700 mb-3">{% trans "Account Settings" %}</h3>
-            {% get_social_accounts user as social_accounts %}
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {% if not social_accounts or user.has_usable_password %}
                 <a href="{% url 'account_change_password' %}" class="flex items-center px-4 py-2 border border-neutral-200 rounded-md text-neutral-700 hover:bg-neutral-50 transition-colors">
