@@ -123,7 +123,7 @@ def test_password_set_page_oauth_only_user(client, django_user_model):
     # Should NOT show password form
     assert 'name="password1"' not in content
     assert 'name="password2"' not in content
-    assert "Set Password" not in content or "Password Not Required" in content
+    assert 'type="submit"' not in content or "Set Password" not in content
 
     # Should show navigation buttons
     assert "Manage Social Accounts" in content
