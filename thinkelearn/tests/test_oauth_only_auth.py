@@ -34,11 +34,14 @@ def test_signup_page_oauth_only(client):
         response = client.get("/accounts/signup/")
 
     assert response.status_code == 200
+    assert any(
+        template.name == "account/signup.html" for template in response.templates
+    )
     content = response.content.decode("utf-8")
     assert "Sign up with Google" in content
     assert "Sign up with Microsoft" in content
     assert 'name="password1"' not in content
-    assert "Create account" not in content
+    assert "Sign Up Closed" not in content
 
     reload_urls()
 
@@ -49,17 +52,15 @@ def test_signup_page_closed_message(client):
         reload_urls()
         response = client.get("/accounts/signup/")
 
-    if response.status_code == 302:
-        follow_response = client.get(response["Location"])
-        content = follow_response.content.decode("utf-8")
-        assert "Continue with Google" in content
-        assert "Continue with Microsoft" in content
-        assert "Sign up with Google" not in content
-    else:
-        assert response.status_code == 200
-        content = response.content.decode("utf-8")
-        assert "Registration is currently closed." in content
-        assert "Sign up with Google" not in content
+    assert response.status_code == 200
+    assert any(
+        template.name == "account/signup_closed.html" for template in response.templates
+    )
+    content = response.content.decode("utf-8")
+    assert "Sign Up Closed" in content
+    assert "We are sorry, but sign up is currently closed." in content
+    assert "Sign up with Google" not in content
+    assert "Sign up with Microsoft" not in content
 
     reload_urls()
 
