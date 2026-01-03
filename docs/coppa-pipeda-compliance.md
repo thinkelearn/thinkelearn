@@ -95,9 +95,9 @@ Environment variables:
 </p>
 ```
 
-### 3. Optional: UserAccount Model (Only if needed)
+### 3. UserAccount Model (example implementation)
 
-**Only create this if you need additional profile fields beyond name/email.**
+**Use this model (or add equivalent fields to your existing user model) to support the required parent data-deletion workflow and any additional profile fields beyond name/email.**
 
 ```python
 # thinkelearn/models.py
