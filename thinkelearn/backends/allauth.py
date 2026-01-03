@@ -8,6 +8,15 @@ from django.utils.crypto import get_random_string
 
 
 def normalize_email(value: str) -> str:
+    """
+    Normalize email to lowercase and trim whitespace.
+
+    Args:
+        value: Email address (may be None or whitespace-only)
+
+    Returns:
+        Normalized email string, or empty string if value is None/whitespace
+    """
     return (value or "").strip().lower()
 
 
@@ -85,10 +94,15 @@ class AccountAdapter(DefaultAccountAdapter):
     def save_user(self, request, user, form, commit=True):
         user = super().save_user(request, user, form, commit=False)
 
+        # Intentionally re-normalize using our own helper so email/username
+        # conform to this project's policy (trim + lowercase), regardless of
+        # how the parent adapter may have normalized the value.
         email = normalize_email(getattr(user, "email", ""))
         if email:
             user.email = email
-            # Always set username = email (don't check if username exists)
+            # Unconditionally set username=email to enforce our architecture.
+            # This overwrites any username set by parent/allauth, which is
+            # intentional - we require username=email for all users.
             user.username = email
         else:
             # Rare fallback: no email provided

@@ -78,6 +78,7 @@ class TestSaveUser:
 
         assert saved_user.email == "saveuser2@example.com"
         assert saved_user.username == "saveuser2@example.com"
+        assert User.objects.filter(username="saveuser2@example.com").exists()
 
     def test_fallback_username_when_no_email(self, adapter, request_factory):
         """Should generate random username when no email provided."""
@@ -92,6 +93,7 @@ class TestSaveUser:
         # Should have generated a username
         assert saved_user.username.startswith("user_")
         assert len(saved_user.username) == 17  # "user_" + 12 random chars
+        assert User.objects.filter(username=saved_user.username).exists()
 
     def test_commit_false_doesnt_save(self, adapter, request_factory):
         """Should not save to database when commit=False."""
