@@ -1,36 +1,8 @@
 # CLAUDE.md
 
-## 🔴 CRITICAL COMPLIANCE BLOCKER
+## COPPA/PIPEDA Compliance (Children Under 13)
 
-**COPPA/PIPEDA Compliance for Children Under 13**
-
-⚠️ **CANNOT launch courses for children under 13** until compliance requirements are met.
-
-- **Strategy:** OAuth-based approach using Google Family Link and Microsoft Family Safety
-- **Status:** Legal docs ready, technical implementation required (5 weeks)
-- **Compliance Deadline:** April 22, 2026 (COPPA amendments)
-- **Penalties:** Up to $50,120 per violation
-- **Full Details:** `/docs/coppa-pipeda-compliance-plan.md`
-- **Quick Reference:** `/docs/coppa-compliance-quick-reference.md`
-
-**Required Before Launch (OAuth Approach):**
-- [ ] Legal counsel review (~$1K-2K, OAuth approach)
-- [ ] Age verification at signup (DOB field)
-- [ ] OAuth-only enforcement for under-13
-- [ ] Microsoft OAuth provider added
-- [ ] Feature restrictions (no Stripe, no SMS for children)
-- [ ] Data deletion workflow for parent requests
-
-**Updated Legal Documents (Ready):**
-- ✅ Privacy Policy - OAuth-based Children's Privacy section
-- ✅ Terms and Conditions - OAuth enrollment requirements for under-13
-- ✅ Compliance strategy - Leverage Google/Microsoft COPPA compliance
-
-**Benefits of OAuth Approach:**
-- 75% reduction in time (5 weeks vs 11-12 weeks)
-- 75% reduction in legal costs ($1K-2K vs $5K-10K)
-- No custom school agreements or parent consent workflows
-- Parents use familiar Family Link/Microsoft Family Safety tools
+**Strategy:** OAuth-only signup for ALL users. We don't collect dates of birth or determine ages. Children access via parent-managed Google Family Link or Microsoft Family Safety accounts. See `/docs/coppa-pipeda-compliance.md` for details.
 
 ---
 
