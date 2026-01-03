@@ -4,13 +4,10 @@ import importlib
 
 import pytest
 from allauth.socialaccount.models import SocialAccount, SocialApp
-from django.contrib.auth import get_user_model
 from django.test import override_settings
 from django.urls import clear_url_caches
 
 import thinkelearn.urls as thinkelearn_urls
-
-User = get_user_model()
 
 
 def reload_urls():
@@ -162,7 +159,8 @@ def test_password_change_oauth_only_user_sees_correct_buttons(client, oauth_user
     assert 'href="/accounts/email/"' in content
     
     # Should NOT see password change or reset buttons
-    assert "Change Password" not in content or content.count("Change Password") == 1  # Only in title
+    # Note: "Change Password" appears in the page title but not as a button
+    assert 'type="submit"' not in content  # No submit button for form
     assert "Reset via email" not in content
     assert "Forgot your password" not in content
 
