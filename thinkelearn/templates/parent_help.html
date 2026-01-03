@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% load static wagtailcore_tags %}
+
+{% block body_class %}template-parenthelp{% endblock %}
+
+{% block title %}Parent Help{% endblock %}
+
+{% block content %}
+<section class="hero-gradient text-white section-padding overflow-hidden relative">
+    <div class="max-w-7xl mx-auto container-padding relative z-10">
+        <div class="text-center">
+            <h1 class="text-4xl lg:text-6xl font-heading font-bold mb-6 leading-tight">
+                Parent Help
+            </h1>
+            <p class="text-xl lg:text-2xl mb-8 text-neutral-200 leading-relaxed max-w-3xl mx-auto">
+                Family account guidance for Google Family Link and Microsoft Family Safety.
+            </p>
+        </div>
+    </div>
+</section>
+
+<section class="section-padding bg-white">
+    <div class="max-w-4xl mx-auto container-padding">
+        <div class="prose prose-lg max-w-none">
+            <div class="bg-cyan-50 rounded-lg p-6 mb-8">
+                <h2 class="text-2xl font-heading font-bold text-primary-800 mb-4">OAuth-only access</h2>
+                <p class="text-neutral-700 mb-2">
+                    THINK eLearn uses Google and Microsoft accounts for all sign-ins. We do not collect
+                    passwords, dates of birth, or age information.
+                </p>
+                <p class="text-neutral-700">
+                    If your child is under 13, please use a parent-managed family account so you can
+                    control access and consent through your provider.
+                </p>
+            </div>
+
+            <div class="mb-10">
+                <h3 class="text-xl font-semibold text-primary-800 mb-4">Google Family Link</h3>
+                <p class="mb-4">Family Link lets parents create and manage Google accounts for children under 13.</p>
+                <ul class="list-disc list-inside space-y-2 ml-4">
+                    <li>Create a family group and child account in the Family Link app.</li>
+                    <li>Review and manage app permissions from the parent dashboard.</li>
+                    <li>Use the child account to sign in to THINK eLearn with Google.</li>
+                </ul>
+                <p class="mt-4">
+                    Learn more at
+                    <a href="https://families.google.com/familylink" class="text-secondary-500 hover:underline" target="_blank" rel="noopener">families.google.com/familylink</a>.
+                </p>
+            </div>
+
+            <div class="mb-10">
+                <h3 class="text-xl font-semibold text-primary-800 mb-4">Microsoft Family Safety</h3>
+                <p class="mb-4">Family Safety lets parents manage Microsoft accounts for children and family groups.</p>
+                <ul class="list-disc list-inside space-y-2 ml-4">
+                    <li>Create a family group and add your child account in Microsoft Family Safety.</li>
+                    <li>Control screen time, app access, and privacy settings in the parent dashboard.</li>
+                    <li>Use the child account to sign in to THINK eLearn with Microsoft.</li>
+                </ul>
+                <p class="mt-4">
+                    Learn more at
+                    <a href="https://account.microsoft.com/family" class="text-secondary-500 hover:underline" target="_blank" rel="noopener">account.microsoft.com/family</a>.
+                </p>
+            </div>
+
+            <div class="mb-10">
+                <h3 class="text-xl font-semibold text-primary-800 mb-4">Managing access</h3>
+                <p class="mb-4">Parents can control and revoke access at any time through the provider dashboard.</p>
+                <ul class="list-disc list-inside space-y-2 ml-4">
+                    <li>Review the child account activity through Family Link or Family Safety.</li>
+                    <li>Revoke THINK eLearn access from your provider settings.</li>
+                    <li>Contact us for data review, export, or deletion requests.</li>
+                </ul>
+            </div>
+
+            <div class="bg-neutral-50 rounded-lg p-6">
+                <h3 class="text-xl font-semibold text-primary-800 mb-4">Contact our Privacy Officer</h3>
+                <p class="mb-4">We respond to verified parent requests within 30 days.</p>
+                <p class="mb-1"><strong>Felipe Villegas, Privacy Officer</strong></p>
+                <p class="mb-1">Email: <a href="mailto:f.villegas@thinkelearn.com" class="text-secondary-500 hover:underline">f.villegas@thinkelearn.com</a></p>
+                <p>When contacting us, please include the child account email and your relationship to the child.</p>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

@@ -1,4 +1,6 @@
+from allauth.account.adapter import DefaultAccountAdapter
 from allauth.socialaccount.adapter import DefaultSocialAccountAdapter
+from django.conf import settings
 from django.contrib.auth import get_user_model
 
 
@@ -37,3 +39,10 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
             return
 
         sociallogin.connect(request, user)
+
+
+class AccountAdapter(DefaultAccountAdapter):
+    """Disable direct signups when registration is closed."""
+
+    def is_open_for_signup(self, request):
+        return settings.ACCOUNT_ALLOW_REGISTRATION

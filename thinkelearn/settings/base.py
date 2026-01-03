@@ -24,6 +24,7 @@ BASE_DIR = os.path.dirname(PROJECT_DIR)
 # Application definition
 
 INSTALLED_APPS = [
+    "accounts",
     "home",
     "search",
     "blog",
@@ -51,6 +52,7 @@ INSTALLED_APPS = [
     "allauth.account",
     "allauth.socialaccount",
     "allauth.socialaccount.providers.google",
+    "allauth.socialaccount.providers.microsoft",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -145,6 +147,7 @@ ACCOUNT_LOGOUT_REDIRECT_URL = "/"
 ACCOUNT_ALLOW_REGISTRATION = os.environ.get(
     "ACCOUNT_ALLOW_REGISTRATION", "false"
 ).lower() in ("true", "1", "yes")
+ACCOUNT_ADAPTER = "thinkelearn.backends.allauth.AccountAdapter"
 SOCIALACCOUNT_ADAPTER = "thinkelearn.backends.allauth.SocialAccountAdapter"
 
 SOCIALACCOUNT_PROVIDERS = {
@@ -157,7 +160,16 @@ SOCIALACCOUNT_PROVIDERS = {
             "secret": os.environ.get("GOOGLE_CLIENT_SECRET"),
             "key": None,
         },
-    }
+    },
+    "microsoft": {
+        "SCOPE": ["User.Read"],
+        "APP": {
+            # Use None to fail loudly if credentials are missing
+            "client_id": os.environ.get("MICROSOFT_CLIENT_ID"),
+            "secret": os.environ.get("MICROSOFT_CLIENT_SECRET"),
+            "key": None,
+        },
+    },
 }
 
 # Stripe configuration

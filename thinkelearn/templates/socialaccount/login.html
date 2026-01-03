@@ -19,7 +19,13 @@
                 </p>
             {% else %}
                 <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-secondary-100 mb-6">
-                    <i class="fa-brands fa-google text-2xl text-secondary-600"></i>
+                    {% if provider.id == "google" %}
+                        <i class="fa-brands fa-google text-2xl text-secondary-600"></i>
+                    {% elif provider.id == "microsoft" %}
+                        <i class="fa-brands fa-microsoft text-2xl text-secondary-600"></i>
+                    {% else %}
+                        <i class="fa-solid fa-right-to-bracket text-2xl text-secondary-600"></i>
+                    {% endif %}
                 </div>
                 <h1 class="text-3xl font-bold text-primary-800">
                     {% blocktrans with provider.name as provider %}Sign in with {{ provider }}{% endblocktrans %}
