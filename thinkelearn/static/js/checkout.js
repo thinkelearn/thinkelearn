@@ -98,7 +98,7 @@ checkoutForms.forEach((form) => {
                 customInputContainer.classList.add("hidden");
             }
             if (customToggle) {
-                customToggle.textContent = "+ Custom amount";
+                customToggle.textContent = "Show custom amount";
             }
             clearError();
         });
@@ -109,13 +109,13 @@ checkoutForms.forEach((form) => {
             const isHidden = customInputContainer.classList.contains("hidden");
             if (isHidden) {
                 customInputContainer.classList.remove("hidden");
-                customToggle.textContent = "+ Use quick amount";
+                customToggle.textContent = "Hide custom amount";
                 customToggle.setAttribute("aria-expanded", "true");
                 clearActiveButtons();
                 amountInput.focus();
             } else {
                 customInputContainer.classList.add("hidden");
-                customToggle.textContent = "+ Custom amount";
+                customToggle.textContent = "Show custom amount";
                 customToggle.setAttribute("aria-expanded", "false");
                 amountInput.value = "";
             }
@@ -126,7 +126,7 @@ checkoutForms.forEach((form) => {
         customCancel.addEventListener("click", () => {
             customInputContainer.classList.add("hidden");
             if (customToggle) {
-                customToggle.textContent = "+ Custom amount";
+                customToggle.textContent = "Show custom amount";
                 customToggle.setAttribute("aria-expanded", "false");
             }
             amountInput.value = "";
