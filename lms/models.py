@@ -247,6 +247,9 @@ class CourseProduct(models.Model):
         # Round to nearest $5, clamp to range, convert to int
         quick_amounts = []
         for amt in amounts:
+            # First, round to the nearest $5 increment. For very small amounts (< $2.50),
+            # this can yield 0, but the next line always clamps the value into the
+            # [min_price, max_price] range so no button below min_price is created.
             rounded = round(amt / 5) * 5
             clamped = max(float(self.min_price), min(float(self.max_price), rounded))
             quick_amounts.append(int(clamped))

@@ -258,7 +258,7 @@
                                 {% endif %}
                                 <a href="{% url 'wagtail_lms:scorm_player' page.id %}"
                                    class="w-full inline-flex items-center justify-center px-4 py-2.5 rounded-md text-white bg-secondary-500 hover:bg-secondary-600 font-semibold text-sm shadow-sm transition-colors">
-                                    {% if progress.completion_status == 'completed' %}Review Course{% else %}Continue Course{% endif %}
+                                    {% if progress and progress.completion_status == 'completed' %}Review Course{% else %}Continue Course{% endif %}
                                 </a>
                             </div>
                         </div>

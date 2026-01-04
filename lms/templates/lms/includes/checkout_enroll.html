@@ -49,6 +49,7 @@
                             <button type="button"
                                     data-quick-amount="{{ amount }}"
                                     class="px-3 py-2 rounded-md border-2 border-neutral-200 bg-white text-neutral-900 font-bold text-sm hover:border-cyan-500 hover:bg-cyan-50 transition-colors duration-150 focus:outline-none focus:ring-1 focus:ring-cyan-500"
+                                    aria-pressed="false"
                                     {% if amount == product.suggested_price|floatformat:0 %}data-suggested="true"{% endif %}>
                                 ${{ amount }}
                             </button>
@@ -59,11 +60,13 @@
                     <div class="mt-2">
                         <button type="button"
                                 data-custom-toggle
-                                class="text-xs text-cyan-600 hover:text-cyan-700 font-medium">
+                                class="text-xs text-cyan-600 hover:text-cyan-700 font-medium"
+                                aria-expanded="false"
+                                aria-controls="custom-amount-container">
                             + Custom amount
                         </button>
 
-                        <div class="hidden mt-2" data-custom-input-container>
+                        <div id="custom-amount-container" class="hidden mt-2" data-custom-input-container>
                             <div class="flex shadow-sm rounded-md">
                                 <span class="inline-flex items-center px-3 text-sm text-neutral-600 bg-neutral-100 border border-neutral-300 border-r-0 rounded-l-md">
                                     {{ product.currency }}
@@ -78,7 +81,8 @@
                             </div>
                             <button type="button"
                                     data-custom-cancel
-                                    class="mt-1 text-xs text-neutral-500 hover:text-neutral-700">
+                                    class="mt-1 text-xs text-neutral-500 hover:text-neutral-700"
+                                    aria-label="Cancel custom amount">
                                 Cancel
                             </button>
                         </div>

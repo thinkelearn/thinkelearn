@@ -70,9 +70,11 @@ checkoutForms.forEach((form) => {
             if (btn === activeButton) {
                 btn.classList.remove("border-neutral-200", "bg-white", "text-neutral-900");
                 btn.classList.add("border-cyan-500", "bg-cyan-50", "text-cyan-700");
+                btn.setAttribute("aria-pressed", "true");
             } else {
                 btn.classList.remove("border-cyan-500", "bg-cyan-50", "text-cyan-700");
                 btn.classList.add("border-neutral-200", "bg-white", "text-neutral-900");
+                btn.setAttribute("aria-pressed", "false");
             }
         });
     };
@@ -81,6 +83,7 @@ checkoutForms.forEach((form) => {
         quickAmountButtons.forEach((btn) => {
             btn.classList.remove("border-cyan-500", "bg-cyan-50", "text-cyan-700");
             btn.classList.add("border-neutral-200", "bg-white", "text-neutral-900");
+            btn.setAttribute("aria-pressed", "false");
         });
     };
 
@@ -95,7 +98,7 @@ checkoutForms.forEach((form) => {
                 customInputContainer.classList.add("hidden");
             }
             if (customToggle) {
-                customToggle.textContent = "Enter custom amount";
+                customToggle.textContent = "+ Custom amount";
             }
             clearError();
         });
@@ -106,12 +109,14 @@ checkoutForms.forEach((form) => {
             const isHidden = customInputContainer.classList.contains("hidden");
             if (isHidden) {
                 customInputContainer.classList.remove("hidden");
-                customToggle.textContent = "Use quick amount";
+                customToggle.textContent = "+ Use quick amount";
+                customToggle.setAttribute("aria-expanded", "true");
                 clearActiveButtons();
                 amountInput.focus();
             } else {
                 customInputContainer.classList.add("hidden");
-                customToggle.textContent = "Enter custom amount";
+                customToggle.textContent = "+ Custom amount";
+                customToggle.setAttribute("aria-expanded", "false");
                 amountInput.value = "";
             }
         });
@@ -121,7 +126,8 @@ checkoutForms.forEach((form) => {
         customCancel.addEventListener("click", () => {
             customInputContainer.classList.add("hidden");
             if (customToggle) {
-                customToggle.textContent = "Enter custom amount";
+                customToggle.textContent = "+ Custom amount";
+                customToggle.setAttribute("aria-expanded", "false");
             }
             amountInput.value = "";
             clearActiveButtons();
