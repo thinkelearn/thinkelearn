@@ -418,12 +418,13 @@ class EnrollmentRecord(models.Model):
                 "You already have an active or pending enrollment for this course."
             )
 
+        # Only count actual refunds (not pre-payment cancellations) toward limit
+        # CANCELLED enrollments are free (no Stripe fees), so unlimited changes allowed
         refund_count = existing.filter(
-            Q(status__in=[cls.Status.CANCELLED, cls.Status.REFUNDED])
-            | Q(has_refund=True)
+            Q(status=cls.Status.REFUNDED) | Q(has_refund=True)
         ).count()
         if refund_count > product.max_refunds_per_user:
-            raise ValidationError("Refund/cancellation limit reached for this course.")
+            raise ValidationError("Refund limit reached for this course.")
 
         # Validate user can enroll (prerequisites, limits, etc.)
         if not product.course.can_user_enroll(user):
@@ -868,7 +869,7 @@ class ExtendedCoursePage(CoursePage):
         - All prerequisite courses are completed
 
         Note: PENDING_PAYMENT enrollments are allowed to enable payment resume flow.
-        Cancelled/refunded enrollments are allowed up to the product's max_refunds_per_user limit.
+        Only actual refunds (not pre-payment cancellations) count toward max_refunds_per_user limit.
 
         Returns:
             bool: True if user can enroll, False otherwise
@@ -880,14 +881,10 @@ class ExtendedCoursePage(CoursePage):
             if enrollments.filter(status=EnrollmentRecord.Status.ACTIVE).exists():
                 return False
 
+            # Only count actual refunds (not pre-payment cancellations) toward limit
+            # CANCELLED enrollments are free (no Stripe fees), so unlimited changes allowed
             refund_count = enrollments.filter(
-                Q(
-                    status__in=[
-                        EnrollmentRecord.Status.CANCELLED,
-                        EnrollmentRecord.Status.REFUNDED,
-                    ]
-                )
-                | Q(has_refund=True)
+                Q(status=EnrollmentRecord.Status.REFUNDED) | Q(has_refund=True)
             ).count()
             if refund_count > product.max_refunds_per_user:
                 return False

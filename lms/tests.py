@@ -1276,11 +1276,11 @@ class EnrollmentRecordTest(TestCase):
             )
 
     def test_can_user_enroll_respects_refund_limit(self):
-        """Test can_user_enroll allows re-enrolls up to refund limit"""
+        """Test can_user_enroll only counts actual refunds, not cancellations"""
         self.product.max_refunds_per_user = 1
         self.product.save(update_fields=["max_refunds_per_user"])
 
-        # First refund/cancellation allowed
+        # First refund allowed
         EnrollmentRecord.objects.create(
             user=self.user,
             product=self.product,
@@ -1291,11 +1291,21 @@ class EnrollmentRecordTest(TestCase):
         can_enroll = self.course.can_user_enroll(self.user)
         self.assertTrue(can_enroll)
 
-        # Second refund/cancellation exceeds limit
+        # CANCELLED enrollments don't count toward limit (no Stripe fees)
         EnrollmentRecord.objects.create(
             user=self.user,
             product=self.product,
             status=EnrollmentRecord.Status.CANCELLED,
+        )
+        can_enroll = self.course.can_user_enroll(self.user)
+        self.assertTrue(can_enroll)  # Still allowed - CANCELLED doesn't count
+
+        # Second REFUND exceeds limit
+        EnrollmentRecord.objects.create(
+            user=self.user,
+            product=self.product,
+            status=EnrollmentRecord.Status.REFUNDED,
+            has_refund=True,
         )
         can_enroll = self.course.can_user_enroll(self.user)
         self.assertFalse(can_enroll)
