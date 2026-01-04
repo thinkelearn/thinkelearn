@@ -117,7 +117,6 @@ checkoutForms.forEach((form) => {
                 customInputContainer.classList.add("hidden");
                 customToggle.textContent = "Show custom amount";
                 customToggle.setAttribute("aria-expanded", "false");
-                amountInput.value = "";
             }
         });
     }
