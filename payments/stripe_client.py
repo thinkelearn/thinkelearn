@@ -75,7 +75,10 @@ class StripeClient:
                     url=session.url,
                     payment_intent=getattr(session, "payment_intent", None),
                 )
-            except stripe.error.InvalidRequestError as exc:
+            except (
+                stripe.error.InvalidRequestError,
+                stripe.error.IdempotencyError,
+            ) as exc:
                 self.logger.error(
                     "Stripe invalid request error",
                     extra={
