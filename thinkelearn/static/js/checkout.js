@@ -59,6 +59,80 @@ checkoutForms.forEach((form) => {
         });
     }
 
+    // Quick amount buttons
+    const quickAmountButtons = form.querySelectorAll("[data-quick-amount]");
+    const customToggle = form.querySelector("[data-custom-toggle]");
+    const customInputContainer = form.querySelector("[data-custom-input-container]");
+    const customCancel = form.querySelector("[data-custom-cancel]");
+
+    const setActiveButton = (activeButton) => {
+        quickAmountButtons.forEach((btn) => {
+            if (btn === activeButton) {
+                btn.classList.remove("border-neutral-200", "bg-white", "text-neutral-900");
+                btn.classList.add("border-cyan-500", "bg-cyan-50", "text-cyan-700");
+                btn.setAttribute("aria-pressed", "true");
+            } else {
+                btn.classList.remove("border-cyan-500", "bg-cyan-50", "text-cyan-700");
+                btn.classList.add("border-neutral-200", "bg-white", "text-neutral-900");
+                btn.setAttribute("aria-pressed", "false");
+            }
+        });
+    };
+
+    const clearActiveButtons = () => {
+        quickAmountButtons.forEach((btn) => {
+            btn.classList.remove("border-cyan-500", "bg-cyan-50", "text-cyan-700");
+            btn.classList.add("border-neutral-200", "bg-white", "text-neutral-900");
+            btn.setAttribute("aria-pressed", "false");
+        });
+    };
+
+    quickAmountButtons.forEach((btn) => {
+        btn.addEventListener("click", () => {
+            if (amountInput) {
+                amountInput.value = btn.dataset.quickAmount;
+            }
+            setActiveButton(btn);
+            // Hide custom input if showing
+            if (customInputContainer) {
+                customInputContainer.classList.add("hidden");
+            }
+            if (customToggle) {
+                customToggle.textContent = "Show custom amount";
+            }
+            clearError();
+        });
+    });
+
+    if (customToggle && customInputContainer && amountInput) {
+        customToggle.addEventListener("click", () => {
+            const isHidden = customInputContainer.classList.contains("hidden");
+            if (isHidden) {
+                customInputContainer.classList.remove("hidden");
+                customToggle.textContent = "Hide custom amount";
+                customToggle.setAttribute("aria-expanded", "true");
+                clearActiveButtons();
+                amountInput.focus();
+            } else {
+                customInputContainer.classList.add("hidden");
+                customToggle.textContent = "Show custom amount";
+                customToggle.setAttribute("aria-expanded", "false");
+            }
+        });
+    }
+
+    if (customCancel && customInputContainer && amountInput) {
+        customCancel.addEventListener("click", () => {
+            customInputContainer.classList.add("hidden");
+            if (customToggle) {
+                customToggle.textContent = "Show custom amount";
+                customToggle.setAttribute("aria-expanded", "false");
+            }
+            amountInput.value = "";
+            clearActiveButtons();
+        });
+    }
+
     if (!button) {
         return;
     }

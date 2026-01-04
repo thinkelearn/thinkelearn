@@ -1,5 +1,5 @@
 {% if product and product.is_active %}
-    <div class="bg-white border border-neutral-200 rounded-lg p-6 shadow-sm" data-checkout-form
+    <div class="bg-white border border-neutral-200 rounded-lg shadow-sm" data-checkout-form
          data-checkout-url="{% url 'payments:checkout_session' %}"
          data-product-id="{{ product.id }}"
          data-success-url="{{ checkout_success_url }}"
@@ -8,70 +8,114 @@
          data-pricing-type="{{ product.pricing_type }}"
          data-min-price="{{ product.min_price }}"
          data-max-price="{{ product.max_price }}">
-        <div class="flex flex-col gap-4">
-            <div class="flex items-center justify-between gap-4">
-                <div>
-                    <p class="text-sm uppercase tracking-wide text-neutral-500">Course Price</p>
-                    <p class="text-2xl font-semibold text-primary-900">{{ product.format_price }}</p>
-                    {% if product.pricing_type == "pwyc" %}
-                        <p class="text-sm text-neutral-600">
-                            Suggested: ${{ product.suggested_price|floatformat:2 }} {{ product.currency }}
-                        </p>
-                    {% endif %}
-                </div>
-                <div class="rounded-full bg-primary-50 px-3 py-1 text-xs font-semibold text-primary-700">
-                    Secure checkout
-                </div>
-            </div>
 
-            {% if product.pricing_type == "pwyc" %}
-                <label class="block">
-                    <span class="text-sm font-medium text-neutral-700">Choose your price</span>
-                    <div class="mt-2 flex flex-col sm:flex-row gap-3">
-                        <div class="relative flex-1">
-                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500">$</span>
-                            <input type="number"
-                                   min="{{ product.min_price }}"
-                                   max="{{ product.max_price }}"
-                                   step="0.01"
-                                   placeholder="{{ product.suggested_price|floatformat:2 }}"
-                                   data-checkout-amount
-                                   class="w-full rounded-md border border-neutral-300 pl-7 pr-3 py-2 text-neutral-900 focus:border-primary-500 focus:ring-primary-500">
+        {# Header #}
+        <div class="bg-gradient-to-r from-primary-800 to-primary-700 text-white px-4 py-3 rounded-t-lg">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-xs uppercase tracking-wide text-primary-200">Price</p>
+                    <p class="text-xl font-bold">{{ product.format_price }}</p>
+                </div>
+                <svg class="w-5 h-5 text-primary-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                </svg>
+            </div>
+        </div>
+
+        <div class="px-4 py-4 space-y-3">
+
+            {# Pending Payment Notice #}
+            {% if pending_enrollment %}
+                <div class="bg-yellow-50 border border-yellow-200 rounded-md p-3 mb-3">
+                    <div class="flex items-start">
+                        <svg class="w-5 h-5 text-yellow-600 mr-2 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <div class="flex-1">
+                            <p class="text-sm font-medium text-yellow-800">Payment Pending</p>
+                            <p class="text-xs text-yellow-700 mt-1">You started enrollment but didn't complete payment. Click below to resume.</p>
                         </div>
-                        <button type="button"
-                                class="inline-flex items-center justify-center rounded-md border border-neutral-300 bg-neutral-50 px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-100"
-                                data-checkout-suggested
-                                data-suggested-amount="{{ product.suggested_price }}">
-                            Use suggested
-                        </button>
                     </div>
-                    <p class="mt-2 text-xs text-neutral-500">
-                        Minimum ${{ product.min_price|floatformat:2 }} / Maximum ${{ product.max_price|floatformat:2 }}
-                    </p>
-                </label>
+                </div>
             {% endif %}
 
-            <div class="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
-                <button type="button"
-                        data-checkout-submit
-                        class="inline-flex items-center justify-center px-6 py-3 rounded-md text-white bg-cyan-600 hover:bg-cyan-700 font-medium shadow-sm transition-colors duration-200">
-                    <span data-checkout-button-text>
-                        {% if product.pricing_type == "free" %}
-                            Enroll for Free
-                        {% elif product.pricing_type == "fixed" %}
-                            Enroll Now
-                        {% else %}
-                            Continue to Payment
-                        {% endif %}
-                    </span>
-                </button>
-                <p class="text-xs text-neutral-500">
-                    By enrolling, you agree to our
-                    <a href="{% url 'terms_and_conditions' %}" class="text-cyan-700 hover:text-cyan-800">terms</a>.
-                </p>
-            </div>
+            {% if product.pricing_type == "pwyc" %}
+                <div>
+                    <label class="text-xs font-medium text-neutral-500 uppercase tracking-wide">Select Amount</label>
 
-            <div class="hidden rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700" data-checkout-error>
+                    {# Quick amount buttons #}
+                    <div class="mt-2 grid grid-cols-2 gap-2" data-quick-amounts>
+                        {% for amount in product.get_quick_amounts %}
+                            <button type="button"
+                                    data-quick-amount="{{ amount }}"
+                                    class="px-3 py-2 rounded-md border-2 border-neutral-200 bg-white text-neutral-900 font-bold text-sm hover:border-cyan-500 hover:bg-cyan-50 transition-colors duration-150 focus:outline-none focus:ring-1 focus:ring-cyan-500"
+                                    aria-pressed="false"
+                                    {% if amount == product.suggested_price|floatformat:0 %}data-suggested="true"{% endif %}>
+                                ${{ amount }}
+                            </button>
+                        {% endfor %}
+                    </div>
+
+                    {# Custom amount toggle and input #}
+                    <div class="mt-2">
+                        <button type="button"
+                                data-custom-toggle
+                                class="text-xs text-cyan-600 hover:text-cyan-700 font-medium"
+                                aria-expanded="false"
+                                aria-controls="custom-amount-container">
+                            Show custom amount
+                        </button>
+
+                        <div id="custom-amount-container" class="hidden mt-2" data-custom-input-container>
+                            <div class="flex shadow-sm rounded-md">
+                                <span class="inline-flex items-center px-3 text-sm text-neutral-600 bg-neutral-100 border border-neutral-300 border-r-0 rounded-l-md">
+                                    {{ product.currency }}
+                                </span>
+                                <input type="number"
+                                       min="{{ product.min_price }}"
+                                       max="{{ product.max_price }}"
+                                       step="1"
+                                       placeholder="{{ product.suggested_price|floatformat:0 }}"
+                                       data-checkout-amount
+                                       class="block w-full px-3 py-1.5 text-sm text-neutral-900 bg-white border border-neutral-300 rounded-r-md focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500">
+                            </div>
+                            <button type="button"
+                                    data-custom-cancel
+                                    class="mt-1 text-xs text-neutral-500 hover:text-neutral-700"
+                                    aria-label="Cancel custom amount">
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+
+                    <p class="mt-1.5 text-xs text-neutral-500">
+                        ${{ product.min_price|floatformat:0 }}–${{ product.max_price|floatformat:0 }} • Suggested: ${{ product.suggested_price|floatformat:0 }}
+                    </p>
+                </div>
+            {% endif %}
+
+            <button type="button"
+                    data-checkout-submit
+                    class="w-full inline-flex items-center justify-center px-4 py-2.5 rounded-md text-white bg-cyan-600 hover:bg-cyan-700 font-semibold text-sm shadow-sm transition-colors duration-200">
+                <span data-checkout-button-text>
+                    {% if pending_enrollment %}
+                        Complete Payment
+                    {% elif product.pricing_type == "free" %}
+                        Enroll for Free
+                    {% elif product.pricing_type == "fixed" %}
+                        Enroll Now
+                    {% else %}
+                        Continue to Payment
+                    {% endif %}
+                </span>
+            </button>
+
+            <p class="text-xs text-center text-neutral-500">
+                By enrolling, you agree to our
+                <a href="{% url 'terms_and_conditions' %}" class="text-cyan-600 hover:text-cyan-700 underline">terms</a>
+            </p>
+
+            <div class="hidden rounded-md border border-red-200 bg-red-50 p-2.5 text-xs text-red-700" data-checkout-error>
                 Something went wrong. Please try again.
             </div>
         </div>

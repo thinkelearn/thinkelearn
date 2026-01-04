@@ -220,6 +220,50 @@ class CourseProduct(models.Model):
 
         return "Price unavailable"
 
+    def get_quick_amounts(self) -> list[int]:
+        """
+        Generate preset amount buttons for PWYC pricing.
+
+        Returns list of 4 integer dollar amounts based on suggested price:
+        - Half of suggested (rounded to $5)
+        - Suggested amount
+        - Double suggested (rounded to $5)
+        - Maximum price
+
+        All amounts are clamped to min/max range and deduplicated.
+        Returns empty list for non-PWYC pricing types.
+        """
+        if self.pricing_type != self.PricingType.PWYC:
+            return []
+
+        suggested = float(self.suggested_price)
+        amounts = [
+            suggested * 0.5,
+            suggested,
+            suggested * 2,
+            float(self.max_price),
+        ]
+
+        # Round to nearest $5, clamp to range, convert to int
+        quick_amounts = []
+        for amt in amounts:
+            # First, round to the nearest $5 increment. For very small amounts (< $2.50),
+            # this can yield 0, but the next line always clamps the value into the
+            # [min_price, max_price] range so no button below min_price is created.
+            rounded = round(amt / 5) * 5
+            clamped = max(float(self.min_price), min(float(self.max_price), rounded))
+            quick_amounts.append(int(clamped))
+
+        # Deduplicate while preserving order
+        seen = set()
+        result = []
+        for amt in quick_amounts:
+            if amt not in seen:
+                seen.add(amt)
+                result.append(amt)
+
+        return result[:4]  # Return max 4 buttons
+
 
 class EnrollmentRecord(models.Model):
     """Tracks enrollment attempts with payment status."""
@@ -374,12 +418,13 @@ class EnrollmentRecord(models.Model):
                 "You already have an active or pending enrollment for this course."
             )
 
+        # Only count actual refunds (not pre-payment cancellations) toward limit
+        # CANCELLED enrollments are free (no Stripe fees), so unlimited changes allowed
         refund_count = existing.filter(
-            Q(status__in=[cls.Status.CANCELLED, cls.Status.REFUNDED])
-            | Q(has_refund=True)
+            Q(status=cls.Status.REFUNDED) | Q(has_refund=True)
         ).count()
         if refund_count > product.max_refunds_per_user:
-            raise ValidationError("Refund/cancellation limit reached for this course.")
+            raise ValidationError("Refund limit reached for this course.")
 
         # Validate user can enroll (prerequisites, limits, etc.)
         if not product.course.can_user_enroll(user):
@@ -753,9 +798,8 @@ class ExtendedCoursePage(CoursePage):
         context["checkout_success_url"] = request.build_absolute_uri(
             reverse("payments:checkout_success")
         )
-        context["checkout_cancel_url"] = request.build_absolute_uri(
-            reverse("payments:checkout_cancel")
-        )
+        # Cancel returns to course page (not home) for better UX
+        context["checkout_cancel_url"] = request.build_absolute_uri(self.url)
         context["checkout_failure_url"] = request.build_absolute_uri(
             reverse("payments:checkout_failure")
         )
@@ -772,13 +816,28 @@ class ExtendedCoursePage(CoursePage):
             .order_by("-created_at")[:5]
         )
 
-        # Check if user can enroll
+        # Check if user can enroll and get pending enrollment
         if request.user.is_authenticated:
             context["can_enroll"] = self.can_user_enroll(request.user)
             context["user_review"] = self.reviews.filter(user=request.user).first()
+
+            # Check for pending enrollment to enable payment resume
+            if product:
+                context["pending_enrollment"] = (
+                    EnrollmentRecord.objects.filter(
+                        user=request.user,
+                        product=product,
+                        status=EnrollmentRecord.Status.PENDING_PAYMENT,
+                    )
+                    .order_by("-created_at")
+                    .first()
+                )
+            else:
+                context["pending_enrollment"] = None
         else:
             context["can_enroll"] = False
             context["user_review"] = None
+            context["pending_enrollment"] = None
 
         # Add related courses - filter for live and public with prefetch
         related_course_ids = self.related_courses.values_list("id", flat=True)
@@ -804,37 +863,28 @@ class ExtendedCoursePage(CoursePage):
         Check if user can enroll in this course.
 
         This checks:
-        - User doesn't have any active or pending enrollment record
+        - User doesn't have an active enrollment record (PENDING_PAYMENT allowed for resume)
         - User is not already enrolled via CourseEnrollment
         - Enrollment limit hasn't been reached
         - All prerequisite courses are completed
 
-        Note: Cancelled/refunded enrollments are allowed up to the product's
-        max_refunds_per_user limit.
+        Note: PENDING_PAYMENT enrollments are allowed to enable payment resume flow.
+        Only actual refunds (not pre-payment cancellations) count toward max_refunds_per_user limit.
 
         Returns:
             bool: True if user can enroll, False otherwise
         """
-        # Check for active or pending enrollment record
+        # Check for active enrollment record (exclude PENDING_PAYMENT to allow resume)
         product = getattr(self, "product", None)
         if product:
             enrollments = EnrollmentRecord.objects.filter(user=user, product=product)
-            if enrollments.filter(
-                status__in=[
-                    EnrollmentRecord.Status.PENDING_PAYMENT,
-                    EnrollmentRecord.Status.ACTIVE,
-                ]
-            ).exists():
+            if enrollments.filter(status=EnrollmentRecord.Status.ACTIVE).exists():
                 return False
 
+            # Only count actual refunds (not pre-payment cancellations) toward limit
+            # CANCELLED enrollments are free (no Stripe fees), so unlimited changes allowed
             refund_count = enrollments.filter(
-                Q(
-                    status__in=[
-                        EnrollmentRecord.Status.CANCELLED,
-                        EnrollmentRecord.Status.REFUNDED,
-                    ]
-                )
-                | Q(has_refund=True)
+                Q(status=EnrollmentRecord.Status.REFUNDED) | Q(has_refund=True)
             ).count()
             if refund_count > product.max_refunds_per_user:
                 return False

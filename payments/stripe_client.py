@@ -75,10 +75,21 @@ class StripeClient:
                     url=session.url,
                     payment_intent=getattr(session, "payment_intent", None),
                 )
-            except stripe.error.InvalidRequestError as exc:
+            except (
+                stripe.error.InvalidRequestError,
+                stripe.error.IdempotencyError,
+            ) as exc:
                 self.logger.error(
                     "Stripe invalid request error",
-                    extra={"error": str(exc), "attempt": attempt + 1},
+                    extra={
+                        "error": str(exc),
+                        "error_type": type(exc).__name__,
+                        "error_code": getattr(exc, "code", None),
+                        "error_param": getattr(exc, "param", None),
+                        "attempt": attempt + 1,
+                        "idempotency_key": idempotency_key,
+                    },
+                    exc_info=True,
                 )
                 raise StripeClientError(
                     "Payment request was invalid. Please contact support."
@@ -87,7 +98,6 @@ class StripeClient:
                 stripe.error.APIConnectionError,
                 stripe.error.RateLimitError,
                 stripe.error.APIError,
-                stripe.error.TimeoutError,
             ) as exc:
                 self.logger.warning(
                     "Stripe transient error",
@@ -102,7 +112,15 @@ class StripeClient:
             except stripe.error.StripeError as exc:
                 self.logger.error(
                     "Stripe error",
-                    extra={"error": str(exc), "attempt": attempt + 1},
+                    extra={
+                        "error": str(exc),
+                        "error_type": type(exc).__name__,
+                        "error_code": getattr(exc, "code", None),
+                        "error_param": getattr(exc, "param", None),
+                        "attempt": attempt + 1,
+                        "idempotency_key": idempotency_key,
+                    },
+                    exc_info=True,
                 )
                 raise StripeClientError(
                     "Payment processing failed. Please try again."

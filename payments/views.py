@@ -1,6 +1,7 @@
 import hashlib
 import json
 import logging
+import uuid
 from decimal import Decimal, InvalidOperation
 
 import stripe
@@ -286,14 +287,54 @@ def create_checkout_session(request):
         request.user.id, product.id, actual_amount
     )
 
+    # Check for existing pending enrollment before creating new one
+    existing_pending = EnrollmentRecord.objects.filter(
+        user=request.user,
+        product=product,
+        status=EnrollmentRecord.Status.PENDING_PAYMENT,
+    ).first()
+
+    # If user has pending enrollment but changed the amount, cancel the old one
+    # and create a new enrollment with the new amount
+    if existing_pending and existing_pending.amount_paid != actual_amount:
+        logger.info(
+            "Amount changed for pending enrollment - cancelling old and creating new",
+            extra={
+                "user_id": request.user.id,
+                "product_id": product.id,
+                "old_enrollment_id": existing_pending.id,
+                "old_amount": str(existing_pending.amount_paid),
+                "new_amount": str(actual_amount),
+            },
+        )
+        existing_pending.status = EnrollmentRecord.Status.CANCELLED
+        # Give cancelled enrollments a short unique key so the original can be reused.
+        existing_pending.idempotency_key = f"cancelled_{uuid.uuid4().hex}"
+        existing_pending.save(update_fields=["status", "idempotency_key"])
+        existing_pending = None  # Will create new enrollment below
+
     try:
         with transaction.atomic():
-            enrollment = EnrollmentRecord.create_for_user(
-                request.user,
-                product,
-                amount=amount,
-                idempotency_key=idempotency_key,
-            )
+            # If user has existing pending enrollment with same amount, reuse it
+            # instead of creating duplicate enrollment
+            if existing_pending:
+                enrollment = existing_pending
+                logger.info(
+                    "Resuming pending enrollment with new checkout session",
+                    extra={
+                        "user_id": request.user.id,
+                        "product_id": product.id,
+                        "enrollment_id": enrollment.id,
+                        "old_session_id": enrollment.stripe_checkout_session_id,
+                    },
+                )
+            else:
+                enrollment = EnrollmentRecord.create_for_user(
+                    request.user,
+                    product,
+                    amount=amount,
+                    idempotency_key=idempotency_key,
+                )
 
             if enrollment.status == EnrollmentRecord.Status.ACTIVE:
                 logger.info(
@@ -313,12 +354,19 @@ def create_checkout_session(request):
                     status=201,
                 )
 
+            # For resumed enrollments, create new Payment record
+            # For new enrollments, create new Payment record
             payment = Payment.objects.create(
                 enrollment_record=enrollment,
                 amount=enrollment.amount_paid,
                 currency=product.currency,
                 status=Payment.Status.INITIATED,
             )
+
+            # Use a per-payment idempotency key so Stripe never reuses a key
+            # with different parameters (enrollment_id, URLs, etc.).
+            stripe_idempotency_key = f"payment:{payment.id}"
+
             stripe_client = get_stripe_client()
             session = stripe_client.create_checkout_session(
                 amount=enrollment.amount_paid,
@@ -332,7 +380,7 @@ def create_checkout_session(request):
                 },
                 product_name=product.course.title,
                 customer_email=request.user.email or None,
-                idempotency_key=enrollment.idempotency_key,
+                idempotency_key=stripe_idempotency_key,
             )
 
             enrollment.stripe_checkout_session_id = session.id
@@ -361,6 +409,12 @@ def create_checkout_session(request):
                 extra={
                     "user_id": request.user.id,
                     "product_id": product_id,
+                    "error_message": error_message,
+                    "error_type": type(exc).__name__,
+                    "existing_pending_found": existing_pending is not None,
+                    "existing_pending_amount": str(existing_pending.amount_paid)
+                    if existing_pending
+                    else None,
                 },
             )
             return JsonResponse({"error": "Enrollment already exists."}, status=409)
