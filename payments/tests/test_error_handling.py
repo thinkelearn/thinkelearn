@@ -113,6 +113,28 @@ class StripeClientErrorHandlingTests(SimpleTestCase):
 
         self.assertIn("unavailable", str(ctx.exception).lower())
 
+    def test_api_error_exhausted_raises_unavailable(self):
+        dummy_stripe = DummyStripe()
+
+        def create(**_kwargs):
+            raise DummyStripe.error.APIError("Stripe API down")
+
+        DummyStripe.checkout.Session.create = staticmethod(create)
+
+        client = StripeClient(api_key="sk_test", max_retries=0)
+        with patch.object(client, "_import_stripe", return_value=dummy_stripe):
+            with self.assertRaises(StripeClientError) as ctx:
+                client.create_checkout_session(
+                    amount=Decimal("10.00"),
+                    currency="CAD",
+                    success_url="https://example.com/success",
+                    cancel_url="https://example.com/cancel",
+                    metadata={},
+                    product_name="Test",
+                )
+
+        self.assertIn("unavailable", str(ctx.exception).lower())
+
     def test_idempotency_error_raises_user_error(self):
         dummy_stripe = DummyStripe()
 
