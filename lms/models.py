@@ -220,6 +220,47 @@ class CourseProduct(models.Model):
 
         return "Price unavailable"
 
+    def get_quick_amounts(self) -> list[int]:
+        """
+        Generate preset amount buttons for PWYC pricing.
+
+        Returns list of 4 integer dollar amounts based on suggested price:
+        - Half of suggested (rounded to $5)
+        - Suggested amount
+        - Double suggested (rounded to $5)
+        - Maximum price
+
+        All amounts are clamped to min/max range and deduplicated.
+        Returns empty list for non-PWYC pricing types.
+        """
+        if self.pricing_type != self.PricingType.PWYC:
+            return []
+
+        suggested = float(self.suggested_price)
+        amounts = [
+            suggested * 0.5,
+            suggested,
+            suggested * 2,
+            float(self.max_price),
+        ]
+
+        # Round to nearest $5, clamp to range, convert to int
+        quick_amounts = []
+        for amt in amounts:
+            rounded = round(amt / 5) * 5
+            clamped = max(float(self.min_price), min(float(self.max_price), rounded))
+            quick_amounts.append(int(clamped))
+
+        # Deduplicate while preserving order
+        seen = set()
+        result = []
+        for amt in quick_amounts:
+            if amt not in seen:
+                seen.add(amt)
+                result.append(amt)
+
+        return result[:4]  # Return max 4 buttons
+
 
 class EnrollmentRecord(models.Model):
     """Tracks enrollment attempts with payment status."""

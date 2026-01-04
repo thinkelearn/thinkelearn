@@ -100,109 +100,56 @@
                     </div>
                 {% endif %}
 
-                {# Course Content - From parent template #}
-                {% if page.scorm_package %}
+                {# Course Progress - Only show for enrolled users #}
+                {% if user.is_authenticated and enrollment %}
                     <div class="bg-white rounded-lg shadow-md p-8">
-                        <h2 class="text-2xl font-bold text-primary-800 mb-4">Course Content</h2>
-                        <div class="mb-6">
-                            <h3 class="text-xl font-semibold text-neutral-800 mb-2">{{ page.scorm_package.title }}</h3>
-                            {% if page.scorm_package.description %}
-                                <p class="text-neutral-700">{{ page.scorm_package.description }}</p>
-                            {% endif %}
-                        </div>
+                        <h2 class="text-2xl font-bold text-primary-800 mb-4">Course Progress</h2>
 
-                        {% if user.is_authenticated %}
-                            {% if enrollment %}
-                                {# Enrollment Status - enhanced version #}
-                                <div class="bg-cyan-50 border border-cyan-200 rounded-lg p-6 mb-6">
-                                    <div class="flex items-start">
-                                        <div class="flex-shrink-0">
-                                            <svg class="h-6 w-6 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                            </svg>
-                                        </div>
-                                        <div class="ml-3 flex-1">
-                                            <h4 class="text-sm font-medium text-cyan-800 mb-2">Enrolled</h4>
-                                            <div class="text-sm text-cyan-700 space-y-1">
-                                                <p><strong>Enrolled on:</strong> {{ enrollment.enrolled_at|date:"F d, Y" }}</p>
-                                                {% if progress %}
-                                                    <p><strong>Progress:</strong>
-                                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
-                                                            {% if progress.completion_status == 'completed' %}bg-green-100 text-green-800
-                                                            {% elif progress.completion_status == 'incomplete' %}bg-yellow-100 text-yellow-800
-                                                            {% else %}bg-blue-100 text-blue-800{% endif %}">
-                                                            {{ progress.completion_status|title }}
-                                                        </span>
-                                                    </p>
-                                                    {% if progress.score_raw %}
-                                                        <p><strong>Score:</strong> {{ progress.score_raw }}{% if progress.score_max %} / {{ progress.score_max }}{% endif %}</p>
-                                                    {% endif %}
-                                                {% endif %}
-                                            </div>
-                                        </div>
-                                    </div>
+                        {# Enrollment Status #}
+                        <div class="bg-cyan-50 border border-cyan-200 rounded-lg p-6 mb-6">
+                            <div class="flex items-start">
+                                <div class="flex-shrink-0">
+                                    <svg class="h-6 w-6 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
                                 </div>
-
-                                <a href="{% url 'wagtail_lms:scorm_player' page.id %}"
-                                   class="inline-flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-white bg-secondary-500 hover:bg-secondary-600 transition-colors duration-200 shadow-sm">
-                                    {% if progress.completion_status == 'completed' %}
-                                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-                                        </svg>
-                                        Review Course
-                                    {% else %}
-                                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                        </svg>
-                                        {% if progress %}Continue Course{% else %}Start Course{% endif %}
-                                    {% endif %}
-                                </a>
-                            {% else %}
-                                <div class="text-center py-8">
-                                    {% if can_enroll %}
-                                        <p class="text-neutral-600 mb-6">
-                                            Ready to start learning? Complete your enrollment to access the course content.
-                                        </p>
-                                        {% include "lms/includes/checkout_enroll.html" %}
-                                    {% else %}
-                                        <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
-                                            <p class="text-yellow-800">You cannot enroll in this course yet. Please complete the prerequisites first.</p>
-                                        </div>
-                                    {% endif %}
-                                </div>
-                            {% endif %}
-                        {% else %}
-                            {% with page.url as next_url %}
-                            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
-                                <div class="flex">
-                                    <div class="flex-shrink-0">
-                                        <svg class="h-6 w-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
-                                        </svg>
-                                    </div>
-                                    <div class="ml-3">
-                                        <h3 class="text-sm font-medium text-yellow-800">Authentication Required</h3>
-                                        <div class="mt-2 text-sm text-yellow-700">
-                                            <p>Please sign in to your account to enroll in this course and track your progress.</p>
-                                        </div>
-                                        <div class="mt-4">
-                                            <div class="flex flex-wrap gap-3">
-                                                <a href="{% url 'account_login' %}?next={{ next_url|urlencode }}"
-                                                   class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-yellow-700 bg-yellow-100 hover:bg-yellow-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500">
-                                                    Sign In
-                                                </a>
-                                                <a href="{% url 'account_signup' %}?next={{ next_url|urlencode }}"
-                                                   class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-yellow-700 bg-white hover:bg-yellow-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500">
-                                                    Sign Up
-                                                </a>
-                                            </div>
-                                        </div>
+                                <div class="ml-3 flex-1">
+                                    <h4 class="text-sm font-medium text-cyan-800 mb-2">Enrolled</h4>
+                                    <div class="text-sm text-cyan-700 space-y-1">
+                                        <p><strong>Enrolled on:</strong> {{ enrollment.enrolled_at|date:"F d, Y" }}</p>
+                                        {% if progress %}
+                                            <p><strong>Progress:</strong>
+                                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                                                    {% if progress.completion_status == 'completed' %}bg-green-100 text-green-800
+                                                    {% elif progress.completion_status == 'incomplete' %}bg-yellow-100 text-yellow-800
+                                                    {% else %}bg-blue-100 text-blue-800{% endif %}">
+                                                    {{ progress.completion_status|title }}
+                                                </span>
+                                            </p>
+                                            {% if progress.score_raw %}
+                                                <p><strong>Score:</strong> {{ progress.score_raw }}{% if progress.score_max %} / {{ progress.score_max }}{% endif %}</p>
+                                            {% endif %}
+                                        {% endif %}
                                     </div>
                                 </div>
                             </div>
-                            {% endwith %}
-                        {% endif %}
+                        </div>
+
+                        <a href="{% url 'wagtail_lms:scorm_player' page.id %}"
+                           class="inline-flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-white bg-secondary-500 hover:bg-secondary-600 transition-colors duration-200 shadow-sm">
+                            {% if progress.completion_status == 'completed' %}
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                                </svg>
+                                Review Course
+                            {% else %}
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                {% if progress %}Continue Course{% else %}Start Course{% endif %}
+                            {% endif %}
+                        </a>
                     </div>
                 {% endif %}
 
@@ -268,47 +215,98 @@
 
             {# Sidebar #}
             <div class="lg:col-span-1">
-                <div class="bg-white rounded-lg shadow-md p-6 sticky top-6 space-y-6">
-                    <h3 class="text-xl font-bold text-primary-800">Course Details</h3>
-
-                    {% if page.scorm_package %}
-                        <div>
-                            <dt class="text-sm font-medium text-neutral-500 mb-1">Course Type</dt>
-                            <dd class="text-base text-neutral-900">
-                                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-primary-100 text-primary-800">
-                                    SCORM {{ page.scorm_package.version }}
-                                </span>
-                            </dd>
-                        </div>
-                    {% endif %}
-
-                    {% if page.tags.all %}
-                        <div>
-                            <dt class="text-sm font-medium text-neutral-500 mb-2">Tags</dt>
-                            <dd class="flex flex-wrap gap-2">
-                                {% for tag in page.tags.all %}
-                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-neutral-100 text-neutral-700">
-                                        {{ tag.name }}
-                                    </span>
-                                {% endfor %}
-                            </dd>
-                        </div>
-                    {% endif %}
-
-                    {# Related Courses #}
-                    {% if related_courses %}
-                        <div class="pt-6 border-t border-neutral-200">
-                            <h4 class="font-semibold text-neutral-800 mb-3">Related Courses</h4>
-                            <div class="space-y-3">
-                                {% for related in related_courses %}
-                                    <a href="{% pageurl related %}" class="block group">
-                                        <h5 class="text-sm font-medium text-secondary-600 group-hover:text-secondary-700">{{ related.title }}</h5>
-                                        <p class="text-xs text-neutral-600 mt-1">{{ related.difficulty|title }}</p>
+                <div class="space-y-6 sticky top-28">
+                    {# Checkout Component #}
+                    {% if user.is_authenticated and not enrollment and can_enroll %}
+                        {% include "lms/includes/checkout_enroll.html" %}
+                    {% elif not user.is_authenticated %}
+                        {# Sign in prompt for unauthenticated users #}
+                        <div class="bg-white border border-neutral-200 rounded-lg shadow-sm">
+                            <div class="bg-gradient-to-r from-primary-800 to-primary-700 text-white px-4 py-3 rounded-t-lg">
+                                <p class="text-xs uppercase tracking-wide text-primary-200">Enrollment</p>
+                                <p class="text-xl font-bold">Sign In Required</p>
+                            </div>
+                            <div class="px-4 py-4">
+                                <p class="text-sm text-neutral-600 mb-4">Please sign in to enroll in this course and track your progress.</p>
+                                {% with page.url as next_url %}
+                                <div class="space-y-2">
+                                    <a href="{% url 'account_login' %}?next={{ next_url|urlencode }}"
+                                       class="w-full inline-flex items-center justify-center px-4 py-2.5 rounded-md text-white bg-cyan-600 hover:bg-cyan-700 font-semibold text-sm shadow-sm transition-colors">
+                                        Sign In
                                     </a>
-                                {% endfor %}
+                                    <a href="{% url 'account_signup' %}?next={{ next_url|urlencode }}"
+                                       class="w-full inline-flex items-center justify-center px-4 py-2.5 rounded-md text-cyan-600 bg-white border-2 border-cyan-600 hover:bg-cyan-50 font-semibold text-sm transition-colors">
+                                        Sign Up
+                                    </a>
+                                </div>
+                                {% endwith %}
+                            </div>
+                        </div>
+                    {% elif enrollment %}
+                        {# Already enrolled #}
+                        <div class="bg-white border border-neutral-200 rounded-lg shadow-sm">
+                            <div class="bg-gradient-to-r from-green-600 to-green-500 text-white px-4 py-3 rounded-t-lg">
+                                <p class="text-xs uppercase tracking-wide text-green-100">Status</p>
+                                <p class="text-xl font-bold">Enrolled</p>
+                            </div>
+                            <div class="px-4 py-4 space-y-2">
+                                <p class="text-xs text-neutral-500">Enrolled: {{ enrollment.enrolled_at|date:"M d, Y" }}</p>
+                                {% if progress %}
+                                    <p class="text-xs text-neutral-500">
+                                        Progress: <span class="font-semibold text-neutral-700">{{ progress.completion_status|title }}</span>
+                                    </p>
+                                {% endif %}
+                                <a href="{% url 'wagtail_lms:scorm_player' page.id %}"
+                                   class="w-full inline-flex items-center justify-center px-4 py-2.5 rounded-md text-white bg-secondary-500 hover:bg-secondary-600 font-semibold text-sm shadow-sm transition-colors">
+                                    {% if progress.completion_status == 'completed' %}Review Course{% else %}Continue Course{% endif %}
+                                </a>
                             </div>
                         </div>
                     {% endif %}
+
+                    {# Course Details (Metadata) #}
+                    <div class="bg-white rounded-lg shadow-sm border border-neutral-200 p-4 space-y-4">
+                        <h3 class="text-sm font-bold text-primary-800 uppercase tracking-wide">Course Details</h3>
+
+                        {% if page.scorm_package %}
+                            <div>
+                                <dt class="text-xs font-medium text-neutral-500 mb-1">Course Type</dt>
+                                <dd class="text-sm text-neutral-900">
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-100 text-primary-800">
+                                        SCORM {{ page.scorm_package.version }}
+                                    </span>
+                                </dd>
+                            </div>
+                        {% endif %}
+
+                        {% if page.tags.all %}
+                            <div>
+                                <dt class="text-xs font-medium text-neutral-500 mb-1.5">Tags</dt>
+                                <dd class="flex flex-wrap gap-1.5">
+                                    {% for tag in page.tags.all %}
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-neutral-100 text-neutral-700">
+                                            {{ tag.name }}
+                                        </span>
+                                    {% endfor %}
+                                </dd>
+                            </div>
+                        {% endif %}
+
+                        {# Related Courses #}
+                        {% if related_courses %}
+                            <div class="pt-4 border-t border-neutral-200">
+                                <h4 class="text-xs font-semibold text-neutral-800 mb-2 uppercase tracking-wide">Related Courses</h4>
+                                <div class="space-y-2">
+                                    {% for related in related_courses %}
+                                        <a href="{% pageurl related %}" class="block group">
+                                            <h5 class="text-sm font-medium text-secondary-600 group-hover:text-secondary-700">{{ related.title }}</h5>
+                                            <p class="text-xs text-neutral-500 mt-0.5">{{ related.difficulty|title }}</p>
+                                        </a>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        {% endif %}
+                    </div>
                 </div>
             </div>
         </div>
