@@ -308,10 +308,8 @@ def create_checkout_session(request):
             },
         )
         existing_pending.status = EnrollmentRecord.Status.CANCELLED
-        # Give cancelled enrollments a unique key so the original can be reused.
-        existing_pending.idempotency_key = (
-            f"cancelled_{existing_pending.idempotency_key}_{uuid.uuid4().hex}"
-        )
+        # Give cancelled enrollments a short unique key so the original can be reused.
+        existing_pending.idempotency_key = f"cancelled_{uuid.uuid4().hex}"
         existing_pending.save(update_fields=["status", "idempotency_key"])
         existing_pending = None  # Will create new enrollment below
 

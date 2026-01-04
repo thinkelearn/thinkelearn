@@ -293,6 +293,8 @@ class CheckoutSessionFlowTests(TestCase):
         first_enrollment.refresh_from_db()
         self.assertEqual(first_enrollment.status, EnrollmentRecord.Status.CANCELLED)
         self.assertEqual(first_enrollment.amount_paid, Decimal("20.00"))
+        self.assertTrue(first_enrollment.idempotency_key.startswith("cancelled_"))
+        self.assertLessEqual(len(first_enrollment.idempotency_key), 255)
 
         # New enrollment should be pending with new amount
         new_enrollment = EnrollmentRecord.objects.filter(
