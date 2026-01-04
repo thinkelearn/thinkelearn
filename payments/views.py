@@ -294,9 +294,26 @@ def create_checkout_session(request):
         status=EnrollmentRecord.Status.PENDING_PAYMENT,
     ).first()
 
+    # If user has pending enrollment but changed the amount, cancel the old one
+    # and create a new enrollment with the new amount
+    if existing_pending and existing_pending.amount_paid != actual_amount:
+        logger.info(
+            "Amount changed for pending enrollment - cancelling old and creating new",
+            extra={
+                "user_id": request.user.id,
+                "product_id": product.id,
+                "old_enrollment_id": existing_pending.id,
+                "old_amount": str(existing_pending.amount_paid),
+                "new_amount": str(actual_amount),
+            },
+        )
+        existing_pending.status = EnrollmentRecord.Status.CANCELLED
+        existing_pending.save(update_fields=["status"])
+        existing_pending = None  # Will create new enrollment below
+
     try:
         with transaction.atomic():
-            # If user has existing pending enrollment, create new checkout session for it
+            # If user has existing pending enrollment with same amount, reuse it
             # instead of creating duplicate enrollment
             if existing_pending:
                 enrollment = existing_pending

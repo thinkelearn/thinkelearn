@@ -228,3 +228,82 @@ class CheckoutSessionFlowTests(TestCase):
         self.assertEqual(
             response_data["session_url"], "https://stripe.test/session/second"
         )
+
+    def test_checkout_session_change_amount_cancels_old_enrollment(self):
+        """Test that changing the amount cancels old enrollment and creates new one"""
+        self.client.force_login(self.user)
+        # Use PWYC pricing to allow amount changes
+        self.product.pricing_type = CourseProduct.PricingType.PWYC
+        self.product.min_price = Decimal("10.00")
+        self.product.max_price = Decimal("100.00")
+        self.product.suggested_price = Decimal("25.00")
+        self.product.save()
+
+        # First request with $20
+        mock_client1 = MockStripeClient(
+            session_id="cs_test_20",
+            session_url="https://stripe.test/session/20",
+        )
+
+        payload_20 = {
+            **self.payload,
+            "amount": "20.00",
+        }
+
+        with patch("payments.views.get_stripe_client", return_value=mock_client1):
+            response1 = self.client.post(
+                self.url,
+                data=json.dumps(payload_20),
+                content_type="application/json",
+            )
+
+        self.assertEqual(response1.status_code, 201)
+        self.assertEqual(EnrollmentRecord.objects.count(), 1)
+
+        first_enrollment = EnrollmentRecord.objects.first()
+        self.assertEqual(first_enrollment.amount_paid, Decimal("20.00"))
+        self.assertEqual(
+            first_enrollment.status, EnrollmentRecord.Status.PENDING_PAYMENT
+        )
+
+        # User changes mind and wants to pay $30 instead
+        mock_client2 = MockStripeClient(
+            session_id="cs_test_30",
+            session_url="https://stripe.test/session/30",
+        )
+
+        payload_30 = {
+            **self.payload,
+            "amount": "30.00",
+        }
+
+        with patch("payments.views.get_stripe_client", return_value=mock_client2):
+            response2 = self.client.post(
+                self.url,
+                data=json.dumps(payload_30),
+                content_type="application/json",
+            )
+
+        # Should succeed with 201
+        self.assertEqual(response2.status_code, 201)
+        # Now should have 2 enrollment records (old cancelled, new pending)
+        self.assertEqual(EnrollmentRecord.objects.count(), 2)
+
+        # Old enrollment should be cancelled
+        first_enrollment.refresh_from_db()
+        self.assertEqual(first_enrollment.status, EnrollmentRecord.Status.CANCELLED)
+        self.assertEqual(first_enrollment.amount_paid, Decimal("20.00"))
+
+        # New enrollment should be pending with new amount
+        new_enrollment = EnrollmentRecord.objects.filter(
+            status=EnrollmentRecord.Status.PENDING_PAYMENT
+        ).first()
+        self.assertIsNotNone(new_enrollment)
+        self.assertNotEqual(new_enrollment.id, first_enrollment.id)
+        self.assertEqual(new_enrollment.amount_paid, Decimal("30.00"))
+        self.assertEqual(new_enrollment.stripe_checkout_session_id, "cs_test_30")
+
+        # Response should contain the new session details
+        response_data = response2.json()
+        self.assertEqual(response_data["session_id"], "cs_test_30")
+        self.assertEqual(response_data["enrollment_id"], new_enrollment.id)
