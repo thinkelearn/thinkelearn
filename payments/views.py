@@ -1,6 +1,7 @@
 import hashlib
 import json
 import logging
+import time
 from decimal import Decimal, InvalidOperation
 
 import stripe
@@ -286,14 +287,35 @@ def create_checkout_session(request):
         request.user.id, product.id, actual_amount
     )
 
+    # Check for existing pending enrollment before creating new one
+    existing_pending = EnrollmentRecord.objects.filter(
+        user=request.user,
+        product=product,
+        status=EnrollmentRecord.Status.PENDING_PAYMENT,
+    ).first()
+
     try:
         with transaction.atomic():
-            enrollment = EnrollmentRecord.create_for_user(
-                request.user,
-                product,
-                amount=amount,
-                idempotency_key=idempotency_key,
-            )
+            # If user has existing pending enrollment, create new checkout session for it
+            # instead of creating duplicate enrollment
+            if existing_pending:
+                enrollment = existing_pending
+                logger.info(
+                    "Resuming pending enrollment with new checkout session",
+                    extra={
+                        "user_id": request.user.id,
+                        "product_id": product.id,
+                        "enrollment_id": enrollment.id,
+                        "old_session_id": enrollment.stripe_checkout_session_id,
+                    },
+                )
+            else:
+                enrollment = EnrollmentRecord.create_for_user(
+                    request.user,
+                    product,
+                    amount=amount,
+                    idempotency_key=idempotency_key,
+                )
 
             if enrollment.status == EnrollmentRecord.Status.ACTIVE:
                 logger.info(
@@ -313,12 +335,26 @@ def create_checkout_session(request):
                     status=201,
                 )
 
+            # For resumed enrollments, create new Payment record
+            # For new enrollments, create new Payment record
             payment = Payment.objects.create(
                 enrollment_record=enrollment,
                 amount=enrollment.amount_paid,
                 currency=product.currency,
                 status=Payment.Status.INITIATED,
             )
+
+            # Generate unique Stripe idempotency key
+            # For resumed enrollments, we need a NEW key (old session expired)
+            # For new enrollments, use the enrollment's idempotency_key
+            if existing_pending:
+                # Include timestamp to ensure uniqueness for resumed sessions
+                stripe_idempotency_key = (
+                    f"{enrollment.idempotency_key}:{int(time.time())}"
+                )
+            else:
+                stripe_idempotency_key = enrollment.idempotency_key
+
             stripe_client = get_stripe_client()
             session = stripe_client.create_checkout_session(
                 amount=enrollment.amount_paid,
@@ -332,7 +368,7 @@ def create_checkout_session(request):
                 },
                 product_name=product.course.title,
                 customer_email=request.user.email or None,
-                idempotency_key=enrollment.idempotency_key,
+                idempotency_key=stripe_idempotency_key,
             )
 
             enrollment.stripe_checkout_session_id = session.id
