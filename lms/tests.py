@@ -815,6 +815,157 @@ class CourseProductTest(TestCase):
         )
         self.assertEqual(product.format_price(), "$10.00 - $50.00 CAD")
 
+    def test_get_quick_amounts_returns_empty_for_free(self):
+        """Test get_quick_amounts returns empty list for free courses"""
+        product = CourseProduct.objects.create(
+            course=self.course,
+            pricing_type=CourseProduct.PricingType.FREE,
+        )
+        self.assertEqual(product.get_quick_amounts(), [])
+
+    def test_get_quick_amounts_returns_empty_for_fixed(self):
+        """Test get_quick_amounts returns empty list for fixed-price courses"""
+        product = CourseProduct.objects.create(
+            course=self.course,
+            pricing_type=CourseProduct.PricingType.FIXED,
+            fixed_price=Decimal("49.99"),
+        )
+        self.assertEqual(product.get_quick_amounts(), [])
+
+    def test_get_quick_amounts_standard_case(self):
+        """Test get_quick_amounts with standard PWYC pricing"""
+        product = CourseProduct.objects.create(
+            course=self.course,
+            pricing_type=CourseProduct.PricingType.PWYC,
+            min_price=Decimal("10.00"),
+            max_price=Decimal("100.00"),
+            suggested_price=Decimal("40.00"),
+        )
+        # Expected: half=20, suggested=40, double=80, max=100
+        # All round to themselves (already multiples of 5)
+        amounts = product.get_quick_amounts()
+        self.assertEqual(amounts, [20, 40, 80, 100])
+
+    def test_get_quick_amounts_with_rounding(self):
+        """Test get_quick_amounts properly rounds to nearest $5"""
+        product = CourseProduct.objects.create(
+            course=self.course,
+            pricing_type=CourseProduct.PricingType.PWYC,
+            min_price=Decimal("10.00"),
+            max_price=Decimal("100.00"),
+            suggested_price=Decimal("33.00"),  # Not a multiple of 5
+        )
+        # Expected calculations:
+        # half = 33/2 = 16.5 → rounds to 15
+        # suggested = 33 → rounds to 35
+        # double = 66 → rounds to 65
+        # max = 100 → stays 100
+        amounts = product.get_quick_amounts()
+        self.assertEqual(amounts, [15, 35, 65, 100])
+
+    def test_get_quick_amounts_clamps_to_min(self):
+        """Test get_quick_amounts clamps values below min_price"""
+        product = CourseProduct.objects.create(
+            course=self.course,
+            pricing_type=CourseProduct.PricingType.PWYC,
+            min_price=Decimal("30.00"),
+            max_price=Decimal("100.00"),
+            suggested_price=Decimal("40.00"),
+        )
+        # Expected calculations:
+        # half = 40/2 = 20 → rounds to 20 → clamped to 30 (min)
+        # suggested = 40 → rounds to 40
+        # double = 80 → rounds to 80
+        # max = 100 → stays 100
+        amounts = product.get_quick_amounts()
+        self.assertEqual(amounts, [30, 40, 80, 100])
+
+    def test_get_quick_amounts_clamps_to_max(self):
+        """Test get_quick_amounts clamps values above max_price"""
+        product = CourseProduct.objects.create(
+            course=self.course,
+            pricing_type=CourseProduct.PricingType.PWYC,
+            min_price=Decimal("10.00"),
+            max_price=Decimal("50.00"),
+            suggested_price=Decimal("40.00"),
+        )
+        # Expected calculations:
+        # half = 40/2 = 20 → rounds to 20
+        # suggested = 40 → rounds to 40
+        # double = 80 → rounds to 80 → clamped to 50 (max)
+        # max = 50 → stays 50
+        # After deduplication: [20, 40, 50] (80 was clamped to 50, duplicate removed)
+        amounts = product.get_quick_amounts()
+        self.assertEqual(amounts, [20, 40, 50])
+
+    def test_get_quick_amounts_deduplicates(self):
+        """Test get_quick_amounts removes duplicate values"""
+        product = CourseProduct.objects.create(
+            course=self.course,
+            pricing_type=CourseProduct.PricingType.PWYC,
+            min_price=Decimal("20.00"),
+            max_price=Decimal("40.00"),
+            suggested_price=Decimal("30.00"),
+        )
+        # Expected calculations:
+        # half = 30/2 = 15 → rounds to 15 → clamped to 20 (min)
+        # suggested = 30 → rounds to 30
+        # double = 60 → rounds to 60 → clamped to 40 (max)
+        # max = 40 → stays 40
+        # After deduplication: [20, 30, 40] (two 40s become one)
+        amounts = product.get_quick_amounts()
+        self.assertEqual(amounts, [20, 30, 40])
+
+    def test_get_quick_amounts_small_suggested_price(self):
+        """Test get_quick_amounts with very small suggested price"""
+        product = CourseProduct.objects.create(
+            course=self.course,
+            pricing_type=CourseProduct.PricingType.PWYC,
+            min_price=Decimal("5.00"),
+            max_price=Decimal("50.00"),
+            suggested_price=Decimal("8.00"),
+        )
+        # Expected calculations:
+        # half = 8/2 = 4 → rounds to 5 → clamped to 5 (min)
+        # suggested = 8 → rounds to 10
+        # double = 16 → rounds to 15
+        # max = 50 → stays 50
+        amounts = product.get_quick_amounts()
+        self.assertEqual(amounts, [5, 10, 15, 50])
+
+    def test_get_quick_amounts_narrow_range(self):
+        """Test get_quick_amounts with narrow min/max range"""
+        product = CourseProduct.objects.create(
+            course=self.course,
+            pricing_type=CourseProduct.PricingType.PWYC,
+            min_price=Decimal("10.00"),
+            max_price=Decimal("20.00"),
+            suggested_price=Decimal("15.00"),
+        )
+        # Expected calculations:
+        # half = 15/2 = 7.5 → rounds to 10 → clamped to 10 (min)
+        # suggested = 15 → rounds to 15
+        # double = 30 → rounds to 30 → clamped to 20 (max)
+        # max = 20 → stays 20
+        # After deduplication: [10, 15, 20] (two 20s become one)
+        amounts = product.get_quick_amounts()
+        self.assertEqual(amounts, [10, 15, 20])
+
+    def test_get_quick_amounts_max_four_items(self):
+        """Test get_quick_amounts returns at most 4 unique values"""
+        product = CourseProduct.objects.create(
+            course=self.course,
+            pricing_type=CourseProduct.PricingType.PWYC,
+            min_price=Decimal("10.00"),
+            max_price=Decimal("200.00"),
+            suggested_price=Decimal("50.00"),
+        )
+        amounts = product.get_quick_amounts()
+        # Should return exactly 4 unique amounts (or fewer if deduplication occurs)
+        self.assertLessEqual(len(amounts), 4)
+        # Verify all unique
+        self.assertEqual(len(amounts), len(set(amounts)))
+
 
 class EnrollmentRecordTest(TestCase):
     """Test EnrollmentRecord model and business logic"""
