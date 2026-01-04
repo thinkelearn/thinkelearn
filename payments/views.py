@@ -1,7 +1,7 @@
 import hashlib
 import json
 import logging
-import time
+import uuid
 from decimal import Decimal, InvalidOperation
 
 import stripe
@@ -308,7 +308,11 @@ def create_checkout_session(request):
             },
         )
         existing_pending.status = EnrollmentRecord.Status.CANCELLED
-        existing_pending.save(update_fields=["status"])
+        # Give cancelled enrollments a unique key so the original can be reused.
+        existing_pending.idempotency_key = (
+            f"cancelled_{existing_pending.idempotency_key}_{uuid.uuid4().hex}"
+        )
+        existing_pending.save(update_fields=["status", "idempotency_key"])
         existing_pending = None  # Will create new enrollment below
 
     try:
@@ -361,16 +365,9 @@ def create_checkout_session(request):
                 status=Payment.Status.INITIATED,
             )
 
-            # Generate unique Stripe idempotency key
-            # For resumed enrollments, we need a NEW key (old session expired)
-            # For new enrollments, use the enrollment's idempotency_key
-            if existing_pending:
-                # Include timestamp to ensure uniqueness for resumed sessions
-                stripe_idempotency_key = (
-                    f"{enrollment.idempotency_key}:{int(time.time())}"
-                )
-            else:
-                stripe_idempotency_key = enrollment.idempotency_key
+            # Use a per-payment idempotency key so Stripe never reuses a key
+            # with different parameters (enrollment_id, URLs, etc.).
+            stripe_idempotency_key = f"payment:{payment.id}"
 
             stripe_client = get_stripe_client()
             session = stripe_client.create_checkout_session(
@@ -414,6 +411,12 @@ def create_checkout_session(request):
                 extra={
                     "user_id": request.user.id,
                     "product_id": product_id,
+                    "error_message": error_message,
+                    "error_type": type(exc).__name__,
+                    "existing_pending_found": existing_pending is not None,
+                    "existing_pending_amount": str(existing_pending.amount_paid)
+                    if existing_pending
+                    else None,
                 },
             )
             return JsonResponse({"error": "Enrollment already exists."}, status=409)
