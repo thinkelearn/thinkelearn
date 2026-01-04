@@ -390,7 +390,8 @@ class ExtendedCoursePageTest(TestCase):
         self.assertIn("enrollment_count", context)
         self.assertEqual(context["product"], self.product)
         self.assertIn("/payments/checkout/success/", context["checkout_success_url"])
-        self.assertIn("/payments/checkout/cancel/", context["checkout_cancel_url"])
+        # Cancel URL now redirects to course page (not /payments/checkout/cancel/)
+        self.assertIn(self.course.url, context["checkout_cancel_url"])
         self.assertIn("/payments/checkout/failure/", context["checkout_failure_url"])
 
     def test_get_context_anonymous_user(self):
@@ -420,6 +421,37 @@ class ExtendedCoursePageTest(TestCase):
         context = self.course.get_context(request)
 
         self.assertEqual(len(context["related_courses"]), 2)
+
+    def test_get_context_pending_enrollment(self):
+        """Test pending_enrollment is added to context for payment resume"""
+        # Create a pending enrollment
+        pending = EnrollmentRecord.create_for_user(
+            user=self.user,
+            product=self.product,
+            amount=Decimal("49.00"),
+        )
+
+        request = self.factory.get(f"/courses/{self.course.slug}/")
+        request.user = self.user
+
+        context = self.course.get_context(request)
+
+        # Should have pending_enrollment in context
+        self.assertIn("pending_enrollment", context)
+        self.assertIsNotNone(context["pending_enrollment"])
+        self.assertEqual(context["pending_enrollment"].id, pending.id)
+        self.assertEqual(context["pending_enrollment"].status, "pending_payment")
+
+    def test_get_context_no_pending_enrollment(self):
+        """Test pending_enrollment is None when no pending payment"""
+        request = self.factory.get(f"/courses/{self.course.slug}/")
+        request.user = self.user
+
+        context = self.course.get_context(request)
+
+        # Should have pending_enrollment as None
+        self.assertIn("pending_enrollment", context)
+        self.assertIsNone(context["pending_enrollment"])
 
 
 class CourseInstructorTest(TestCase):
@@ -1127,16 +1159,17 @@ class EnrollmentRecordTest(TestCase):
         can_enroll = self.course.can_user_enroll(self.user)
         self.assertFalse(can_enroll)
 
-    def test_can_user_enroll_blocks_pending_enrollment(self):
-        """Test can_user_enroll blocks users with pending payment"""
+    def test_can_user_enroll_allows_pending_enrollment(self):
+        """Test can_user_enroll allows users with pending payment to resume"""
         EnrollmentRecord.create_for_user(
             user=self.user,
             product=self.product,
             amount=Decimal("99.99"),
         )
 
+        # Pending payment should allow re-enrollment for payment resume
         can_enroll = self.course.can_user_enroll(self.user)
-        self.assertFalse(can_enroll)
+        self.assertTrue(can_enroll)
 
     def test_transition_to_valid(self):
         """Test valid status transitions"""

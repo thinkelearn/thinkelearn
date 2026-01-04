@@ -794,9 +794,8 @@ class ExtendedCoursePage(CoursePage):
         context["checkout_success_url"] = request.build_absolute_uri(
             reverse("payments:checkout_success")
         )
-        context["checkout_cancel_url"] = request.build_absolute_uri(
-            reverse("payments:checkout_cancel")
-        )
+        # Cancel returns to course page (not home) for better UX
+        context["checkout_cancel_url"] = request.build_absolute_uri(self.url)
         context["checkout_failure_url"] = request.build_absolute_uri(
             reverse("payments:checkout_failure")
         )
@@ -813,13 +812,28 @@ class ExtendedCoursePage(CoursePage):
             .order_by("-created_at")[:5]
         )
 
-        # Check if user can enroll
+        # Check if user can enroll and get pending enrollment
         if request.user.is_authenticated:
             context["can_enroll"] = self.can_user_enroll(request.user)
             context["user_review"] = self.reviews.filter(user=request.user).first()
+
+            # Check for pending enrollment to enable payment resume
+            if product:
+                context["pending_enrollment"] = (
+                    EnrollmentRecord.objects.filter(
+                        user=request.user,
+                        product=product,
+                        status=EnrollmentRecord.Status.PENDING_PAYMENT,
+                    )
+                    .order_by("-created_at")
+                    .first()
+                )
+            else:
+                context["pending_enrollment"] = None
         else:
             context["can_enroll"] = False
             context["user_review"] = None
+            context["pending_enrollment"] = None
 
         # Add related courses - filter for live and public with prefetch
         related_course_ids = self.related_courses.values_list("id", flat=True)
@@ -845,27 +859,22 @@ class ExtendedCoursePage(CoursePage):
         Check if user can enroll in this course.
 
         This checks:
-        - User doesn't have any active or pending enrollment record
+        - User doesn't have an active enrollment record (PENDING_PAYMENT allowed for resume)
         - User is not already enrolled via CourseEnrollment
         - Enrollment limit hasn't been reached
         - All prerequisite courses are completed
 
-        Note: Cancelled/refunded enrollments are allowed up to the product's
-        max_refunds_per_user limit.
+        Note: PENDING_PAYMENT enrollments are allowed to enable payment resume flow.
+        Cancelled/refunded enrollments are allowed up to the product's max_refunds_per_user limit.
 
         Returns:
             bool: True if user can enroll, False otherwise
         """
-        # Check for active or pending enrollment record
+        # Check for active enrollment record (exclude PENDING_PAYMENT to allow resume)
         product = getattr(self, "product", None)
         if product:
             enrollments = EnrollmentRecord.objects.filter(user=user, product=product)
-            if enrollments.filter(
-                status__in=[
-                    EnrollmentRecord.Status.PENDING_PAYMENT,
-                    EnrollmentRecord.Status.ACTIVE,
-                ]
-            ).exists():
+            if enrollments.filter(status=EnrollmentRecord.Status.ACTIVE).exists():
                 return False
 
             refund_count = enrollments.filter(
