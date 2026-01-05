@@ -11,6 +11,7 @@ These models extend the base wagtail-lms functionality with additional features:
 
 import logging
 import uuid
+from datetime import timedelta
 from decimal import Decimal
 
 from django import forms
@@ -838,6 +839,44 @@ class ExtendedCoursePage(CoursePage):
             context["can_enroll"] = False
             context["user_review"] = None
             context["pending_enrollment"] = None
+
+        enrollment_record = None
+        refund_window_days = None
+        refund_window_deadline = None
+        refund_eligible = False
+        if request.user.is_authenticated and product:
+            enrollment_record = (
+                EnrollmentRecord.objects.filter(
+                    user=request.user,
+                    product=product,
+                )
+                .order_by("-created_at")
+                .first()
+            )
+        if enrollment_record and product:
+            refund_window_days = product.refund_window_days
+            refund_window_deadline = timezone.localtime(
+                enrollment_record.created_at
+            ) + timedelta(days=refund_window_days)
+            refund_eligible = (
+                enrollment_record.status == EnrollmentRecord.Status.ACTIVE
+                and enrollment_record.amount_paid > 0
+                and not enrollment_record.has_refund
+                and product.is_refund_eligible(enrollment_record.created_at)
+            )
+
+        context["refund_eligible"] = refund_eligible
+        context["refund_request_url"] = (
+            reverse(
+                "payments:refund_request",
+                kwargs={"enrollment_id": enrollment_record.id},
+            )
+            if refund_eligible
+            else None
+        )
+        context["refund_window_days"] = refund_window_days
+        context["refund_window_deadline"] = refund_window_deadline
+        context["enrollment_record"] = enrollment_record
 
         # Add related courses - filter for live and public with prefetch
         related_course_ids = self.related_courses.values_list("id", flat=True)

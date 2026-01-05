@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="min-h-screen bg-neutral-50 flex items-center justify-center px-4 py-16">
+    <div class="max-w-lg w-full bg-white rounded-lg shadow-md p-8 text-center">
+        <div class="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-yellow-100">
+            <svg class="h-6 w-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+        </div>
+        <h1 class="text-2xl font-semibold text-neutral-900">Refund request unavailable</h1>
+        <p class="mt-3 text-neutral-600">
+            This enrollment is not eligible for a refund request. Refunds are available only
+            within the refund window for paid enrollments.
+        </p>
+        <div class="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
+            <a
+                href="{{ course.url }}"
+                class="inline-flex items-center justify-center rounded-md bg-secondary-600 px-4 py-2 text-sm font-medium text-white hover:bg-secondary-700"
+            >
+                Back to course
+            </a>
+            <a
+                href="mailto:{{ support_email }}"
+                class="inline-flex items-center justify-center rounded-md border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50"
+            >
+                Contact support
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

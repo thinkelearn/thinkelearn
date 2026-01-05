@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="min-h-screen bg-neutral-50 flex items-center justify-center px-4 py-16">
+    <div class="max-w-xl w-full bg-white rounded-lg shadow-md p-8">
+        <div class="flex items-center gap-3 mb-4">
+            <div class="flex h-10 w-10 items-center justify-center rounded-full bg-secondary-100">
+                <svg class="h-5 w-5 text-secondary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+            </div>
+            <div>
+                <p class="text-xs uppercase tracking-wide text-neutral-500">Refund request</p>
+                <h1 class="text-2xl font-semibold text-neutral-900">{{ course.title }}</h1>
+            </div>
+        </div>
+
+        <p class="text-sm text-neutral-600">
+            You are eligible to request a refund until {{ refund_deadline|date:"M d, Y" }}.
+            Refund requests are reviewed by our team.
+        </p>
+
+        <form method="post" class="mt-6 space-y-4">
+            {% csrf_token %}
+            <div>
+                <label class="block text-sm font-medium text-neutral-700" for="refund-reason">
+                    Reason (optional)
+                </label>
+                <textarea
+                    id="refund-reason"
+                    name="reason"
+                    rows="4"
+                    maxlength="1000"
+                    class="mt-2 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-800 focus:border-secondary-500 focus:outline-none focus:ring-1 focus:ring-secondary-500"
+                    placeholder="Share any feedback that can help us improve."
+                ></textarea>
+                <p class="mt-2 text-xs text-neutral-500">Optional feedback is helpful but not required.</p>
+            </div>
+
+            <div class="flex flex-col sm:flex-row gap-3">
+                <button
+                    type="submit"
+                    class="inline-flex items-center justify-center rounded-md bg-secondary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-secondary-700"
+                >
+                    Submit refund request
+                </button>
+                <a
+                    href="{{ course.url }}"
+                    class="inline-flex items-center justify-center rounded-md border border-neutral-300 px-4 py-2 text-sm font-semibold text-neutral-700 hover:bg-neutral-50"
+                >
+                    Back to course
+                </a>
+            </div>
+        </form>
+
+        <div class="mt-6 rounded-md border border-neutral-200 bg-neutral-50 p-4 text-xs text-neutral-600">
+            <p>
+                Need help? Email us at
+                <a href="mailto:{{ support_email }}" class="text-secondary-600 hover:underline">{{ support_email }}</a>.
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}

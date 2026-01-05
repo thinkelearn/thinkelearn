@@ -10,4 +10,9 @@ urlpatterns = [
     path("checkout/success/", views.checkout_success, name="checkout_success"),
     path("checkout/cancel/", views.checkout_cancel, name="checkout_cancel"),
     path("checkout/failure/", views.checkout_failure, name="checkout_failure"),
+    path(
+        "refund/request/<int:enrollment_id>/",
+        views.refund_request,
+        name="refund_request",
+    ),
 ]

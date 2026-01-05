@@ -2,17 +2,21 @@ import hashlib
 import json
 import logging
 import uuid
+from datetime import timedelta
 from decimal import Decimal, InvalidOperation
 
 import stripe
 from django.conf import settings
+from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
+from django.core.mail import send_mail
 from django.core.validators import URLValidator
 from django.db import IntegrityError, transaction
 from django.http import JsonResponse
-from django.shortcuts import render
+from django.shortcuts import get_object_or_404, render
+from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_http_methods, require_POST
 
 from lms.models import CourseProduct, EnrollmentRecord
 from payments.models import Payment, WebhookEvent
@@ -620,3 +624,83 @@ def checkout_cancel(request):
 def checkout_failure(request):
     """Render checkout failure page."""
     return render(request, "payments/checkout_failure.html")
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def refund_request(request, enrollment_id):
+    """Render and process refund request submissions."""
+    enrollment = get_object_or_404(
+        EnrollmentRecord.objects.select_related("product__course"),
+        id=enrollment_id,
+        user=request.user,
+    )
+    product = enrollment.product
+    course = product.course
+    refund_deadline = timezone.localtime(enrollment.created_at) + timedelta(
+        days=product.refund_window_days
+    )
+
+    is_refund_eligible = (
+        enrollment.status == EnrollmentRecord.Status.ACTIVE
+        and enrollment.amount_paid > 0
+        and not enrollment.has_refund
+        and product.is_refund_eligible(enrollment.created_at)
+    )
+
+    context = {
+        "course": course,
+        "enrollment": enrollment,
+        "refund_deadline": refund_deadline,
+        "refund_window_days": product.refund_window_days,
+        "is_refund_eligible": is_refund_eligible,
+        "support_email": settings.SUPPORT_EMAIL,
+    }
+
+    if request.method == "POST":
+        if not is_refund_eligible:
+            return render(
+                request,
+                "payments/refund_request_unavailable.html",
+                context,
+                status=403,
+            )
+
+        reason = (request.POST.get("reason") or "").strip()
+        enrollment_url = request.build_absolute_uri(course.url)
+        submitted_at = timezone.localtime(timezone.now())
+
+        message = (
+            "A refund request was submitted.\n\n"
+            f"Course: {course.title}\n"
+            f"Enrollment ID: {enrollment.id}\n"
+            f"User: {request.user.get_full_name() or request.user.username}\n"
+            f"User Email: {request.user.email}\n"
+            f"Amount Paid: {enrollment.amount_paid} {product.currency}\n"
+            f"Enrolled At: {timezone.localtime(enrollment.created_at)}\n"
+            f"Submitted At: {submitted_at}\n"
+            f"Course URL: {enrollment_url}\n"
+            f"Reason: {reason or 'No reason provided'}\n"
+        )
+
+        send_mail(
+            subject=f"Refund request: {course.title}",
+            message=message,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[settings.SUPPORT_EMAIL],
+            fail_silently=False,
+        )
+
+        context["submitted_at"] = submitted_at
+        context["reason"] = reason
+        return render(request, "payments/refund_request_submitted.html", context)
+
+    if not is_refund_eligible:
+        return render(
+            request,
+            "payments/refund_request_unavailable.html",
+            context,
+            status=403,
+        )
+
+    return render(request, "payments/refund_request.html", context)

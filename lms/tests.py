@@ -263,6 +263,32 @@ class ExtendedCoursePageTest(TestCase):
         can_enroll = self.course.can_user_enroll(self.user)
         self.assertFalse(can_enroll)
 
+    def test_refund_request_cta_visible_for_eligible_enrollment(self):
+        """Show refund request CTA for eligible paid enrollments."""
+        course_enrollment = CourseEnrollment.objects.create(
+            user=self.user, course=self.course
+        )
+        enrollment_record = EnrollmentRecord.objects.create(
+            user=self.user,
+            product=self.product,
+            status=EnrollmentRecord.Status.ACTIVE,
+            amount_paid=Decimal("49.00"),
+            course_enrollment=course_enrollment,
+        )
+
+        self.client.force_login(self.user)
+        response = self.client.get(self.course.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Request Refund")
+        self.assertContains(
+            response,
+            reverse(
+                "payments:refund_request",
+                kwargs={"enrollment_id": enrollment_record.id},
+            ),
+        )
+
     def test_can_user_enroll_with_unlimited_enrollment(self):
         """Test can enroll when no enrollment limit is set"""
         # Create many enrollments
