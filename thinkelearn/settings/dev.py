@@ -1,4 +1,5 @@
 import os
+import sys
 
 from .base import *  # noqa: F403
 
@@ -47,3 +48,11 @@ try:
     from .local import *  # noqa: F403
 except ImportError:
     pass
+
+
+if any("pytest" in arg for arg in sys.argv):
+    STORAGES["staticfiles"]["BACKEND"] = (  # noqa: F405
+        "django.contrib.staticfiles.storage.StaticFilesStorage"
+    )
+    CELERY_TASK_ALWAYS_EAGER = True
+    CELERY_TASK_EAGER_PROPAGATES = True
