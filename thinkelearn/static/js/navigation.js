@@ -166,7 +166,7 @@ function initUserDropdown() {
     function openUserMenu() {
         // Position dropdown relative to button
         positionDropdown();
-        
+
         userMenuDropdown.classList.remove('hidden');
         userMenuButton.setAttribute('aria-expanded', 'true');
 
