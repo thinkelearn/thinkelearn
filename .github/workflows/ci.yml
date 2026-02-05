@@ -164,8 +164,10 @@ jobs:
         uv pip install -e .[security]
 
     - name: Run safety scan
+      env:
+        SAFETY_API_KEY: ${{ secrets.SAFETY_API_KEY }}
       run: |
-        uv run safety scan
+        uv run safety --key "${SAFETY_API_KEY}" scan
 
     - name: Run bandit security linter
       run: |
