@@ -53,6 +53,9 @@ cd thinkelearn
 
 # Install dependencies
 uv sync
+
+# Note: requirements.txt is generated via `uv export --all-extras --no-hashes`
+# and should not be edited by hand.
 npm install
 
 # Setup database
@@ -296,6 +299,7 @@ uv run pytest payments/tests/ -v
 ### Production Status
 
 **Phases 1-5 COMPLETE** (Ready for production preparation):
+
 - ✅ Data models with comprehensive tests (49 tests)
 - ✅ Stripe Checkout Session integration
 - ✅ Webhook processing with idempotency
@@ -304,6 +308,7 @@ uv run pytest payments/tests/ -v
 - ✅ Admin interface with financial tracking
 
 **Next Steps** (Phases 6-7):
+
 - Security audit and penetration testing
 - Performance optimization
 - Monitoring and alerting

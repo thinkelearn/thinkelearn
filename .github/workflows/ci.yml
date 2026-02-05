@@ -163,9 +163,9 @@ jobs:
         uv venv
         uv pip install -e .[security]
 
-    - name: Run safety check
+    - name: Run safety scan
       run: |
-        uv run safety check
+        uv run safety scan
 
     - name: Run bandit security linter
       run: |
