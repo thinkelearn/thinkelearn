@@ -5,6 +5,7 @@ from wagtail import urls as wagtail_urls
 from wagtail.admin import urls as wagtailadmin_urls
 from wagtail.documents import urls as wagtaildocs_urls
 
+from lms import views as lms_views
 from search import views as search_views
 
 from . import views
@@ -20,6 +21,11 @@ urlpatterns = [
     path("communications/", include("communications.urls")),
     path("portfolio/", include("portfolio.urls")),
     path("payments/", include("payments.urls")),
+    path(
+        "lms/course/<int:course_id>/feedback/",
+        lms_views.submit_course_feedback,
+        name="course_feedback",
+    ),
     path("lms/", include("wagtail_lms.urls")),
     # django-allauth authentication URLs - must be before Wagtail catch-all
     # Reserved path: avoid other "accounts/" URL patterns to prevent conflicts
