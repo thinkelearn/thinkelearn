@@ -37,7 +37,7 @@ def submit_course_feedback(request, course_id):
     if not form.is_valid():
         error_list: list[str] = []
         for field_errors in form.errors.values():
-            error_list.extend(field_errors)
+            error_list.extend(str(error) for error in field_errors)
         messages.error(
             request, "Please fix the feedback form: " + ", ".join(error_list)
         )
