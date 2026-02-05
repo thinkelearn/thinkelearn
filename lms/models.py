@@ -822,7 +822,11 @@ class ExtendedCoursePage(CoursePage):
 
             context["can_enroll"] = self.can_user_enroll(request.user)
             context["user_review"] = self.reviews.filter(user=request.user).first()
-            context["can_submit_feedback"] = context.get("enrollment") is not None
+            is_enrolled = CourseEnrollment.objects.filter(
+                user=request.user,
+                course=self,
+            ).exists()
+            context["can_submit_feedback"] = is_enrolled
             context["course_feedback_form"] = CourseFeedbackForm(
                 instance=context["user_review"]
             )
