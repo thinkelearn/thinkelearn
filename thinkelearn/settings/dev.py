@@ -36,7 +36,7 @@ else:
             "ENGINE": "django.db.backends.postgresql",
             "NAME": "thinkelearn",
             "USER": "postgres",
-            "PASSWORD": "postgres",
+            "PASSWORD": "postgres",  # nosec B105
             "HOST": "localhost",
             "PORT": "5432",
         }

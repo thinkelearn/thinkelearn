@@ -237,6 +237,25 @@ class ExtendedCoursePageTest(TestCase):
         can_enroll = self.course.can_user_enroll(self.user)
         self.assertFalse(can_enroll)
 
+    def test_course_page_shows_current_feedback_section(self):
+        """Enrolled users with a review should see their current feedback summary."""
+        CourseEnrollment.objects.create(user=self.user, course=self.course)
+        CourseReview.objects.create(
+            course=self.course,
+            user=self.user,
+            rating=4,
+            review_text="Solid course with clear examples.",
+        )
+        self.client.force_login(self.user)
+
+        response = self.client.get(self.course.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Your current feedback")
+        self.assertContains(response, "Rating:")
+        self.assertContains(response, "4 / 5")
+        self.assertContains(response, "Solid course with clear examples.")
+
     def test_login_cta_next_points_to_course_page(self):
         """Ensure login CTA redirects back to the course page for paid courses."""
         response = self.client.get(self.course.url)
@@ -393,6 +412,10 @@ class ExtendedCoursePageTest(TestCase):
         # Cancel URL now redirects to course page (not /payments/checkout/cancel/)
         self.assertIn(self.course.url, context["checkout_cancel_url"])
         self.assertIn("/payments/checkout/failure/", context["checkout_failure_url"])
+        self.assertIn("can_submit_feedback", context)
+        self.assertIn("course_feedback_form", context)
+        self.assertFalse(context["can_submit_feedback"])
+        self.assertIsNotNone(context["course_feedback_form"])
 
     def test_get_context_anonymous_user(self):
         """Test context for anonymous user"""
@@ -403,6 +426,20 @@ class ExtendedCoursePageTest(TestCase):
 
         self.assertFalse(context["can_enroll"])
         self.assertIsNone(context["user_review"])
+        self.assertFalse(context["can_submit_feedback"])
+        self.assertIsNone(context["course_feedback_form"])
+
+    def test_get_context_enrolled_user_can_submit_feedback(self):
+        """Enrolled users should be able to submit feedback."""
+        CourseEnrollment.objects.create(user=self.user, course=self.course)
+
+        request = self.factory.get(f"/courses/{self.course.slug}/")
+        request.user = self.user
+
+        context = self.course.get_context(request)
+
+        self.assertTrue(context["can_submit_feedback"])
+        self.assertIsNotNone(context["course_feedback_form"])
 
     def test_get_context_related_courses(self):
         """Test related courses in context"""
@@ -526,6 +563,100 @@ class CourseReviewTest(TestCase):
         # Newest first
         self.assertEqual(reviews[0].id, review2.id)
         self.assertEqual(reviews[1].id, review1.id)
+
+
+class CourseFeedbackViewTest(TestCase):
+    """Test feedback submission view behavior."""
+
+    def setUp(self):
+        self.root_page = Page.add_root(title="Root")
+        self.courses_index = CoursesIndexPage(title="Courses", slug="courses")
+        self.root_page.add_child(instance=self.courses_index)
+        try:
+            site = Site.objects.get(is_default_site=True)
+            site.root_page = self.root_page
+            site.save()
+        except Site.DoesNotExist:
+            Site.objects.create(
+                hostname="localhost",
+                root_page=self.root_page,
+                is_default_site=True,
+            )
+
+        self.course = ExtendedCoursePage(title="Test Course", slug="test-course")
+        self.courses_index.add_child(instance=self.course)
+        self.course.save_revision().publish()
+
+        self.user = User.objects.create_user(
+            username="feedback-user",
+            email="feedback@example.com",
+            password="testpass123",
+        )
+        self.url = reverse("course_feedback", kwargs={"course_id": self.course.id})
+
+    def test_enrolled_user_can_create_feedback(self):
+        """Enrolled users can submit new course feedback."""
+        CourseEnrollment.objects.create(user=self.user, course=self.course)
+        self.client.force_login(self.user)
+
+        response = self.client.post(
+            self.url,
+            data={"rating": 5, "review_text": "Great pacing and examples."},
+        )
+
+        self.assertRedirects(response, f"{self.course.url}#course-feedback")
+        review = CourseReview.objects.get(course=self.course, user=self.user)
+        self.assertEqual(review.rating, 5)
+        self.assertEqual(review.review_text, "Great pacing and examples.")
+        self.assertFalse(review.is_approved)
+
+    def test_enrolled_user_can_update_feedback(self):
+        """Submitting again updates the existing feedback entry."""
+        CourseEnrollment.objects.create(user=self.user, course=self.course)
+        existing = CourseReview.objects.create(
+            course=self.course,
+            user=self.user,
+            rating=2,
+            review_text="Too hard",
+            is_approved=True,
+        )
+        self.client.force_login(self.user)
+
+        response = self.client.post(
+            self.url,
+            data={"rating": 4, "review_text": "Much better after retrying."},
+        )
+
+        self.assertRedirects(response, f"{self.course.url}#course-feedback")
+        existing.refresh_from_db()
+        self.assertEqual(existing.rating, 4)
+        self.assertEqual(existing.review_text, "Much better after retrying.")
+        self.assertFalse(existing.is_approved)
+
+    def test_non_enrolled_user_cannot_submit_feedback(self):
+        """Feedback submission is blocked when user is not enrolled."""
+        self.client.force_login(self.user)
+
+        response = self.client.post(
+            self.url,
+            data={"rating": 5, "review_text": "I should not be able to post this."},
+        )
+
+        self.assertRedirects(response, f"{self.course.url}#course-feedback")
+        self.assertFalse(
+            CourseReview.objects.filter(course=self.course, user=self.user).exists()
+        )
+
+    def test_anonymous_user_redirected_to_login(self):
+        """Anonymous submissions should be redirected to the login page."""
+        response = self.client.post(
+            self.url,
+            data={"rating": 5, "review_text": "Not logged in"},
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/accounts/login/", response.url)
+        self.assertIn("next=", response.url)
 
 
 class LearnerDashboardPageTest(TestCase):

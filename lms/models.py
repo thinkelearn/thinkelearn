@@ -818,8 +818,18 @@ class ExtendedCoursePage(CoursePage):
 
         # Check if user can enroll and get pending enrollment
         if request.user.is_authenticated:
+            from .forms import CourseFeedbackForm
+
             context["can_enroll"] = self.can_user_enroll(request.user)
             context["user_review"] = self.reviews.filter(user=request.user).first()
+            is_enrolled = CourseEnrollment.objects.filter(
+                user=request.user,
+                course=self,
+            ).exists()
+            context["can_submit_feedback"] = is_enrolled
+            context["course_feedback_form"] = CourseFeedbackForm(
+                instance=context["user_review"]
+            )
 
             # Check for pending enrollment to enable payment resume
             if product:
@@ -837,6 +847,8 @@ class ExtendedCoursePage(CoursePage):
         else:
             context["can_enroll"] = False
             context["user_review"] = None
+            context["can_submit_feedback"] = False
+            context["course_feedback_form"] = None
             context["pending_enrollment"] = None
 
         # Add related courses - filter for live and public with prefetch
