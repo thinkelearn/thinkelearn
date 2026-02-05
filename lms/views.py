@@ -38,7 +38,7 @@ def submit_course_feedback(request, course_id):
         error_list = []
         for field_errors in form.errors.values():
             error_list.extend(field_errors)
-        messages.error(request, "Please fix the feedback form: " + " ".join(error_list))
+        messages.error(request, "Please fix the feedback form: " + ", ".join(error_list))
         return redirect(redirect_url)
 
     review = form.save(commit=False)
