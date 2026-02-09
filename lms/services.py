@@ -42,8 +42,9 @@ def generate_presigned_post(filename: str) -> dict:
     bucket_name = getattr(settings, "AWS_STORAGE_BUCKET_NAME", "")
 
     # Generate unique S3 key to prevent collisions
+    safe_filename = os.path.basename(filename).strip()
     short_uuid = uuid.uuid4().hex[:8]
-    s3_key = f"scorm_packages/{short_uuid}_{filename}"
+    s3_key = f"scorm_packages/{short_uuid}_{safe_filename}"
 
     s3_client = _get_s3_client()
 
@@ -151,7 +152,12 @@ def create_package_from_s3_key(s3_key: str, title: str, description: str = ""):
         return package
 
     except Exception:
-        # Clean up on any error after package creation
+        # Clean up extracted directory on failure
+        if "extract_dir" in locals() and os.path.exists(extract_dir):
+            import shutil
+
+            shutil.rmtree(extract_dir, ignore_errors=True)
+        # Clean up DB row on any error after package creation
         if package.pk:
             try:
                 package.delete()

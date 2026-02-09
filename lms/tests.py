@@ -1666,6 +1666,7 @@ class PresignedUploadTest(TestCase):
 
         from lms.services import create_package_from_s3_key
 
+        package = None
         try:
             package = create_package_from_s3_key(
                 "scorm_packages/abc_test.zip",
@@ -1684,7 +1685,7 @@ class PresignedUploadTest(TestCase):
             extract_dir = "/tmp/test_media/scorm_content"
             if os.path.exists(extract_dir):
                 shutil.rmtree(extract_dir)
-            if package.pk:
+            if package and package.pk:
                 package.delete()
 
     @override_settings(**S3_TEST_SETTINGS, MEDIA_ROOT="/tmp/test_media")
@@ -1748,7 +1749,9 @@ class SCORMPackageAdminTest(TestCase):
 
     @patch("lms.admin._s3_configured", return_value=True)
     @patch("lms.services.generate_presigned_post")
-    def test_presigned_endpoint_returns_json_for_staff(self, mock_generate, mock_s3):
+    def test_presigned_endpoint_returns_json_for_staff(
+        self, mock_generate, mock_s3_configured
+    ):
         """Staff users get presigned POST data."""
         mock_generate.return_value = {
             "url": "https://bucket.s3.amazonaws.com",
@@ -1781,7 +1784,7 @@ class SCORMPackageAdminTest(TestCase):
 
     @patch("lms.admin._s3_configured", return_value=True)
     @patch("lms.services.create_package_from_s3_key")
-    def test_finalize_endpoint_creates_package(self, mock_create, mock_s3):
+    def test_finalize_endpoint_creates_package(self, mock_create, mock_s3_configured):
         """Staff users can finalize an upload."""
         mock_package = Mock()
         mock_package.pk = 42

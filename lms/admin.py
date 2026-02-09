@@ -228,6 +228,8 @@ class SCORMPackageUploadAdmin(admin.ModelAdmin):
 
         if not s3_key:
             return JsonResponse({"error": "s3_key is required"}, status=400)
+        if not s3_key.startswith("scorm_packages/") or not s3_key.endswith(".zip"):
+            return JsonResponse({"error": "Invalid s3_key"}, status=400)
         if not title:
             return JsonResponse({"error": "title is required"}, status=400)
 

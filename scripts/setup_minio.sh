@@ -6,8 +6,7 @@ set -e
 
 docker run --rm --network host --entrypoint sh minio/mc -c "
   mc alias set local http://localhost:9000 minioadmin minioadmin &&
-  mc mb local/thinkelearn-dev --ignore-existing &&
-  mc anonymous set download local/thinkelearn-dev
+  mc mb local/thinkelearn-dev --ignore-existing
 "
 
 echo "MinIO bucket 'thinkelearn-dev' ready at http://localhost:9001"

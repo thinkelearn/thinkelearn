@@ -90,6 +90,13 @@
                 },
                 body: JSON.stringify({ filename: file.name }),
             });
+            const contentType = resp.headers.get("Content-Type") || "";
+            if (!contentType.includes("application/json")) {
+                showError("Session expired or server error. Please reload the page.");
+                setSubmitEnabled(true);
+                progressContainer.style.display = "none";
+                return;
+            }
             const data = await resp.json();
             if (!resp.ok) {
                 showError(data.error || "Failed to get upload URL.");
@@ -166,6 +173,12 @@
                     description: descriptionInput.value.trim(),
                 }),
             });
+            const finalizeContentType = resp.headers.get("Content-Type") || "";
+            if (!finalizeContentType.includes("application/json")) {
+                showError("Session expired or server error. Please reload the page.");
+                setSubmitEnabled(true);
+                return;
+            }
             const data = await resp.json();
             if (!resp.ok) {
                 showError(data.error || "Failed to process SCORM package.");
