@@ -22,11 +22,19 @@ services:
       - VOICEMAIL_NOTIFICATION_EMAILS=${VOICEMAIL_NOTIFICATION_EMAILS}
       - SMS_NOTIFICATION_EMAILS=${SMS_NOTIFICATION_EMAILS}
       - DEFAULT_FROM_EMAIL=${DEFAULT_FROM_EMAIL}
+      # S3 configuration (MinIO)
+      - AWS_STORAGE_BUCKET_NAME=thinkelearn-dev
+      - AWS_ACCESS_KEY_ID=minioadmin
+      - AWS_SECRET_ACCESS_KEY=minioadmin
+      - AWS_S3_REGION_NAME=us-east-1
+      - AWS_S3_ENDPOINT_URL=http://minio:9000
+      - AWS_S3_PRESIGNED_URL=http://localhost:9000
     env_file:
       - .env
     depends_on:
       - db
       - redis
+      - minio
     command: python manage.py runserver 0.0.0.0:8000
 
   db:
@@ -79,12 +87,31 @@ services:
       - DJANGO_SETTINGS_MODULE=thinkelearn.settings.dev
       - DATABASE_URL=postgres://postgres:postgres@db:5432/thinkelearn
       - REDIS_URL=redis://redis:6379/0
+      # S3 configuration (MinIO)
+      - AWS_STORAGE_BUCKET_NAME=thinkelearn-dev
+      - AWS_ACCESS_KEY_ID=minioadmin
+      - AWS_SECRET_ACCESS_KEY=minioadmin
+      - AWS_S3_REGION_NAME=us-east-1
+      - AWS_S3_ENDPOINT_URL=http://minio:9000
+      - AWS_S3_PRESIGNED_URL=http://localhost:9000
     env_file:
       - .env
     depends_on:
       - db
       - redis
     command: celery -A thinkelearn worker -l info
+
+  minio:
+    image: minio/minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
 
   css:
     build:
@@ -101,3 +128,4 @@ services:
 volumes:
   postgres_data:
   pgadmin_data:
+  minio_data:

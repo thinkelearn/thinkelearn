@@ -30,8 +30,6 @@ INSTALLED_APPS = [
     "blog",
     "communications",
     "portfolio",
-    "lms",
-    "payments",
     "wagtail.contrib.forms",
     "wagtail.contrib.redirects",
     "wagtail.embeds",
@@ -44,6 +42,8 @@ INSTALLED_APPS = [
     "wagtail.admin",
     "wagtail",
     "wagtail_lms",
+    "lms",  # after wagtail_lms so admin.site.unregister(SCORMPackage) works
+    "payments",
     "modelcluster",
     "taggit",
     "django_filters",

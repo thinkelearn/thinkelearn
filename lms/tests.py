@@ -1,12 +1,14 @@
+import os
+import zipfile
 from datetime import timedelta
 from decimal import Decimal
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import IntegrityError
-from django.test import RequestFactory, TestCase
+from django.test import RequestFactory, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 from wagtail.models import Page, Site
@@ -1573,3 +1575,244 @@ class EnrollmentRecordTest(TestCase):
         # Cannot go to cancelled
         with self.assertRaises(ValidationError):
             enrollment.transition_to(EnrollmentRecord.Status.CANCELLED)
+
+
+S3_TEST_SETTINGS = {
+    "AWS_STORAGE_BUCKET_NAME": "test-bucket",
+    "AWS_S3_REGION_NAME": "ca-central-1",
+    "AWS_ACCESS_KEY_ID": "AKIATEST",
+    "AWS_SECRET_ACCESS_KEY": "secret",
+}
+
+
+class PresignedUploadTest(TestCase):
+    """Test presigned S3 upload services and admin endpoints."""
+
+    @override_settings(**S3_TEST_SETTINGS)
+    @patch("lms.services._get_s3_client")
+    def test_generate_presigned_post_returns_expected_keys(self, mock_client):
+        """Test presigned POST returns url, fields, and s3_key."""
+        mock_s3 = Mock()
+        mock_client.return_value = mock_s3
+        mock_s3.generate_presigned_post.return_value = {
+            "url": "https://test-bucket.s3.amazonaws.com",
+            "fields": {"key": "scorm_packages/abc_test.zip", "policy": "..."},
+        }
+
+        from lms.services import generate_presigned_post
+
+        result = generate_presigned_post("test.zip")
+
+        self.assertIn("url", result)
+        self.assertIn("fields", result)
+        self.assertIn("s3_key", result)
+        self.assertTrue(result["s3_key"].startswith("scorm_packages/"))
+        self.assertTrue(result["s3_key"].endswith("_test.zip"))
+
+    @override_settings(**S3_TEST_SETTINGS)
+    @patch("lms.services._get_s3_client")
+    def test_generate_presigned_post_conditions(self, mock_client):
+        """Test presigned POST includes content-type and size conditions."""
+        mock_s3 = Mock()
+        mock_client.return_value = mock_s3
+        mock_s3.generate_presigned_post.return_value = {
+            "url": "https://test-bucket.s3.amazonaws.com",
+            "fields": {},
+        }
+
+        from lms.services import generate_presigned_post
+
+        generate_presigned_post("package.zip")
+
+        call_kwargs = mock_s3.generate_presigned_post.call_args
+        conditions = call_kwargs.kwargs.get(
+            "Conditions", call_kwargs[1].get("Conditions", [])
+        )
+
+        # Should have content-type and content-length-range conditions
+        has_content_type = any(
+            isinstance(c, dict) and c.get("Content-Type") == "application/zip"
+            for c in conditions
+        )
+        has_size_range = any(
+            isinstance(c, list) and c[0] == "content-length-range" for c in conditions
+        )
+        self.assertTrue(has_content_type)
+        self.assertTrue(has_size_range)
+
+    @override_settings(**S3_TEST_SETTINGS, MEDIA_ROOT="/tmp/test_media")
+    @patch("lms.services._get_s3_client")
+    def test_create_package_from_s3_key_with_valid_zip(self, mock_client):
+        """Test creating a package from S3 with a valid SCORM ZIP."""
+        import io
+
+        # Create a real ZIP in memory with a manifest
+        zip_buffer = io.BytesIO()
+        with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+            manifest = '<?xml version="1.0"?><manifest></manifest>'
+            zf.writestr("imsmanifest.xml", manifest)
+            zf.writestr("index.html", "<html>SCORM content</html>")
+        zip_bytes = zip_buffer.getvalue()
+
+        mock_s3 = Mock()
+        mock_client.return_value = mock_s3
+
+        # Mock download_file to write the real ZIP to the temp file
+        def fake_download(bucket, key, path):
+            with open(path, "wb") as f:
+                f.write(zip_bytes)
+
+        mock_s3.download_file.side_effect = fake_download
+
+        from lms.services import create_package_from_s3_key
+
+        package = None
+        try:
+            package = create_package_from_s3_key(
+                "scorm_packages/abc_test.zip",
+                "Test Package",
+                "A test SCORM package",
+            )
+
+            self.assertEqual(package.title, "Test Package")
+            self.assertEqual(package.description, "A test SCORM package")
+            self.assertNotEqual(package.extracted_path, "__pending__")
+            self.assertIn("package_", package.extracted_path)
+        finally:
+            # Clean up
+            import shutil
+
+            extract_dir = "/tmp/test_media/scorm_content"
+            if os.path.exists(extract_dir):
+                shutil.rmtree(extract_dir)
+            if package and package.pk:
+                package.delete()
+
+    @override_settings(**S3_TEST_SETTINGS, MEDIA_ROOT="/tmp/test_media")
+    @patch("lms.services._get_s3_client")
+    def test_create_package_rejects_path_traversal(self, mock_client):
+        """Test ZIP with path traversal is rejected."""
+        import io
+
+        # Create a ZIP with path traversal attempt
+        zip_buffer = io.BytesIO()
+        with zipfile.ZipFile(zip_buffer, "w") as zf:
+            zf.writestr("../../../etc/passwd", "malicious content")
+        zip_bytes = zip_buffer.getvalue()
+
+        mock_s3 = Mock()
+        mock_client.return_value = mock_s3
+
+        def fake_download(bucket, key, path):
+            with open(path, "wb") as f:
+                f.write(zip_bytes)
+
+        mock_s3.download_file.side_effect = fake_download
+
+        from lms.services import create_package_from_s3_key
+
+        with self.assertRaises(ValueError) as cm:
+            create_package_from_s3_key("scorm_packages/evil.zip", "Evil Package")
+        self.assertIn("unsafe path", str(cm.exception))
+
+        # Package should have been cleaned up
+        self.assertEqual(SCORMPackage.objects.filter(title="Evil Package").count(), 0)
+
+
+class SCORMPackageAdminTest(TestCase):
+    """Test SCORMPackage admin endpoint access control."""
+
+    def setUp(self):
+        self.staff_user = User.objects.create_user(
+            username="staffuser",
+            email="staff@example.com",
+            password="testpass123",
+            is_staff=True,
+        )
+        self.regular_user = User.objects.create_user(
+            username="regularuser",
+            email="regular@example.com",
+            password="testpass123",
+        )
+
+    def test_presigned_endpoint_requires_staff(self):
+        """Non-staff users are redirected from presigned endpoint."""
+        self.client.force_login(self.regular_user)
+        response = self.client.post(
+            reverse("admin:scormpackage_presigned_upload"),
+            data='{"filename": "test.zip"}',
+            content_type="application/json",
+        )
+        # Django admin redirects non-staff to login
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("login/", response.url)
+
+    @patch("lms.admin._s3_configured", return_value=True)
+    @patch("lms.services.generate_presigned_post")
+    def test_presigned_endpoint_returns_json_for_staff(
+        self, mock_generate, mock_s3_configured
+    ):
+        """Staff users get presigned POST data."""
+        mock_generate.return_value = {
+            "url": "https://bucket.s3.amazonaws.com",
+            "fields": {"key": "scorm_packages/abc_test.zip"},
+            "s3_key": "scorm_packages/abc_test.zip",
+        }
+
+        self.client.force_login(self.staff_user)
+        response = self.client.post(
+            reverse("admin:scormpackage_presigned_upload"),
+            data='{"filename": "test.zip"}',
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertIn("url", data)
+        self.assertIn("fields", data)
+        self.assertIn("s3_key", data)
+
+    def test_finalize_endpoint_requires_staff(self):
+        """Non-staff users are redirected from finalize endpoint."""
+        self.client.force_login(self.regular_user)
+        response = self.client.post(
+            reverse("admin:scormpackage_finalize_upload"),
+            data='{"s3_key": "scorm_packages/abc.zip", "title": "Test"}',
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("login/", response.url)
+
+    @patch("lms.admin._s3_configured", return_value=True)
+    @patch("lms.services.create_package_from_s3_key")
+    def test_finalize_endpoint_creates_package(self, mock_create, mock_s3_configured):
+        """Staff users can finalize an upload."""
+        mock_package = Mock()
+        mock_package.pk = 42
+        mock_create.return_value = mock_package
+
+        self.client.force_login(self.staff_user)
+        response = self.client.post(
+            reverse("admin:scormpackage_finalize_upload"),
+            data='{"s3_key": "scorm_packages/abc.zip", "title": "My Package", "description": "desc"}',
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data["success"])
+        self.assertIn("redirect_url", data)
+        mock_create.assert_called_once_with(
+            "scorm_packages/abc.zip", "My Package", "desc"
+        )
+
+    def test_presigned_endpoint_rejects_non_zip(self):
+        """Presigned endpoint rejects non-zip filenames."""
+        self.client.force_login(self.staff_user)
+
+        with patch("lms.admin._s3_configured", return_value=True):
+            response = self.client.post(
+                reverse("admin:scormpackage_presigned_upload"),
+                data='{"filename": "malware.exe"}',
+                content_type="application/json",
+            )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("zip", response.json()["error"].lower())
