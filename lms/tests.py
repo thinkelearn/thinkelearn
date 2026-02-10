@@ -181,7 +181,7 @@ class ExtendedCoursePageTest(TestCase):
             title="Test Course",
             slug="test-course",
             difficulty="beginner",
-            duration_hours=10,
+            duration_minutes=600,
             is_published=True,
             scorm_package=self.scorm_package,
         )
@@ -217,6 +217,26 @@ class ExtendedCoursePageTest(TestCase):
 
         avg_rating = self.course.get_average_rating()
         self.assertEqual(avg_rating, 4.0)
+
+    def test_duration_display_hours_and_minutes(self):
+        """Duration with both hours and minutes shows combined format"""
+        self.course.duration_minutes = 90
+        self.assertEqual(self.course.duration_display, "1h 30min")
+
+    def test_duration_display_exact_hours(self):
+        """Duration that is exact hours omits minutes"""
+        self.course.duration_minutes = 120
+        self.assertEqual(self.course.duration_display, "2h")
+
+    def test_duration_display_minutes_only(self):
+        """Duration under 60 minutes shows minutes only"""
+        self.course.duration_minutes = 45
+        self.assertEqual(self.course.duration_display, "45min")
+
+    def test_duration_display_none(self):
+        """No duration returns empty string"""
+        self.course.duration_minutes = None
+        self.assertEqual(self.course.duration_display, "")
 
     def test_get_enrollment_count(self):
         """Test enrollment count calculation"""
