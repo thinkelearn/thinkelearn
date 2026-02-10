@@ -1,4 +1,3 @@
-import os
 import zipfile
 from datetime import timedelta
 from decimal import Decimal
@@ -1661,8 +1660,9 @@ class PresignedUploadTest(TestCase):
         self.assertTrue(has_size_range)
 
     @override_settings(**S3_TEST_SETTINGS, MEDIA_ROOT="/tmp/test_media")
+    @patch("wagtail_lms.models.SCORMPackage.extract_package")
     @patch("lms.services._get_s3_client")
-    def test_create_package_from_s3_key_with_valid_zip(self, mock_client):
+    def test_create_package_from_s3_key_with_valid_zip(self, mock_client, mock_extract):
         """Test creating a package from S3 with a valid SCORM ZIP."""
         import io
 
@@ -1684,6 +1684,14 @@ class PresignedUploadTest(TestCase):
 
         mock_s3.download_file.side_effect = fake_download
 
+        # Simulate extract_package setting extracted_path
+        def fake_extract(self_pkg):
+            self_pkg.extracted_path = f"package_{self_pkg.id}_abc_test"
+
+        mock_extract.side_effect = lambda: fake_extract(
+            SCORMPackage.objects.get(title="Test Package")
+        )
+
         from lms.services import create_package_from_s3_key
 
         package = None
@@ -1696,15 +1704,9 @@ class PresignedUploadTest(TestCase):
 
             self.assertEqual(package.title, "Test Package")
             self.assertEqual(package.description, "A test SCORM package")
-            self.assertNotEqual(package.extracted_path, "__pending__")
-            self.assertIn("package_", package.extracted_path)
+            self.assertEqual(package.package_file.name, "scorm_packages/abc_test.zip")
+            mock_extract.assert_called_once()
         finally:
-            # Clean up
-            import shutil
-
-            extract_dir = "/tmp/test_media/scorm_content"
-            if os.path.exists(extract_dir):
-                shutil.rmtree(extract_dir)
             if package and package.pk:
                 package.delete()
 

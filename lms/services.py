@@ -77,8 +77,8 @@ def generate_presigned_post(filename: str) -> dict:
 def create_package_from_s3_key(s3_key: str, title: str, description: str = ""):
     """Create a SCORMPackage from an already-uploaded S3 object.
 
-    Downloads the ZIP from S3, validates it, extracts it locally, and
-    parses the SCORM manifest.
+    Downloads the ZIP from S3 for pre-validation (is_zipfile + path traversal),
+    then delegates extraction and manifest parsing to wagtail-lms's save().
 
     Args:
         s3_key: The S3 object key where the ZIP was uploaded.
@@ -94,80 +94,38 @@ def create_package_from_s3_key(s3_key: str, title: str, description: str = ""):
     from wagtail_lms.models import SCORMPackage
 
     bucket_name = getattr(settings, "AWS_STORAGE_BUCKET_NAME", "")
-
-    # Create the package with a sentinel extracted_path so wagtail-lms's
-    # save() skips its own extract_package() (which calls .path and fails on S3).
-    # The sentinel works because save() checks:
-    #   if self.package_file and not self.extracted_path:
-    # With "__pending__" set, `not self.extracted_path` is False.
-    package = SCORMPackage(
-        title=title,
-        description=description,
-        extracted_path="__pending__",
-    )
-    package.package_file.name = s3_key
-    package.save()
-
     s3_client = _get_s3_client()
 
     try:
-        # Download ZIP to a temp file
+        # Download ZIP to a temp file for validation
         with tempfile.NamedTemporaryFile(suffix=".zip", delete=False) as tmp:
             tmp_path = tmp.name
             s3_client.download_file(bucket_name, s3_key, tmp_path)
 
-        # Validate ZIP
+        # Validate ZIP format
         if not zipfile.is_zipfile(tmp_path):
-            package.delete()
             raise ValueError("Uploaded file is not a valid ZIP archive.")
 
-        # Check for path traversal attacks
+        # Pre-check for path traversal (raise ValueError for admin UX;
+        # wagtail-lms also skips unsafe paths but only logs warnings)
         with zipfile.ZipFile(tmp_path, "r") as zf:
             for member in zf.namelist():
-                # Normalize and reject any path that escapes the extraction dir
                 member_path = os.path.normpath(member)
                 if member_path.startswith("..") or os.path.isabs(member_path):
-                    package.delete()
                     raise ValueError(f"ZIP contains unsafe path: {member}")
 
-        # Build extraction directory
-        package_name = os.path.splitext(os.path.basename(s3_key))[0]
-        unique_dir = f"package_{package.id}_{package_name}"
-        extract_dir = os.path.join(settings.MEDIA_ROOT, "scorm_content", unique_dir)
-        os.makedirs(extract_dir, exist_ok=True)
-
-        # Extract
-        with zipfile.ZipFile(tmp_path, "r") as zf:
-            zf.extractall(extract_dir)
-
-        package.extracted_path = unique_dir
-
-        # Parse manifest (reuse wagtail-lms's method)
-        manifest_path = os.path.join(extract_dir, "imsmanifest.xml")
-        if os.path.exists(manifest_path):
-            package.parse_manifest(manifest_path)
-
+        # Create package — save() triggers extract_package() which handles
+        # extraction via default_storage and manifest parsing
+        package = SCORMPackage(
+            title=title,
+            description=description,
+        )
+        package.package_file.name = s3_key
         package.save()
+
         logger.info("Created SCORM package %s from S3 key %s", package.id, s3_key)
         return package
 
-    except Exception:
-        # Clean up extracted directory on failure
-        if "extract_dir" in locals() and os.path.exists(extract_dir):
-            import shutil
-
-            shutil.rmtree(extract_dir, ignore_errors=True)
-        # Clean up DB row on any error after package creation
-        if package.pk:
-            try:
-                package.delete()
-            except Exception:
-                logger.exception(
-                    "Failed to clean up package %s after extraction error",
-                    package.pk,
-                )
-        raise
     finally:
-        # Clean up temp file
         if "tmp_path" in locals() and os.path.exists(tmp_path):
             os.unlink(tmp_path)
