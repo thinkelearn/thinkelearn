@@ -7,6 +7,7 @@ import os
 import tempfile
 import uuid
 import zipfile
+from pathlib import PurePosixPath
 
 import boto3
 from django.conf import settings
@@ -108,11 +109,14 @@ def create_package_from_s3_key(s3_key: str, title: str, description: str = ""):
 
         # Pre-check for path traversal (raise ValueError for admin UX;
         # wagtail-lms also skips unsafe paths but only logs warnings)
-        with zipfile.ZipFile(tmp_path, "r") as zf:
-            for member in zf.namelist():
-                member_path = os.path.normpath(member)
-                if member_path.startswith("..") or os.path.isabs(member_path):
-                    raise ValueError(f"ZIP contains unsafe path: {member}")
+        try:
+            with zipfile.ZipFile(tmp_path, "r") as zf:
+                for member in zf.namelist():
+                    parts = PurePosixPath(member).parts
+                    if ".." in parts or (parts and parts[0].startswith("/")):
+                        raise ValueError(f"ZIP contains unsafe path: {member}")
+        except zipfile.BadZipFile as exc:
+            raise ValueError("Uploaded file is not a valid ZIP archive.") from exc
 
         # Create package — save() triggers extract_package() which handles
         # extraction via default_storage and manifest parsing

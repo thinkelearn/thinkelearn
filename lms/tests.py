@@ -1684,14 +1684,6 @@ class PresignedUploadTest(TestCase):
 
         mock_s3.download_file.side_effect = fake_download
 
-        # Simulate extract_package setting extracted_path
-        def fake_extract(self_pkg):
-            self_pkg.extracted_path = f"package_{self_pkg.id}_abc_test"
-
-        mock_extract.side_effect = lambda: fake_extract(
-            SCORMPackage.objects.get(title="Test Package")
-        )
-
         from lms.services import create_package_from_s3_key
 
         package = None
