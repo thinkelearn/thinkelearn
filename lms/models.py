@@ -682,10 +682,10 @@ class ExtendedCoursePage(CoursePage):
     categories = ParentalManyToManyField(CourseCategory, blank=True)
     tags = ParentalManyToManyField(CourseTag, blank=True)
 
-    duration_hours = models.PositiveIntegerField(
+    duration_minutes = models.PositiveIntegerField(
         null=True,
         blank=True,
-        help_text="Estimated duration in hours",
+        help_text="Estimated duration in minutes",
     )
 
     class Difficulty(models.TextChoices):
@@ -700,6 +700,18 @@ class ExtendedCoursePage(CoursePage):
         choices=Difficulty,
         default=Difficulty.BEGINNER,
     )
+
+    @property
+    def duration_display(self):
+        """Format duration smartly as hours and/or minutes."""
+        if not self.duration_minutes:
+            return ""
+        hours, mins = divmod(self.duration_minutes, 60)
+        if hours and mins:
+            return f"{hours}h {mins}min"
+        if hours:
+            return f"{hours}h"
+        return f"{mins}min"
 
     prerequisites_description = RichTextField(
         blank=True,
@@ -756,7 +768,7 @@ class ExtendedCoursePage(CoursePage):
                 FieldPanel("categories", widget=forms.CheckboxSelectMultiple),
                 FieldPanel("tags", widget=forms.CheckboxSelectMultiple),
                 FieldPanel("difficulty"),
-                FieldPanel("duration_hours"),
+                FieldPanel("duration_minutes"),
             ],
             heading="Course Metadata",
         ),
@@ -779,7 +791,7 @@ class ExtendedCoursePage(CoursePage):
         index.SearchField("learning_objectives"),
         index.SearchField("prerequisites_description"),
         index.FilterField("difficulty"),
-        index.FilterField("duration_hours"),
+        index.FilterField("duration_minutes"),
     ]
 
     # Parent page / subpage type rules
