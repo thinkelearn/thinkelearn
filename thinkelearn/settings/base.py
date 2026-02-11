@@ -308,5 +308,11 @@ SMS_NOTIFICATION_EMAILS = [
     if email.strip()
 ]
 
+COURSE_REVIEW_NOTIFICATION_EMAILS = [
+    email.strip()
+    for email in os.environ.get("COURSE_REVIEW_NOTIFICATION_EMAILS", "").split(",")
+    if email.strip()
+]
+
 # Site framework
 SITE_ID = 1
