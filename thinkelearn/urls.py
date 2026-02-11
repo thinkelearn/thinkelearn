@@ -26,6 +26,12 @@ urlpatterns = [
         lms_views.submit_course_feedback,
         name="course_feedback",
     ),
+    # Override wagtail_lms content serving with caching + S3 redirect
+    path(
+        "lms/scorm-content/<path:content_path>",
+        lms_views.serve_scorm_content,
+        name="serve_scorm_content",
+    ),
     path("lms/", include("wagtail_lms.urls")),
     # django-allauth authentication URLs - must be before Wagtail catch-all
     # Reserved path: avoid other "accounts/" URL patterns to prevent conflicts

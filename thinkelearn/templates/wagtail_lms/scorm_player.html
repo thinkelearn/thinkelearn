@@ -67,14 +67,6 @@
             </iframe>
         </div>
 
-        {# Loading Overlay #}
-        <div id="loading-overlay" class="fixed inset-0 bg-neutral-900 bg-opacity-75 items-center justify-center z-50" style="display: none;">
-            <div class="bg-white rounded-lg p-8 max-w-sm mx-4 text-center shadow-2xl">
-                <div class="animate-spin rounded-full h-16 w-16 border-b-4 border-secondary-500 mx-auto mb-4"></div>
-                <p class="text-lg font-semibold text-neutral-800">Saving Progress...</p>
-                <p class="text-sm text-neutral-600 mt-2">Please wait while we save your work.</p>
-            </div>
-        </div>
     </div>
 
     <script>
@@ -140,11 +132,9 @@
             }
 
             this.saveInProgress = true;
-            this.showLoadingOverlay();
 
             this.callAPI('Commit', [parameter], true, () => {
                 this.saveInProgress = false;
-                this.hideLoadingOverlay();
                 this.updateStatus('Saved', 'success');
             });
 
@@ -215,19 +205,6 @@
             }
         },
 
-        showLoadingOverlay: function() {
-            const overlay = document.getElementById('loading-overlay');
-            if (overlay) {
-                overlay.style.display = 'flex';
-            }
-        },
-
-        hideLoadingOverlay: function() {
-            const overlay = document.getElementById('loading-overlay');
-            if (overlay) {
-                overlay.style.display = 'none';
-            }
-        }
     };
 
     // Make API available to SCORM content
