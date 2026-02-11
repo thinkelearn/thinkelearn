@@ -1897,7 +1897,12 @@ class SCORMPackageAdminTest(TestCase):
 
 
 class ServeScormContentTest(TestCase):
-    """Test the custom serve_scorm_content view."""
+    """Smoke tests for the wagtail-lms SCORM content route in thinkelearn.
+
+    Detailed view behaviour (caching, path traversal, redirect logic) is
+    tested upstream in wagtail-lms.  These tests verify the URL is correctly
+    wired through thinkelearn's URL configuration.
+    """
 
     def setUp(self):
         self.user = User.objects.create_user(username="learner", password="pass")
@@ -1906,35 +1911,11 @@ class ServeScormContentTest(TestCase):
     def _url(self, path):
         return f"{self.url_base}{path}"
 
-    # --- Authentication ---
-
     def test_requires_login(self):
         """Anonymous users are redirected to login."""
         response = self.client.get(self._url("pkg/index.html"))
         self.assertEqual(response.status_code, 302)
         self.assertIn("/accounts/login/", response.url)
-
-    # --- Path traversal protection ---
-
-    def test_rejects_dot_dot_traversal(self):
-        """Path with '..' components is rejected."""
-        self.client.force_login(self.user)
-        response = self.client.get(self._url("../etc/passwd"))
-        self.assertEqual(response.status_code, 404)
-
-    def test_rejects_backslash_traversal(self):
-        """Backslash-based path traversal is rejected."""
-        self.client.force_login(self.user)
-        response = self.client.get(self._url("..\\etc\\passwd"))
-        self.assertEqual(response.status_code, 404)
-
-    def test_rejects_encoded_dot_dot_in_middle(self):
-        """Path with embedded '..' after normalization is rejected."""
-        self.client.force_login(self.user)
-        response = self.client.get(self._url("pkg/../../secret"))
-        self.assertEqual(response.status_code, 404)
-
-    # --- Missing files ---
 
     def test_missing_file_returns_404(self):
         """Non-existent file returns 404."""
@@ -1942,122 +1923,30 @@ class ServeScormContentTest(TestCase):
         response = self.client.get(self._url("pkg/nonexistent.html"))
         self.assertEqual(response.status_code, 404)
 
-    def test_oserror_returns_404(self):
-        """OSError from storage backend returns 404."""
+    def test_serves_file_with_expected_headers(self):
+        """Valid file is served with iframe and cache headers."""
+        from io import BytesIO
+
         self.client.force_login(self.user)
-        with patch("lms.views.default_storage.open", side_effect=OSError("S3 error")):
+        mock_file = BytesIO(b"<html></html>")
+        with patch("wagtail_lms.views.default_storage.open", return_value=mock_file):
             response = self.client.get(self._url("pkg/index.html"))
-        self.assertEqual(response.status_code, 404)
-
-    # --- Cache-Control headers ---
-
-    def _serve_with_mock(self, path):
-        """Helper: serve a path with mocked storage returning dummy content."""
-        from io import BytesIO
-
-        self.client.force_login(self.user)
-        mock_file = BytesIO(b"dummy content")
-        with patch("lms.views.default_storage.open", return_value=mock_file):
-            return self.client.get(self._url(path))
-
-    def test_html_cache_control(self):
-        """HTML files get no-cache."""
-        response = self._serve_with_mock("pkg/index.html")
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response["Cache-Control"], "no-cache")
-
-    def test_js_cache_control(self):
-        """JavaScript files get 1-day cache."""
-        response = self._serve_with_mock("pkg/script.js")
-        self.assertEqual(response["Cache-Control"], "max-age=86400")
-
-    def test_css_cache_control(self):
-        """CSS files get 1-day cache."""
-        response = self._serve_with_mock("pkg/style.css")
-        self.assertEqual(response["Cache-Control"], "max-age=86400")
-
-    def test_image_cache_control(self):
-        """Image files get 7-day cache."""
-        response = self._serve_with_mock("pkg/logo.png")
-        self.assertEqual(response["Cache-Control"], "max-age=604800")
-
-    def test_unknown_mime_cache_control(self):
-        """Unknown MIME types get 1-day cache."""
-        response = self._serve_with_mock("pkg/data.xyz")
-        self.assertEqual(response["Cache-Control"], "max-age=86400")
-
-    # --- Iframe headers ---
-
-    def test_iframe_headers(self):
-        """Proxied responses include X-Frame-Options and CSP headers."""
-        response = self._serve_with_mock("pkg/index.html")
         self.assertEqual(response["X-Frame-Options"], "SAMEORIGIN")
-        self.assertEqual(response["Content-Security-Policy"], "frame-ancestors 'self'")
+        self.assertIn("Cache-Control", response)
 
-    # --- S3 redirect for video/audio ---
-
-    def test_s3_redirect_for_video(self):
-        """Video files redirect to presigned S3 URL when S3 is active."""
-        self.client.force_login(self.user)
-        presigned = "https://bucket.s3.amazonaws.com/scorm_content/pkg/clip.mp4?sig=abc"
-        with (
-            patch("lms.views._is_s3_storage", return_value=True),
-            patch("lms.views.default_storage.url", return_value=presigned),
-        ):
-            response = self.client.get(self._url("pkg/clip.mp4"))
-        self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.url, presigned)
-
-    def test_s3_redirect_for_audio(self):
-        """Audio files redirect to presigned S3 URL when S3 is active."""
-        self.client.force_login(self.user)
-        presigned = (
-            "https://bucket.s3.amazonaws.com/scorm_content/pkg/narration.mp3?sig=abc"
-        )
-        with (
-            patch("lms.views._is_s3_storage", return_value=True),
-            patch("lms.views.default_storage.url", return_value=presigned),
-        ):
-            response = self.client.get(self._url("pkg/narration.mp3"))
-        self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.url, presigned)
-
-    def test_no_redirect_without_s3(self):
-        """Video files are proxied (not redirected) when S3 is not active."""
-        from io import BytesIO
+    def test_redirect_url_failure_returns_404(self):
+        """S3 URL generation failure returns 404 instead of 500."""
+        from wagtail_lms import conf
 
         self.client.force_login(self.user)
-        mock_file = BytesIO(b"fake video")
         with (
-            patch("lms.views._is_s3_storage", return_value=False),
-            patch("lms.views.default_storage.open", return_value=mock_file),
-        ):
-            response = self.client.get(self._url("pkg/clip.mp4"))
-        self.assertEqual(response.status_code, 200)
-
-    def test_s3_url_failure_returns_404(self):
-        """If presigned URL generation fails, return 404."""
-        self.client.force_login(self.user)
-        with (
-            patch("lms.views._is_s3_storage", return_value=True),
+            patch.object(conf, "WAGTAIL_LMS_REDIRECT_MEDIA", True),
+            patch("wagtail_lms.views.default_storage.exists", return_value=True),
             patch(
-                "lms.views.default_storage.url",
+                "wagtail_lms.views.default_storage.url",
                 side_effect=Exception("credential error"),
             ),
         ):
             response = self.client.get(self._url("pkg/clip.mp4"))
         self.assertEqual(response.status_code, 404)
-
-    def test_html_not_redirected_on_s3(self):
-        """HTML files are always proxied, even when S3 is active."""
-        from io import BytesIO
-
-        self.client.force_login(self.user)
-        mock_file = BytesIO(b"<html></html>")
-        with (
-            patch("lms.views._is_s3_storage", return_value=True),
-            patch("lms.views.default_storage.open", return_value=mock_file),
-        ):
-            response = self.client.get(self._url("pkg/index.html"))
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response["Cache-Control"], "no-cache")

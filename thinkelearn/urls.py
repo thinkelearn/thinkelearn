@@ -26,10 +26,10 @@ urlpatterns = [
         lms_views.submit_course_feedback,
         name="course_feedback",
     ),
-    # Override wagtail_lms content serving with caching + S3 redirect
+    # Override upstream SCORM content view to guard against S3 URL failures
     path(
         "lms/scorm-content/<path:content_path>",
-        lms_views.serve_scorm_content,
+        lms_views.SafeRedirectScormContentView.as_view(),
         name="serve_scorm_content",
     ),
     path("lms/", include("wagtail_lms.urls")),

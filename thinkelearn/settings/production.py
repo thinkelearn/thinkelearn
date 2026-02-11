@@ -157,6 +157,9 @@ if os.environ.get("AWS_STORAGE_BUCKET_NAME"):
         },
     }
     # Don't set MEDIA_URL - django-storages generates full presigned URLs
+
+    # Redirect SCORM video/audio to presigned S3 URLs instead of proxying
+    WAGTAIL_LMS_REDIRECT_MEDIA = True
 else:
     # Fallback to local storage (development or during Docker build)
     # Note: During Docker build, AWS vars aren't available yet - this is expected
