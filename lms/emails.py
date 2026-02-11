@@ -44,12 +44,12 @@ def send_course_review_notification(review, *, created: bool) -> None:
             "Course review notification sent",
             extra={
                 "review_id": review.id,
-                "created": created,
+                "review_created": created,
                 "recipients": recipients,
             },
         )
     except Exception:
         logger.exception(
             "Failed to send course review notification",
-            extra={"review_id": review.id, "created": created},
+            extra={"review_id": review.id, "review_created": created},
         )
