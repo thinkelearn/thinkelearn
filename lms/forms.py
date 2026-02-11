@@ -10,11 +10,6 @@ class CourseFeedbackForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["rating"].widget.attrs.update(
-            {
-                "class": "w-full rounded-md border-neutral-300 text-sm focus:border-cyan-500 focus:ring-cyan-500",
-            }
-        )
         self.fields["review_text"].widget.attrs.update(
             {
                 "class": "w-full rounded-md border-neutral-300 text-sm focus:border-cyan-500 focus:ring-cyan-500",
@@ -25,15 +20,7 @@ class CourseFeedbackForm(forms.ModelForm):
         model = CourseReview
         fields = ["rating", "review_text"]
         widgets = {
-            "rating": forms.Select(
-                choices=(
-                    (5, "5 - Excellent"),
-                    (4, "4 - Very good"),
-                    (3, "3 - Good"),
-                    (2, "2 - Fair"),
-                    (1, "1 - Needs improvement"),
-                )
-            ),
+            "rating": forms.HiddenInput(),
             "review_text": forms.Textarea(
                 attrs={
                     "rows": 4,
