@@ -221,7 +221,7 @@
                                             </svg>
                                         </button>
                                     {% endfor %}
-                                    <span id="star-rating-label" class="ml-2 text-sm text-neutral-500" aria-live="polite"></span>
+                                    <span id="star-rating-label" class="ml-2 text-sm text-neutral-500" aria-live="polite">Select a rating</span>
                                 </div>
                                 <noscript>
                                     <div class="mt-2 space-y-1">
@@ -437,10 +437,12 @@
     const container = document.getElementById('star-rating');
     if (!container) return;
 
+    const form = container.closest('form');
     const input = document.getElementById('{{ course_feedback_form.rating.id_for_label }}');
     const buttons = Array.from(container.querySelectorAll('.star-btn'));
     const label = document.getElementById('star-rating-label');
     const labels = ['', 'Needs improvement', 'Fair', 'Good', 'Very good', 'Excellent'];
+    const promptText = 'Select a rating';
 
     function setFocus(index) {
         buttons.forEach(function(btn, i) {
@@ -452,6 +454,8 @@
     function select(value) {
         current = value;
         input.value = current;
+        label.classList.remove('text-red-500');
+        label.classList.add('text-neutral-500');
         update(current, false);
     }
 
@@ -467,7 +471,11 @@
                 btn.setAttribute('tabindex', v === (current || 1) ? '0' : '-1');
             }
         });
-        label.textContent = value > 0 ? labels[value] : '';
+        if (hover || value > 0) {
+            label.classList.remove('text-red-500');
+            label.classList.add('text-neutral-500');
+        }
+        label.textContent = value > 0 ? labels[value] : promptText;
     }
 
     // Initialize from existing value
@@ -511,6 +519,16 @@
         btn.addEventListener('blur', function() {
             update(current, false);
         });
+    });
+
+    // Prevent submit without a rating
+    form.addEventListener('submit', function(e) {
+        if (!input.value) {
+            e.preventDefault();
+            label.textContent = 'Please select a rating';
+            label.classList.remove('text-neutral-500');
+            label.classList.add('text-red-500');
+        }
     });
 })();
 </script>
