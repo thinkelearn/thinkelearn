@@ -64,7 +64,7 @@
                     name="q"
                     value="{{ search_query|default:'' }}"
                     placeholder="Search courses by title or description..."
-                    class="flex-1 px-6 py-3 rounded-full border-2 border-white/40 bg-white/20 text-white placeholder-white/90 focus:outline-none focus:border-white focus:bg-white/30 transition-all"
+                    class="courses-search-input flex-1 px-6 py-3 rounded-full border-2 border-white/40 bg-white/20 text-white placeholder-white/90 focus:outline-none focus:border-white focus:bg-white/30 transition-all"
                 >
                 <button
                     type="submit"
@@ -107,14 +107,14 @@
                     <article class="card-hover group bg-white rounded-lg shadow-md overflow-hidden">
                         {# Course Thumbnail #}
                         {% if course.thumbnail %}
-                        <div class="aspect-w-16 aspect-h-9 overflow-hidden">
+                        <div class="h-48 overflow-hidden bg-neutral-100">
                             <a href="{% pageurl course %}">
-                                {% image course.thumbnail fill-400x225 class="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300" %}
+                                {% image course.thumbnail fill-400x225 class="block w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" %}
                             </a>
                         </div>
                         {% else %}
-                        <div class="aspect-w-16 aspect-h-9 overflow-hidden">
-                            <a href="{% pageurl course %}" class="w-full h-48 bg-gradient-to-br from-primary-600 to-primary-800 flex items-center justify-center group-hover:from-primary-700 group-hover:to-primary-900 transition-all duration-300">
+                        <div class="h-48 overflow-hidden bg-neutral-100">
+                            <a href="{% pageurl course %}" class="w-full h-full bg-gradient-to-br from-primary-600 to-primary-800 flex items-center justify-center group-hover:from-primary-700 group-hover:to-primary-900 transition-all duration-300">
                                 <svg class="w-16 h-16 text-white opacity-50 group-hover:opacity-70 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
                                 </svg>
@@ -195,7 +195,7 @@
                                 </a>
                             </div>
                         </div>
-                    </div>
+                    </article>
                 {% endfor %}
             </div>
         {% else %}

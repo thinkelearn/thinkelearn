@@ -89,6 +89,11 @@
   input[type="checkbox"] {
     @apply h-4 w-4 rounded border-neutral-300 text-secondary-600 focus:ring-secondary-500;
   }
+
+  /* Ensure the LMS catalog search field keeps high-contrast text on dark/cyan bg */
+  .courses-search-input[type="text"] {
+    @apply text-white placeholder-white/90;
+  }
 }
 
 /* Wagtail admin compatibility */
