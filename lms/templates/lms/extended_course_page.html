@@ -165,13 +165,14 @@
                             <p class="text-sm font-semibold text-cyan-900 mb-2">Your current feedback</p>
                             <div class="flex items-center gap-1 mb-2">
                                 <span class="text-sm text-cyan-800">Rating:</span>
-                                <div class="flex">
+                                <div class="flex" aria-hidden="true">
                                     {% for i in "12345" %}
                                         <svg class="w-4 h-4 {% if forloop.counter <= user_review.rating %}text-yellow-400{% else %}text-neutral-300{% endif %}" fill="currentColor" viewBox="0 0 20 20">
                                             <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
                                         </svg>
                                     {% endfor %}
                                 </div>
+                                <span class="sr-only">{{ user_review.rating }} out of 5</span>
                             </div>
                             {% if user_review.review_text %}
                                 <p class="text-sm text-cyan-900">{{ user_review.review_text }}</p>
@@ -213,17 +214,31 @@
                                                 class="star-btn p-0.5 rounded focus:outline-none focus:ring-2 focus:ring-cyan-400"
                                                 role="radio"
                                                 aria-checked="false"
+                                                tabindex="-1"
                                                 aria-label="{{ forloop.counter }} star{{ forloop.counter|pluralize }}">
                                             <svg class="w-8 h-8 transition-colors text-neutral-300" fill="currentColor" viewBox="0 0 20 20">
                                                 <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
                                             </svg>
                                         </button>
                                     {% endfor %}
-                                    <span id="star-rating-label" class="ml-2 text-sm text-neutral-500"></span>
+                                    <span id="star-rating-label" class="ml-2 text-sm text-neutral-500" aria-live="polite"></span>
                                 </div>
-                                {% if course_feedback_form.rating.errors %}
-                                    <p class="mt-1 text-sm text-red-600">{{ course_feedback_form.rating.errors.0 }}</p>
-                                {% endif %}
+                                <noscript>
+                                    <div class="mt-2 space-y-1">
+                                        {% for i in "12345" %}
+                                            <div class="flex items-center gap-1">
+                                                <input type="radio"
+                                                       id="{{ course_feedback_form.rating.id_for_label }}_{{ forloop.counter }}"
+                                                       name="{{ course_feedback_form.rating.html_name }}"
+                                                       value="{{ forloop.counter }}"
+                                                       {% if course_feedback_form.rating.value|stringformat:"s" == forloop.counter|stringformat:"s" %}checked{% endif %}>
+                                                <label for="{{ course_feedback_form.rating.id_for_label }}_{{ forloop.counter }}" class="text-sm text-neutral-800">
+                                                    {{ forloop.counter }} star{{ forloop.counter|pluralize }}
+                                                </label>
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                </noscript>
                             </div>
                             <div>
                                 <label for="{{ course_feedback_form.review_text.id_for_label }}" class="block text-sm font-semibold text-neutral-800 mb-2">
@@ -416,15 +431,29 @@
 {% endblock %}
 
 {% block extra_js %}
+{{ block.super }}
 <script>
 (function() {
     const container = document.getElementById('star-rating');
     if (!container) return;
 
     const input = document.getElementById('{{ course_feedback_form.rating.id_for_label }}');
-    const buttons = container.querySelectorAll('.star-btn');
+    const buttons = Array.from(container.querySelectorAll('.star-btn'));
     const label = document.getElementById('star-rating-label');
     const labels = ['', 'Needs improvement', 'Fair', 'Good', 'Very good', 'Excellent'];
+
+    function setFocus(index) {
+        buttons.forEach(function(btn, i) {
+            btn.setAttribute('tabindex', i === index ? '0' : '-1');
+        });
+        buttons[index].focus();
+    }
+
+    function select(value) {
+        current = value;
+        input.value = current;
+        update(current, false);
+    }
 
     function update(value, hover) {
         buttons.forEach(function(btn) {
@@ -433,7 +462,10 @@
             const active = v <= value;
             svg.classList.toggle('text-yellow-400', active);
             svg.classList.toggle('text-neutral-300', !active);
-            if (!hover) btn.setAttribute('aria-checked', active && v === value ? 'true' : 'false');
+            if (!hover) {
+                btn.setAttribute('aria-checked', v === current ? 'true' : 'false');
+                btn.setAttribute('tabindex', v === (current || 1) ? '0' : '-1');
+            }
         });
         label.textContent = value > 0 ? labels[value] : '';
     }
@@ -442,16 +474,41 @@
     var current = parseInt(input.value) || 0;
     update(current, false);
 
-    buttons.forEach(function(btn) {
+    buttons.forEach(function(btn, i) {
         btn.addEventListener('click', function() {
-            current = parseInt(this.dataset.value);
-            input.value = current;
-            update(current, false);
+            select(parseInt(this.dataset.value));
         });
         btn.addEventListener('mouseenter', function() {
             update(parseInt(this.dataset.value), true);
         });
         btn.addEventListener('mouseleave', function() {
+            update(current, false);
+        });
+        btn.addEventListener('keydown', function(e) {
+            var index = i;
+            if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+                e.preventDefault();
+                index = (i + 1) % buttons.length;
+                setFocus(index);
+            } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+                e.preventDefault();
+                index = (i - 1 + buttons.length) % buttons.length;
+                setFocus(index);
+            } else if (e.key === 'Home') {
+                e.preventDefault();
+                setFocus(0);
+            } else if (e.key === 'End') {
+                e.preventDefault();
+                setFocus(buttons.length - 1);
+            } else if (e.key === ' ' || e.key === 'Enter') {
+                e.preventDefault();
+                select(parseInt(this.dataset.value));
+            }
+        });
+        btn.addEventListener('focus', function() {
+            update(parseInt(this.dataset.value), true);
+        });
+        btn.addEventListener('blur', function() {
             update(current, false);
         });
     });
