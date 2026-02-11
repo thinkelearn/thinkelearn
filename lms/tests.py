@@ -274,7 +274,10 @@ class ExtendedCoursePageTest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Your current feedback")
         self.assertContains(response, "Rating:")
-        self.assertContains(response, "4 / 5")
+        # 4-star rating: 4 yellow (w-4 h-4) + 1 neutral in the feedback summary
+        self.assertContains(response, "w-4 h-4 text-yellow-400", count=4)
+        self.assertContains(response, "w-4 h-4 text-neutral-300", count=1)
+        self.assertContains(response, "4 out of 5")
         self.assertContains(response, "Solid course with clear examples.")
 
     def test_login_cta_next_points_to_course_page(self):
