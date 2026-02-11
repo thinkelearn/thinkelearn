@@ -1,5 +1,6 @@
 """Views for LMS custom workflows."""
 
+import logging
 import mimetypes
 import posixpath
 
@@ -15,13 +16,15 @@ from wagtail_lms.models import CourseEnrollment
 from .forms import CourseFeedbackForm
 from .models import CourseReview, ExtendedCoursePage
 
+logger = logging.getLogger(__name__)
+
 # MIME types that should be redirected to S3 instead of proxied
 _REDIRECT_MIME_PREFIXES = ("video/", "audio/")
 
 
 def _is_s3_storage():
-    """Check if the default storage backend is S3."""
-    return type(default_storage).__name__ == "S3Boto3Storage"
+    """Check if the default storage backend is S3 or S3-compatible."""
+    return hasattr(default_storage, "bucket_name")
 
 
 def _cache_control_for_mime(content_type):
@@ -67,13 +70,14 @@ def serve_scorm_content(request, content_path):
         try:
             url = default_storage.url(storage_path)
         except Exception:
+            logger.exception("Failed to generate presigned URL for %s", storage_path)
             raise Http404("File not found") from None
         return HttpResponseRedirect(url)
 
     # Everything else: proxy through Django with caching headers
     try:
         fh = default_storage.open(storage_path, "rb")
-    except FileNotFoundError:
+    except (FileNotFoundError, OSError):
         raise Http404("File not found") from None
 
     response = FileResponse(fh, content_type=content_type)
