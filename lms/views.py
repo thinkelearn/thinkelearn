@@ -63,7 +63,9 @@ def serve_scorm_content(request, content_path):
     if content_type is None:
         content_type = "application/octet-stream"
 
-    # For video/audio on S3: redirect to presigned URL instead of proxying
+    # For video/audio on S3: redirect to presigned URL instead of proxying.
+    # S3 bucket CORS must allow GET/HEAD from our origin for <video crossorigin>
+    # elements to work — see docs/aws-s3-iam-setup.md.
     if _is_s3_storage() and any(
         content_type.startswith(p) for p in _REDIRECT_MIME_PREFIXES
     ):
