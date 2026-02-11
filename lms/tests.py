@@ -4,6 +4,7 @@ from decimal import Decimal
 from unittest.mock import Mock, patch
 
 from django.contrib.auth.models import User
+from django.core import mail
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import IntegrityError
@@ -587,6 +588,66 @@ class CourseReviewTest(TestCase):
         # Newest first
         self.assertEqual(reviews[0].id, review2.id)
         self.assertEqual(reviews[1].id, review1.id)
+
+
+class CourseReviewNotificationEmailTest(TestCase):
+    """Test staff notification emails for course reviews."""
+
+    def setUp(self):
+        self.root_page = Page.add_root(title="Root")
+        self.courses_index = CoursesIndexPage(title="Courses", slug="courses")
+        self.root_page.add_child(instance=self.courses_index)
+
+        self.course = ExtendedCoursePage(title="Test Course", slug="test-course")
+        self.courses_index.add_child(instance=self.course)
+
+        self.user = User.objects.create_user(
+            username="testuser",
+            email="test@example.com",
+            password="testpass123",
+        )
+
+    @override_settings(
+        COURSE_REVIEW_NOTIFICATION_EMAILS=["staff@example.com"],
+        DEFAULT_FROM_EMAIL="noreply@example.com",
+        WAGTAILADMIN_BASE_URL="https://thinkelearn.test",
+    )
+    def test_notification_sent_on_review_create(self):
+        """Creating a review sends a notification email to staff."""
+        CourseReview.objects.create(course=self.course, user=self.user, rating=5)
+
+        self.assertEqual(len(mail.outbox), 1)
+        email = mail.outbox[0]
+        self.assertIn("New course review", email.subject)
+        self.assertEqual(email.to, ["staff@example.com"])
+        self.assertEqual(email.from_email, "noreply@example.com")
+        self.assertIn("Course: Test Course", email.body)
+        self.assertIn("Rating: 5/5", email.body)
+        self.assertIn(
+            "Admin link: https://thinkelearn.test/django-admin/lms/coursereview/",
+            email.body,
+        )
+
+    @override_settings(COURSE_REVIEW_NOTIFICATION_EMAILS=["staff@example.com"])
+    def test_notification_sent_on_review_update(self):
+        """Updating a review sends a notification email to staff."""
+        review = CourseReview.objects.create(
+            course=self.course,
+            user=self.user,
+            rating=2,
+            review_text="Initial feedback",
+        )
+        mail.outbox.clear()
+
+        review.rating = 4
+        review.review_text = "Updated feedback"
+        review.save()
+
+        self.assertEqual(len(mail.outbox), 1)
+        email = mail.outbox[0]
+        self.assertIn("Updated course review", email.subject)
+        self.assertIn("Rating: 4/5", email.body)
+        self.assertIn("Updated feedback", email.body)
 
 
 class CourseFeedbackViewTest(TestCase):
