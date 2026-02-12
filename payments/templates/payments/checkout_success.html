@@ -16,17 +16,20 @@
                 Your payment was successful. You can now access the course content.
             {% endif %}
         </p>
-        {% if session_id %}
-            <p class="mt-2 text-xs text-neutral-400">Session ID: {{ session_id }}</p>
-        {% endif %}
         <div class="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
-            <a href="/dashboard/"
+            {% if course_url %}
+            <a href="{{ course_url }}"
                class="inline-flex items-center justify-center rounded-md bg-cyan-600 px-4 py-2 text-sm font-medium text-white hover:bg-cyan-700">
-                Go to dashboard
+                Go to course
             </a>
-            <a href="/"
+            {% endif %}
+            <a href="/dashboard/"
+               class="inline-flex items-center justify-center rounded-md {% if course_url %}border border-neutral-300 text-neutral-700 hover:bg-neutral-50{% else %}bg-cyan-600 text-white hover:bg-cyan-700{% endif %} px-4 py-2 text-sm font-medium">
+                My dashboard
+            </a>
+            <a href="/courses/"
                class="inline-flex items-center justify-center rounded-md border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50">
-                Browse more courses
+                Browse courses
             </a>
         </div>
     </div>
