@@ -808,7 +808,7 @@ class ExtendedCoursePage(CoursePage):
         product = getattr(self, "product", None)
         context["product"] = product
         context["checkout_success_url"] = request.build_absolute_uri(
-            reverse("payments:checkout_success")
+            reverse("payments:checkout_success") + f"?course={self.url}"
         )
         # Cancel returns to course page (not home) for better UX
         context["checkout_cancel_url"] = request.build_absolute_uri(self.url)

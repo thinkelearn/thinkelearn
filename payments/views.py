@@ -602,12 +602,17 @@ def stripe_webhook(request):
 
 def checkout_success(request):
     """Render checkout success page."""
+    course_url = request.GET.get("course", "")
+    # Only accept relative paths to prevent open-redirect
+    if not course_url.startswith("/") or "://" in course_url:
+        course_url = ""
     return render(
         request,
         "payments/checkout_success.html",
         {
             "session_id": request.GET.get("session_id"),
             "is_free": request.GET.get("free") == "1",
+            "course_url": course_url,
         },
     )
 
