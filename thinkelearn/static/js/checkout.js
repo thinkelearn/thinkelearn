@@ -14,14 +14,6 @@ const getCookie = (name) => {
     return decodeURIComponent(csrfCookies[0].split("=")[1]);
 };
 
-const appendSessionPlaceholder = (url) => {
-    if (!url) {
-        return url;
-    }
-    const connector = url.includes("?") ? "&" : "?";
-    return `${url}${connector}session_id={CHECKOUT_SESSION_ID}`;
-};
-
 const appendQuery = (url, key, value) => {
     if (!url) {
         return url;
@@ -149,7 +141,7 @@ checkoutForms.forEach((form) => {
 
         const payload = {
             product_id: form.dataset.productId,
-            success_url: appendSessionPlaceholder(form.dataset.successUrl),
+            success_url: form.dataset.successUrl,
             cancel_url: form.dataset.cancelUrl,
         };
 

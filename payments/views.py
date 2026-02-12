@@ -610,7 +610,6 @@ def checkout_success(request):
         request,
         "payments/checkout_success.html",
         {
-            "session_id": request.GET.get("session_id"),
             "is_free": request.GET.get("free") == "1",
             "course_url": course_url,
         },

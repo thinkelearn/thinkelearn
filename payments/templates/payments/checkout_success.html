@@ -16,9 +16,6 @@
                 Your payment was successful. You can now access the course content.
             {% endif %}
         </p>
-        {% if session_id %}
-            <p class="mt-2 text-xs text-neutral-400">Session ID: {{ session_id }}</p>
-        {% endif %}
         <div class="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
             {% if course_url %}
             <a href="{{ course_url }}"

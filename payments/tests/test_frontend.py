@@ -4,9 +4,7 @@ from django.urls import reverse
 
 class CheckoutPageTests(TestCase):
     def test_checkout_success_page(self):
-        response = self.client.get(
-            reverse("payments:checkout_success"), {"session_id": "cs_123"}
-        )
+        response = self.client.get(reverse("payments:checkout_success"))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Enrollment confirmed")
 
