@@ -1,37 +1,13 @@
 """Views for LMS custom workflows."""
 
-import logging
-
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect
 from django.views.decorators.http import require_POST
 from wagtail_lms.models import CourseEnrollment
-from wagtail_lms.views import ServeScormContentView
 
 from .forms import CourseFeedbackForm
 from .models import CourseReview, ExtendedCoursePage
-
-logger = logging.getLogger(__name__)
-
-
-class SafeRedirectScormContentView(ServeScormContentView):
-    """Guard against S3 URL generation failures in production.
-
-    The upstream view lets default_storage.url() exceptions propagate as 500s.
-    We catch them and return 404 with logging so media playback degrades
-    gracefully when AWS credentials expire or S3 is unreachable.
-    """
-
-    def get_redirect_url(self, storage_path):
-        try:
-            return super().get_redirect_url(storage_path)
-        except Http404:
-            raise
-        except Exception:
-            logger.exception("Failed to generate presigned URL for %s", storage_path)
-            raise Http404("File not found") from None
 
 
 @login_required
