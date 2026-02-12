@@ -12,6 +12,7 @@ These models extend the base wagtail-lms functionality with additional features:
 import logging
 import uuid
 from decimal import Decimal
+from urllib.parse import urlencode
 
 from django import forms
 from django.conf import settings
@@ -808,7 +809,7 @@ class ExtendedCoursePage(CoursePage):
         product = getattr(self, "product", None)
         context["product"] = product
         context["checkout_success_url"] = request.build_absolute_uri(
-            reverse("payments:checkout_success") + f"?course={self.url}"
+            reverse("payments:checkout_success") + "?" + urlencode({"course": self.url})
         )
         # Cancel returns to course page (not home) for better UX
         context["checkout_cancel_url"] = request.build_absolute_uri(self.url)

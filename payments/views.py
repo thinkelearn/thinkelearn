@@ -604,7 +604,11 @@ def checkout_success(request):
     """Render checkout success page."""
     course_url = request.GET.get("course", "")
     # Only accept relative paths to prevent open-redirect
-    if not course_url.startswith("/") or "://" in course_url:
+    if (
+        not course_url.startswith("/")
+        or course_url.startswith("//")
+        or "://" in course_url
+    ):
         course_url = ""
     return render(
         request,
