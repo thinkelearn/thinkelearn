@@ -27,6 +27,8 @@ class SafeRedirectScormContentView(ServeScormContentView):
     def get_redirect_url(self, storage_path):
         try:
             return super().get_redirect_url(storage_path)
+        except Http404:
+            raise
         except Exception:
             logger.exception("Failed to generate presigned URL for %s", storage_path)
             raise Http404("File not found") from None
