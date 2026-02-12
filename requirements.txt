@@ -138,7 +138,7 @@ vine==5.1.0
 virtualenv==20.36.1
 wagtail==7.3
 wagtail-factories==4.3.0
-wagtail-lms==0.6.0
+wagtail-lms==0.6.1
 wcwidth==0.5.3
 whitenoise==6.11.0
 willow==1.12.0

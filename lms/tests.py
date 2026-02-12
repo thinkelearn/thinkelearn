@@ -1942,7 +1942,6 @@ class ServeScormContentTest(TestCase):
         self.client.force_login(self.user)
         with (
             patch.object(conf, "WAGTAIL_LMS_REDIRECT_MEDIA", True),
-            patch("wagtail_lms.views.default_storage.exists", return_value=True),
             patch(
                 "wagtail_lms.views.default_storage.url",
                 side_effect=Exception("credential error"),
