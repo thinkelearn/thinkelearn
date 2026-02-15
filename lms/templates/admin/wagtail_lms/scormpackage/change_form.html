@@ -4,17 +4,17 @@
 {% block content %}
 {% if s3_upload_enabled and add %}
 {# S3 direct upload form — only shown when adding a new package with S3 configured #}
-<div id="s3-upload-form" style="max-width: 600px;">
+<div id="s3-upload-form" style="max-width: 600px; box-sizing: border-box;">
   <div class="form-row">
     <label for="id_title" class="required">Title:</label>
     <input type="text" id="id_title" name="title" maxlength="255" required
-           style="width: 100%; padding: 6px; border: 1px solid #ccc;">
+           style="width: 100%; padding: 6px; border: 1px solid #ccc; box-sizing: border-box;">
   </div>
 
   <div class="form-row" style="margin-top: 12px;">
     <label for="id_description">Description:</label>
     <textarea id="id_description" name="description" rows="3"
-              style="width: 100%; padding: 6px; border: 1px solid #ccc;"></textarea>
+              style="width: 100%; padding: 6px; border: 1px solid #ccc; box-sizing: border-box;"></textarea>
   </div>
 
   <div class="form-row" style="margin-top: 12px;">

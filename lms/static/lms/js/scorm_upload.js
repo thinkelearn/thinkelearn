@@ -52,6 +52,21 @@
         submitBtn.style.cursor = enabled ? "pointer" : "not-allowed";
     };
 
+    // Auto-populate title from filename (minus .zip extension).
+    // Track whether the current title was auto-filled so we can update it
+    // when the user re-selects a different file, without overwriting a
+    // manually entered title.
+    let autoFilledTitle = "";
+    fileInput.addEventListener("change", () => {
+        const file = fileInput.files[0];
+        if (!file) return;
+        const current = titleInput.value.trim();
+        if (!current || current === autoFilledTitle) {
+            autoFilledTitle = file.name.replace(/\.zip$/i, "");
+            titleInput.value = autoFilledTitle;
+        }
+    });
+
     submitBtn.addEventListener("click", async () => {
         clearError();
 
