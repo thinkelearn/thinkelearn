@@ -191,10 +191,10 @@ function initUserDropdown() {
 /**
  * Hide the topbar on scroll down and reveal it when at the top.
  *
- * Uses transform: translateY() instead of max-height to avoid layout reflow.
- * The topbar slides up behind the viewport edge without changing the sticky
- * container's layout height, preventing the scroll-position feedback loop
- * that caused jitter near the top of the page.
+ * Uses transform: translateY() instead of max-height to reduce layout reflow.
+ * The topbar slides up while the wrapper's height is toggled between 0 and
+ * the bar's height, preventing the scroll-position feedback loop that
+ * caused jitter near the top of the page.
  */
 function initTopbarScroll() {
     const wrapper = document.getElementById('topbar-wrapper');
@@ -213,6 +213,19 @@ function initTopbarScroll() {
     // Show only when within this distance from the top (px)
     const SHOW_THRESHOLD = 10;
 
+    // Elements for closing the user dropdown when the topbar hides
+    const userMenuButton = document.getElementById('user-menu-button');
+    const userMenuDropdown = document.getElementById('user-menu-dropdown');
+    const userMenuIcon = document.getElementById('user-menu-icon');
+
+    function closeUserMenuIfOpen() {
+        if (userMenuButton && userMenuButton.getAttribute('aria-expanded') === 'true') {
+            if (userMenuDropdown) userMenuDropdown.classList.add('hidden');
+            userMenuButton.setAttribute('aria-expanded', 'false');
+            if (userMenuIcon) userMenuIcon.style.transform = 'rotate(0deg)';
+        }
+    }
+
     function update() {
         const currentScrollY = window.scrollY;
 
@@ -220,14 +233,20 @@ function initTopbarScroll() {
             isHidden = true;
             topbar.style.transform = 'translateY(-100%)';
             wrapper.style.height = '0';
+            wrapper.inert = true;
+            closeUserMenuIfOpen();
         } else if (isHidden && currentScrollY <= SHOW_THRESHOLD) {
             isHidden = false;
             topbar.style.transform = '';
             wrapper.style.height = '2.5rem';
+            wrapper.inert = false;
         }
 
         ticking = false;
     }
+
+    // Run once at init so state matches if page loads already scrolled
+    update();
 
     window.addEventListener('scroll', function() {
         if (!ticking) {
