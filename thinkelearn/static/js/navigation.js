@@ -190,47 +190,49 @@ function initUserDropdown() {
 
 /**
  * Hide the topbar on scroll down and reveal it when at the top.
+ *
+ * Uses transform: translateY() instead of max-height to avoid layout reflow.
+ * The topbar slides up behind the viewport edge without changing the sticky
+ * container's layout height, preventing the scroll-position feedback loop
+ * that caused jitter near the top of the page.
  */
 function initTopbarScroll() {
+    const wrapper = document.getElementById('topbar-wrapper');
     const topbar = document.getElementById('topbar-container');
 
-    if (!topbar) {
+    if (!wrapper || !topbar) {
         return;
     }
 
-    const hiddenClasses = ['max-h-0', 'opacity-0', 'border-b-0'];
-    const visibleClasses = ['max-h-10', 'opacity-100', 'border-b', 'border-primary-100'];
-    const showThreshold = 4;
-    let lastScrollY = window.scrollY;
-    let isTicking = false;
+    let isHidden = false;
+    let ticking = false;
 
-    function showTopbar() {
-        topbar.classList.remove(...hiddenClasses);
-        topbar.classList.add(...visibleClasses);
-    }
+    // Hide once scrolled past this point (px).
+    // Must be larger than the topbar height (40px) to avoid feedback loops.
+    const HIDE_THRESHOLD = 50;
+    // Show only when within this distance from the top (px)
+    const SHOW_THRESHOLD = 10;
 
-    function hideTopbar() {
-        topbar.classList.remove(...visibleClasses);
-        topbar.classList.add(...hiddenClasses);
-    }
-
-    function handleScroll() {
+    function update() {
         const currentScrollY = window.scrollY;
 
-        if (currentScrollY <= showThreshold) {
-            showTopbar();
-        } else if (currentScrollY > lastScrollY) {
-            hideTopbar();
+        if (!isHidden && currentScrollY > HIDE_THRESHOLD) {
+            isHidden = true;
+            topbar.style.transform = 'translateY(-100%)';
+            wrapper.style.height = '0';
+        } else if (isHidden && currentScrollY <= SHOW_THRESHOLD) {
+            isHidden = false;
+            topbar.style.transform = '';
+            wrapper.style.height = '2.5rem';
         }
 
-        lastScrollY = currentScrollY;
-        isTicking = false;
+        ticking = false;
     }
 
     window.addEventListener('scroll', function() {
-        if (!isTicking) {
-            window.requestAnimationFrame(handleScroll);
-            isTicking = true;
+        if (!ticking) {
+            window.requestAnimationFrame(update);
+            ticking = true;
         }
     }, { passive: true });
 }
