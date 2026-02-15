@@ -190,47 +190,68 @@ function initUserDropdown() {
 
 /**
  * Hide the topbar on scroll down and reveal it when at the top.
+ *
+ * Uses transform: translateY() instead of max-height to reduce layout reflow.
+ * The topbar slides up while the wrapper's height is toggled between 0 and
+ * the bar's height, preventing the scroll-position feedback loop that
+ * caused jitter near the top of the page.
  */
 function initTopbarScroll() {
+    const wrapper = document.getElementById('topbar-wrapper');
     const topbar = document.getElementById('topbar-container');
 
-    if (!topbar) {
+    if (!wrapper || !topbar) {
         return;
     }
 
-    const hiddenClasses = ['max-h-0', 'opacity-0', 'border-b-0'];
-    const visibleClasses = ['max-h-10', 'opacity-100', 'border-b', 'border-primary-100'];
-    const showThreshold = 4;
-    let lastScrollY = window.scrollY;
-    let isTicking = false;
+    let isHidden = false;
+    let ticking = false;
 
-    function showTopbar() {
-        topbar.classList.remove(...hiddenClasses);
-        topbar.classList.add(...visibleClasses);
+    // Hide once scrolled past this point (px).
+    // Must be larger than the topbar height (40px) to avoid feedback loops.
+    const HIDE_THRESHOLD = 50;
+    // Show only when within this distance from the top (px)
+    const SHOW_THRESHOLD = 10;
+
+    // Elements for closing the user dropdown when the topbar hides
+    const userMenuButton = document.getElementById('user-menu-button');
+    const userMenuDropdown = document.getElementById('user-menu-dropdown');
+    const userMenuIcon = document.getElementById('user-menu-icon');
+
+    function closeUserMenuIfOpen() {
+        if (userMenuButton && userMenuButton.getAttribute('aria-expanded') === 'true') {
+            if (userMenuDropdown) userMenuDropdown.classList.add('hidden');
+            userMenuButton.setAttribute('aria-expanded', 'false');
+            if (userMenuIcon) userMenuIcon.style.transform = 'rotate(0deg)';
+        }
     }
 
-    function hideTopbar() {
-        topbar.classList.remove(...visibleClasses);
-        topbar.classList.add(...hiddenClasses);
-    }
-
-    function handleScroll() {
+    function update() {
         const currentScrollY = window.scrollY;
 
-        if (currentScrollY <= showThreshold) {
-            showTopbar();
-        } else if (currentScrollY > lastScrollY) {
-            hideTopbar();
+        if (!isHidden && currentScrollY > HIDE_THRESHOLD) {
+            isHidden = true;
+            topbar.style.transform = 'translateY(-100%)';
+            wrapper.style.height = '0';
+            wrapper.inert = true;
+            closeUserMenuIfOpen();
+        } else if (isHidden && currentScrollY <= SHOW_THRESHOLD) {
+            isHidden = false;
+            topbar.style.transform = '';
+            wrapper.style.height = '2.5rem';
+            wrapper.inert = false;
         }
 
-        lastScrollY = currentScrollY;
-        isTicking = false;
+        ticking = false;
     }
 
+    // Run once at init so state matches if page loads already scrolled
+    update();
+
     window.addEventListener('scroll', function() {
-        if (!isTicking) {
-            window.requestAnimationFrame(handleScroll);
-            isTicking = true;
+        if (!ticking) {
+            window.requestAnimationFrame(update);
+            ticking = true;
         }
     }, { passive: true });
 }
