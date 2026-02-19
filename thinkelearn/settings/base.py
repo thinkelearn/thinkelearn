@@ -253,6 +253,9 @@ DATA_UPLOAD_MAX_NUMBER_FIELDS = 10_000
 # Wagtail settings
 
 WAGTAIL_SITE_NAME = "thinkelearn"
+WAGTAIL_LMS_AUTO_ENROLL = os.environ.get(
+    "WAGTAIL_LMS_AUTO_ENROLL", "false"
+).lower() in {"1", "true", "yes"}
 
 # Search
 # https://docs.wagtail.org/en/stable/topics/search/backends.html

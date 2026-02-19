@@ -7,3 +7,6 @@ class LmsConfig(AppConfig):
 
     def ready(self):
         import lms.signals  # noqa: F401
+        from lms.wagtail_lms_admin import patch_wagtail_lms_viewset_group
+
+        patch_wagtail_lms_viewset_group()
