@@ -11,6 +11,7 @@ from django.db import IntegrityError
 from django.test import RequestFactory, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.html import escapejs
 from wagtail.models import Page, Site
 from wagtail_lms.models import CourseEnrollment, SCORMAttempt, SCORMPackage
 
@@ -1952,8 +1953,10 @@ class SCORMPackageWagtailAdminTest(TestCase):
         response = self.client.get(reverse("scormpackage:add"))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "SCORM_UPLOAD_CONFIG")
-        self.assertContains(response, reverse("scormpackage:presigned_upload"))
-        self.assertContains(response, reverse("scormpackage:finalize_upload"))
+        self.assertContains(
+            response, escapejs(reverse("scormpackage:presigned_upload"))
+        )
+        self.assertContains(response, escapejs(reverse("scormpackage:finalize_upload")))
 
     @patch("lms.scorm_upload.s3_upload_enabled", return_value=True)
     @patch("lms.scorm_upload.create_package_from_s3_key")

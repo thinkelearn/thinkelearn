@@ -61,8 +61,8 @@
     {% if s3_upload_enabled %}
         <script>
           window.SCORM_UPLOAD_CONFIG = {
-            presignedUrl: "{{ presigned_upload_url }}",
-            finalizeUrl: "{{ finalize_upload_url }}"
+            presignedUrl: "{{ presigned_upload_url|escapejs }}",
+            finalizeUrl: "{{ finalize_upload_url|escapejs }}"
           };
         </script>
         <script src="{% static 'lms/js/scorm_upload.js' %}"></script>
