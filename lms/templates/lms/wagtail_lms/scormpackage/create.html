@@ -1,0 +1,70 @@
+{% extends "wagtailadmin/generic/create.html" %}
+{% load static i18n %}
+
+{% block form_content %}
+    {% if s3_upload_enabled %}
+        <ul class="fields">
+            <li>
+                <div class="w-field__wrapper">
+                    <label class="w-field__label" for="id_title">{% trans "Title" %}</label>
+                    <input type="text" id="id_title" maxlength="255" required>
+                </div>
+            </li>
+            <li>
+                <div class="w-field__wrapper">
+                    <label class="w-field__label" for="id_description">{% trans "Description" %}</label>
+                    <textarea id="id_description" rows="3"></textarea>
+                </div>
+            </li>
+            <li>
+                <div class="w-field__wrapper">
+                    <label class="w-field__label" for="id_package_file">{% trans "SCORM Package (.zip)" %}</label>
+                    <input type="file" id="id_package_file" accept=".zip">
+                    <p class="help">{% trans "Select a SCORM ZIP package (up to 500 MB). The file uploads directly to S3." %}</p>
+                </div>
+            </li>
+            <li id="upload-progress" style="display:none;">
+                <div class="w-field__wrapper">
+                    <label class="w-field__label">{% trans "Upload progress" %}</label>
+                    <div style="background:#f0f0f0;border:1px solid #ccc;border-radius:4px;overflow:hidden;height:24px;">
+                        <div
+                            id="progress-bar"
+                            style="background:#007d7e;height:100%;width:0%;transition:width 0.3s;display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;"
+                        >
+                            0%
+                        </div>
+                    </div>
+                    <p id="upload-status" class="help">{% trans "Preparing upload..." %}</p>
+                </div>
+            </li>
+            <li id="upload-error" style="display:none;">
+                <div class="help critical"></div>
+            </li>
+        </ul>
+    {% else %}
+        {{ block.super }}
+    {% endif %}
+{% endblock %}
+
+{% block actions %}
+    {% if s3_upload_enabled %}
+        <button type="button" class="button button-longrunning" id="upload-submit">
+            <em>{% trans "Upload SCORM Package" %}</em>
+        </button>
+    {% else %}
+        {{ block.super }}
+    {% endif %}
+{% endblock %}
+
+{% block extra_js %}
+    {{ block.super }}
+    {% if s3_upload_enabled %}
+        <script>
+          window.SCORM_UPLOAD_CONFIG = {
+            presignedUrl: "{{ presigned_upload_url }}",
+            finalizeUrl: "{{ finalize_upload_url }}"
+          };
+        </script>
+        <script src="{% static 'lms/js/scorm_upload.js' %}"></script>
+    {% endif %}
+{% endblock %}

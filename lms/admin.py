@@ -1,17 +1,15 @@
 """Django admin configuration for LMS models"""
 
-import json
-import logging
-
-from django.conf import settings
 from django.contrib import admin
-from django.http import JsonResponse
-from django.urls import path
+from django.urls import path, reverse
 from wagtail_lms.models import SCORMPackage
 
 from .models import CourseProduct, CourseReview, EnrollmentRecord
-
-logger = logging.getLogger(__name__)
+from .scorm_upload import (
+    finalize_upload_response,
+    presigned_upload_response,
+    s3_upload_enabled,
+)
 
 
 @admin.register(CourseReview)
@@ -141,7 +139,7 @@ admin.site.unregister(SCORMPackage)
 
 
 def _s3_configured():
-    return bool(getattr(settings, "AWS_STORAGE_BUCKET_NAME", ""))
+    return s3_upload_enabled()
 
 
 @admin.register(SCORMPackage)
@@ -182,76 +180,13 @@ class SCORMPackageUploadAdmin(admin.ModelAdmin):
 
     def presigned_upload_view(self, request):
         """Return presigned POST data for direct-to-S3 upload."""
-        if request.method != "POST":
-            return JsonResponse({"error": "POST required"}, status=405)
-
-        if not _s3_configured():
-            return JsonResponse({"error": "S3 storage is not configured"}, status=400)
-
-        try:
-            body = json.loads(request.body)
-        except (json.JSONDecodeError, ValueError):
-            return JsonResponse({"error": "Invalid JSON"}, status=400)
-
-        filename = body.get("filename", "").strip()
-        if not filename:
-            return JsonResponse({"error": "filename is required"}, status=400)
-
-        if not filename.lower().endswith(".zip"):
-            return JsonResponse({"error": "Only .zip files are accepted"}, status=400)
-
-        from .services import generate_presigned_post
-
-        try:
-            data = generate_presigned_post(filename)
-        except Exception:
-            logger.exception("Failed to generate presigned URL")
-            return JsonResponse({"error": "Failed to generate upload URL"}, status=500)
-
-        return JsonResponse(data)
+        return presigned_upload_response(request)
 
     def finalize_upload_view(self, request):
         """Create SCORMPackage from an already-uploaded S3 object."""
-        if request.method != "POST":
-            return JsonResponse({"error": "POST required"}, status=405)
-
-        if not _s3_configured():
-            return JsonResponse({"error": "S3 storage is not configured"}, status=400)
-
-        try:
-            body = json.loads(request.body)
-        except (json.JSONDecodeError, ValueError):
-            return JsonResponse({"error": "Invalid JSON"}, status=400)
-
-        s3_key = body.get("s3_key", "").strip()
-        title = body.get("title", "").strip()
-
-        if not s3_key:
-            return JsonResponse({"error": "s3_key is required"}, status=400)
-        if not s3_key.startswith("scorm_packages/") or not s3_key.endswith(".zip"):
-            return JsonResponse({"error": "Invalid s3_key"}, status=400)
-        if not title:
-            return JsonResponse({"error": "title is required"}, status=400)
-
-        description = body.get("description", "").strip()
-
-        from .services import create_package_from_s3_key
-
-        try:
-            package = create_package_from_s3_key(s3_key, title, description)
-        except ValueError as exc:
-            return JsonResponse({"error": str(exc)}, status=400)
-        except Exception:
-            logger.exception("Failed to finalize SCORM upload")
-            return JsonResponse(
-                {"error": "Failed to process SCORM package"}, status=500
-            )
-
-        from django.urls import reverse
-
-        redirect_url = reverse(
-            "admin:wagtail_lms_scormpackage_change", args=[package.pk]
-        )
-        return JsonResponse(
-            {"success": True, "redirect_url": redirect_url, "id": package.pk}
+        return finalize_upload_response(
+            request,
+            redirect_url_builder=lambda package: reverse(
+                "admin:wagtail_lms_scormpackage_change", args=[package.pk]
+            ),
         )

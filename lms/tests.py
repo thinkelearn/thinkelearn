@@ -12,7 +12,7 @@ from django.test import RequestFactory, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 from wagtail.models import Page, Site
-from wagtail_lms.models import CourseEnrollment, SCORMPackage
+from wagtail_lms.models import CourseEnrollment, SCORMAttempt, SCORMPackage
 
 from lms.models import (
     CourseCategory,
@@ -1825,8 +1825,8 @@ class SCORMPackageAdminTest(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertIn("login/", response.url)
 
-    @patch("lms.admin._s3_configured", return_value=True)
-    @patch("lms.services.generate_presigned_post")
+    @patch("lms.scorm_upload.s3_upload_enabled", return_value=True)
+    @patch("lms.scorm_upload.generate_presigned_post")
     def test_presigned_endpoint_returns_json_for_staff(
         self, mock_generate, mock_s3_configured
     ):
@@ -1860,8 +1860,8 @@ class SCORMPackageAdminTest(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertIn("login/", response.url)
 
-    @patch("lms.admin._s3_configured", return_value=True)
-    @patch("lms.services.create_package_from_s3_key")
+    @patch("lms.scorm_upload.s3_upload_enabled", return_value=True)
+    @patch("lms.scorm_upload.create_package_from_s3_key")
     def test_finalize_endpoint_creates_package(self, mock_create, mock_s3_configured):
         """Staff users can finalize an upload."""
         mock_package = Mock()
@@ -1886,7 +1886,7 @@ class SCORMPackageAdminTest(TestCase):
         """Presigned endpoint rejects non-zip filenames."""
         self.client.force_login(self.staff_user)
 
-        with patch("lms.admin._s3_configured", return_value=True):
+        with patch("lms.scorm_upload.s3_upload_enabled", return_value=True):
             response = self.client.post(
                 reverse("admin:scormpackage_presigned_upload"),
                 data='{"filename": "malware.exe"}',
@@ -1894,6 +1894,89 @@ class SCORMPackageAdminTest(TestCase):
             )
         self.assertEqual(response.status_code, 400)
         self.assertIn("zip", response.json()["error"].lower())
+
+
+class SCORMPackageWagtailAdminTest(TestCase):
+    """Test Wagtail SCORMPackage viewset direct upload endpoints."""
+
+    def setUp(self):
+        self.superuser = User.objects.create_superuser(
+            username="superuser",
+            email="superuser@example.com",
+            password="testpass123",
+        )
+        self.regular_user = User.objects.create_user(
+            username="regularuser2",
+            email="regular2@example.com",
+            password="testpass123",
+        )
+
+    def test_presigned_endpoint_requires_permission(self):
+        """Users without admin access are redirected to the Wagtail login screen."""
+        self.client.force_login(self.regular_user)
+        response = self.client.post(
+            reverse("scormpackage:presigned_upload"),
+            data='{"filename": "test.zip"}',
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("login/", response.url)
+
+    @patch("lms.scorm_upload.s3_upload_enabled", return_value=True)
+    @patch("lms.scorm_upload.generate_presigned_post")
+    def test_presigned_endpoint_returns_json_for_superuser(
+        self, mock_generate, mock_s3_configured
+    ):
+        """Superusers receive presigned upload data from Wagtail endpoint."""
+        mock_generate.return_value = {
+            "url": "https://bucket.s3.amazonaws.com",
+            "fields": {"key": "scorm_packages/abc_test.zip"},
+            "s3_key": "scorm_packages/abc_test.zip",
+        }
+        self.client.force_login(self.superuser)
+        response = self.client.post(
+            reverse("scormpackage:presigned_upload"),
+            data='{"filename": "test.zip"}',
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertIn("url", data)
+        self.assertIn("fields", data)
+        self.assertIn("s3_key", data)
+
+    @patch("lms.wagtail_lms_admin.s3_upload_enabled", return_value=True)
+    def test_wagtail_add_view_uses_upload_ui_when_s3_enabled(self, mock_s3_configured):
+        """SCORM create page in Wagtail admin includes direct upload configuration."""
+        self.client.force_login(self.superuser)
+        response = self.client.get(reverse("scormpackage:add"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "SCORM_UPLOAD_CONFIG")
+        self.assertContains(response, reverse("scormpackage:presigned_upload"))
+        self.assertContains(response, reverse("scormpackage:finalize_upload"))
+
+    @patch("lms.scorm_upload.s3_upload_enabled", return_value=True)
+    @patch("lms.scorm_upload.create_package_from_s3_key")
+    def test_finalize_endpoint_returns_wagtail_edit_url(
+        self, mock_create, mock_s3_configured
+    ):
+        """Finalize endpoint redirects to Wagtail edit view."""
+        mock_package = Mock()
+        mock_package.pk = 42
+        mock_create.return_value = mock_package
+
+        self.client.force_login(self.superuser)
+        response = self.client.post(
+            reverse("scormpackage:finalize_upload"),
+            data='{"s3_key": "scorm_packages/abc.zip", "title": "My Package", "description": "desc"}',
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data["success"])
+        self.assertEqual(
+            data["redirect_url"], reverse("scormpackage:edit", args=[mock_package.pk])
+        )
 
 
 class ServeScormContentTest(TestCase):
@@ -1949,3 +2032,87 @@ class ServeScormContentTest(TestCase):
         ):
             response = self.client.get(self._url("pkg/clip.mp4"))
         self.assertEqual(response.status_code, 404)
+
+
+class ScormAccessPolicyTest(TestCase):
+    """Integration tests for SCORM access/enrollment behavior."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username="learner", password="pass")
+
+        self.root_page = Page.get_first_root_node()
+        self.courses_index = CoursesIndexPage(title="Courses", slug="courses")
+        self.root_page.add_child(instance=self.courses_index)
+        self.courses_index.save_revision().publish()
+
+        site = Site.objects.filter(is_default_site=True).first()
+        if site:
+            site.root_page = self.root_page
+            site.save()
+        else:
+            Site.objects.create(
+                hostname="localhost",
+                root_page=self.root_page,
+                is_default_site=True,
+            )
+
+        self.scorm_package = SCORMPackage.objects.create(
+            title="Sample Package",
+            package_file=SimpleUploadedFile("package.zip", b"fake-zip"),
+            extracted_path="package_1_dummy",
+            launch_url="index.html",
+        )
+        self.course = ExtendedCoursePage(
+            title="Test Course",
+            slug="test-course",
+            difficulty="beginner",
+            is_published=True,
+            scorm_package=self.scorm_package,
+        )
+        self.courses_index.add_child(instance=self.course)
+        self.course.save_revision().publish()
+
+        self.play_url = reverse("wagtail_lms:scorm_player", args=[self.course.id])
+
+    def test_scorm_player_requires_existing_enrollment_when_auto_enroll_disabled(self):
+        """Users without enrollment are redirected to the course page."""
+        self.client.force_login(self.user)
+        with patch("wagtail_lms.conf.WAGTAIL_LMS_AUTO_ENROLL", False):
+            response = self.client.get(self.play_url)
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, self.course.url)
+        self.assertFalse(
+            CourseEnrollment.objects.filter(user=self.user, course=self.course).exists()
+        )
+
+    def test_scorm_player_auto_enrolls_user_when_enabled(self):
+        """Users are auto-enrolled when auto-enroll mode is active."""
+        self.client.force_login(self.user)
+        with patch("wagtail_lms.conf.WAGTAIL_LMS_AUTO_ENROLL", True):
+            response = self.client.get(self.play_url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(
+            CourseEnrollment.objects.filter(user=self.user, course=self.course).exists()
+        )
+
+    def test_scorm_completion_marks_enrollment_completed(self):
+        """SCORM completion updates CourseEnrollment.completed_at."""
+        enrollment = CourseEnrollment.objects.create(user=self.user, course=self.course)
+        attempt = SCORMAttempt.objects.create(
+            user=self.user,
+            scorm_package=self.scorm_package,
+            completion_status="incomplete",
+        )
+
+        self.client.force_login(self.user)
+        response = self.client.post(
+            reverse("wagtail_lms:scorm_api", args=[attempt.id]),
+            data='{"method":"SetValue","parameters":["cmi.core.lesson_status","completed"]}',
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        enrollment.refresh_from_db()
+        self.assertIsNotNone(enrollment.completed_at)
