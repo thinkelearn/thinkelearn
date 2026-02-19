@@ -9,9 +9,6 @@ from django.urls import path, reverse
 from wagtail.admin.views import generic
 from wagtail.admin.viewsets.model import ModelViewSetGroup
 from wagtail_lms.viewsets import (
-    CourseEnrollmentViewSet,
-    LMSViewSetGroup,
-    SCORMAttemptViewSet,
     SCORMPackageViewSet,
 )
 
@@ -33,9 +30,11 @@ class SCORMPackageCreateView(generic.CreateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["s3_upload_enabled"] = s3_upload_enabled()
-        context["presigned_upload_url"] = reverse(self.presigned_upload_url_name)
-        context["finalize_upload_url"] = reverse(self.finalize_upload_url_name)
+        s3_enabled = s3_upload_enabled()
+        context["s3_upload_enabled"] = s3_enabled
+        if s3_enabled:
+            context["presigned_upload_url"] = reverse(self.presigned_upload_url_name)
+            context["finalize_upload_url"] = reverse(self.finalize_upload_url_name)
         return context
 
 
@@ -86,18 +85,13 @@ class SCORMPackageUploadViewSet(SCORMPackageViewSet):
         )
 
 
-class LMSUploadViewSetGroup(ModelViewSetGroup):
-    """LMS admin group with custom SCORM package upload viewset."""
-
-    menu_label = LMSViewSetGroup.menu_label
-    menu_icon = LMSViewSetGroup.menu_icon
-    items = (SCORMPackageUploadViewSet, CourseEnrollmentViewSet, SCORMAttemptViewSet)
-
-
 def patch_wagtail_lms_viewset_group() -> None:
     """Replace wagtail-lms SCORM package viewset with project custom version."""
     from wagtail_lms import wagtail_hooks
 
+    # This intentionally patches upstream wagtail-lms module state in-place.
+    # If upstream changes its hook registration implementation, this may no-op.
+    # Revisit this integration on wagtail-lms upgrades.
     group = getattr(wagtail_hooks, "lms_viewset_group", None)
     if group is None:
         logger.warning("wagtail_lms.wagtail_hooks.lms_viewset_group not found")
