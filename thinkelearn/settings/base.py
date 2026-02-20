@@ -256,6 +256,8 @@ WAGTAIL_SITE_NAME = "thinkelearn"
 WAGTAIL_LMS_AUTO_ENROLL = os.environ.get(
     "WAGTAIL_LMS_AUTO_ENROLL", "false"
 ).lower() in {"1", "true", "yes"}
+WAGTAIL_LMS_H5P_UPLOAD_PATH = "h5p_packages/"
+WAGTAIL_LMS_H5P_CONTENT_PATH = "h5p_content/"
 
 # Search
 # https://docs.wagtail.org/en/stable/topics/search/backends.html
