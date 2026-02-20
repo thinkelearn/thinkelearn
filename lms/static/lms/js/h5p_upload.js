@@ -1,15 +1,15 @@
 /**
- * SCORM package direct-to-S3 upload.
+ * H5P package direct-to-S3 upload.
  *
  * Three-phase flow:
  * 1. Request presigned POST URL from Django.
  * 2. Upload file directly to S3 (XHR for progress events).
- * 3. Finalize: tell Django to create the SCORMPackage from the S3 object.
+ * 3. Finalize: tell Django to create the H5PActivity from the S3 object.
  */
 (function () {
     "use strict";
 
-    const config = window.SCORM_UPLOAD_CONFIG;
+    const config = window.H5P_UPLOAD_CONFIG;
     if (!config) return;
 
     const getCookie = (name) => {
@@ -52,7 +52,7 @@
         submitBtn.style.cursor = enabled ? "pointer" : "not-allowed";
     };
 
-    // Auto-populate title from filename (minus .zip extension).
+    // Auto-populate title from filename (minus .h5p extension).
     // Track whether the current title was auto-filled so we can update it
     // when the user re-selects a different file, without overwriting a
     // manually entered title.
@@ -62,7 +62,7 @@
         if (!file) return;
         const current = titleInput.value.trim();
         if (!current || current === autoFilledTitle) {
-            autoFilledTitle = file.name.replace(/\.zip$/i, "");
+            autoFilledTitle = file.name.replace(/\.h5p$/i, "");
             titleInput.value = autoFilledTitle;
         }
     });
@@ -79,12 +79,12 @@
 
         const file = fileInput.files[0];
         if (!file) {
-            showError("Please select a SCORM package (.zip) file.");
+            showError("Please select an H5P package (.h5p) file.");
             return;
         }
 
-        if (!file.name.toLowerCase().endsWith(".zip")) {
-            showError("Only .zip files are accepted.");
+        if (!file.name.toLowerCase().endsWith(".h5p")) {
+            showError("Only .h5p files are accepted.");
             return;
         }
 
@@ -172,8 +172,8 @@
             return;
         }
 
-        // Phase 3: Finalize — tell Django to create the package
-        setProgress(100, "Processing SCORM package...");
+        // Phase 3: Finalize — tell Django to create the H5P activity
+        setProgress(100, "Processing H5P package...");
 
         try {
             const resp = await fetch(config.finalizeUrl, {
@@ -196,7 +196,7 @@
             }
             const data = await resp.json();
             if (!resp.ok) {
-                showError(data.error || "Failed to process SCORM package.");
+                showError(data.error || "Failed to process H5P package.");
                 setSubmitEnabled(true);
                 return;
             }
