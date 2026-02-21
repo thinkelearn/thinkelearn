@@ -797,7 +797,7 @@ class ExtendedCoursePage(CoursePage):
 
     # Parent page / subpage type rules
     parent_page_types = ["lms.CoursesIndexPage"]
-    subpage_types = []
+    subpage_types = ["wagtail_lms.LessonPage"]
 
     class Meta:
         verbose_name = "Course"
@@ -1065,5 +1065,20 @@ class LearnerDashboardPage(Page):
                 )
             else:
                 context["completion_percentage"] = 0
+
+            # Lesson progress data for H5P courses
+            from wagtail_lms.models import LessonCompletion, LessonPage
+
+            lesson_data = {}
+            for enrollment in active_enrollments:
+                lessons = LessonPage.objects.child_of(enrollment.course).live()
+                total = lessons.count()
+                if total:
+                    done = LessonCompletion.objects.filter(
+                        user=request.user,
+                        lesson__in=lessons,
+                    ).count()
+                    lesson_data[enrollment.course_id] = {"total": total, "done": done}
+            context["lesson_data"] = lesson_data
 
         return context

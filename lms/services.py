@@ -75,6 +75,103 @@ def generate_presigned_post(filename: str) -> dict:
     }
 
 
+def generate_h5p_presigned_post(filename: str) -> dict:
+    """Generate a presigned POST URL for direct browser-to-S3 upload of H5P packages.
+
+    Args:
+        filename: Original filename from the browser (.h5p).
+
+    Returns:
+        Dict with 'url', 'fields', and 's3_key'.
+    """
+    bucket_name = getattr(settings, "AWS_STORAGE_BUCKET_NAME", "")
+
+    safe_filename = os.path.basename(filename).strip()
+    short_uuid = uuid.uuid4().hex[:8]
+    s3_key = f"h5p_packages/{short_uuid}_{safe_filename}"
+
+    s3_client = _get_s3_client()
+
+    presigned = s3_client.generate_presigned_post(
+        Bucket=bucket_name,
+        Key=s3_key,
+        Conditions=[
+            {"Content-Type": "application/zip"},
+            ["content-length-range", 1, MAX_UPLOAD_BYTES],
+        ],
+        Fields={"Content-Type": "application/zip"},
+        ExpiresIn=3600,
+    )
+
+    url = presigned["url"]
+
+    endpoint_url = getattr(settings, "AWS_S3_ENDPOINT_URL", None)
+    presigned_url = getattr(settings, "AWS_S3_PRESIGNED_URL", None)
+    if endpoint_url and presigned_url:
+        url = url.replace(endpoint_url, presigned_url)
+
+    return {
+        "url": url,
+        "fields": presigned["fields"],
+        "s3_key": s3_key,
+    }
+
+
+def create_h5p_activity_from_s3_key(s3_key: str, title: str, description: str = ""):
+    """Create an H5PActivity from an already-uploaded S3 object.
+
+    Downloads the .h5p file from S3 for pre-validation (is_zipfile + path
+    traversal), then delegates extraction and h5p.json parsing to
+    wagtail-lms's save().
+
+    Args:
+        s3_key: The S3 object key where the .h5p package was uploaded.
+        title: Activity title.
+        description: Activity description.
+
+    Returns:
+        The created H5PActivity instance.
+
+    Raises:
+        ValueError: If the package is invalid or contains path traversal.
+    """
+    from wagtail_lms.models import H5PActivity
+
+    bucket_name = getattr(settings, "AWS_STORAGE_BUCKET_NAME", "")
+    s3_client = _get_s3_client()
+
+    try:
+        with tempfile.NamedTemporaryFile(suffix=".h5p", delete=False) as tmp:
+            tmp_path = tmp.name
+            s3_client.download_file(bucket_name, s3_key, tmp_path)
+
+        if not zipfile.is_zipfile(tmp_path):
+            raise ValueError("Uploaded file is not a valid H5P (ZIP) archive.")
+
+        try:
+            with zipfile.ZipFile(tmp_path, "r") as zf:
+                for member in zf.namelist():
+                    parts = PurePosixPath(member).parts
+                    if ".." in parts or (parts and parts[0].startswith("/")):
+                        raise ValueError(f"H5P package contains unsafe path: {member}")
+        except zipfile.BadZipFile as exc:
+            raise ValueError("Uploaded file is not a valid H5P (ZIP) archive.") from exc
+
+        activity = H5PActivity(
+            title=title,
+            description=description,
+        )
+        activity.package_file.name = s3_key
+        activity.save()
+
+        logger.info("Created H5P activity %s from S3 key %s", activity.id, s3_key)
+        return activity
+
+    finally:
+        if "tmp_path" in locals() and os.path.exists(tmp_path):
+            os.unlink(tmp_path)
+
+
 def create_package_from_s3_key(s3_key: str, title: str, description: str = ""):
     """Create a SCORMPackage from an already-uploaded S3 object.
 
