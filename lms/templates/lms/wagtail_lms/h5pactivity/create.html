@@ -55,7 +55,9 @@
 {% endblock %}
 
 {% block extra_js %}
-    {{ block.super }}
+    {% if not s3_upload_enabled %}
+        {{ block.super }}
+    {% endif %}
     {% if s3_upload_enabled %}
         <script>
           window.H5P_UPLOAD_CONFIG = {
