@@ -18,6 +18,15 @@ logger = logging.getLogger(__name__)
 MAX_UPLOAD_BYTES = 500 * 1024 * 1024
 
 
+def get_scorm_upload_prefix() -> str:
+    """Return normalized SCORM upload prefix with a trailing slash."""
+    raw_prefix = getattr(settings, "WAGTAIL_LMS_SCORM_UPLOAD_PATH", "scorm_packages/")
+    normalized = str(PurePosixPath(str(raw_prefix or "scorm_packages/"))).strip()
+    if normalized in {"", ".", "/"}:
+        normalized = "scorm_packages"
+    return normalized.rstrip("/") + "/"
+
+
 def get_h5p_upload_prefix() -> str:
     """Return normalized H5P upload prefix with a trailing slash."""
     raw_prefix = getattr(settings, "WAGTAIL_LMS_H5P_UPLOAD_PATH", "h5p_packages/")
@@ -54,7 +63,8 @@ def generate_presigned_post(filename: str) -> dict:
     # Generate unique S3 key to prevent collisions
     safe_filename = os.path.basename(filename).strip()
     short_uuid = uuid.uuid4().hex[:8]
-    s3_key = f"scorm_packages/{short_uuid}_{safe_filename}"
+    upload_prefix = get_scorm_upload_prefix()
+    s3_key = str(PurePosixPath(upload_prefix) / f"{short_uuid}_{safe_filename}")
 
     s3_client = _get_s3_client()
 

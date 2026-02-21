@@ -10,7 +10,11 @@ from django.conf import settings
 from django.http import HttpRequest, JsonResponse
 from wagtail_lms.models import SCORMPackage
 
-from .services import create_package_from_s3_key, generate_presigned_post
+from .services import (
+    create_package_from_s3_key,
+    generate_presigned_post,
+    get_scorm_upload_prefix,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -71,7 +75,8 @@ def finalize_upload_response(
 
     if not s3_key:
         return JsonResponse({"error": "s3_key is required"}, status=400)
-    if not s3_key.startswith("scorm_packages/") or not s3_key.endswith(".zip"):
+    upload_prefix = get_scorm_upload_prefix()
+    if not s3_key.startswith(upload_prefix) or not s3_key.lower().endswith(".zip"):
         return JsonResponse({"error": "Invalid s3_key"}, status=400)
     if not title:
         return JsonResponse({"error": "title is required"}, status=400)

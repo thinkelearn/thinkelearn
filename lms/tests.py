@@ -1758,6 +1758,28 @@ class PresignedUploadTest(TestCase):
         self.assertTrue(has_content_type)
         self.assertTrue(has_size_range)
 
+    @override_settings(
+        **S3_TEST_SETTINGS, WAGTAIL_LMS_SCORM_UPLOAD_PATH="custom-scorm/"
+    )
+    @patch("lms.services._get_s3_client")
+    def test_generate_presigned_post_uses_configured_upload_prefix(self, mock_client):
+        """SCORM presigned keys should respect configured upload prefix."""
+        mock_s3 = Mock()
+        mock_client.return_value = mock_s3
+        mock_s3.generate_presigned_post.return_value = {
+            "url": "https://test-bucket.s3.amazonaws.com",
+            "fields": {},
+        }
+
+        from lms.services import generate_presigned_post
+
+        result = generate_presigned_post("package.zip")
+
+        self.assertTrue(result["s3_key"].startswith("custom-scorm/"))
+        self.assertTrue(result["s3_key"].endswith("_package.zip"))
+        call_kwargs = mock_s3.generate_presigned_post.call_args.kwargs
+        self.assertTrue(call_kwargs["Key"].startswith("custom-scorm/"))
+
     @override_settings(**S3_TEST_SETTINGS, WAGTAIL_LMS_H5P_UPLOAD_PATH="custom-h5p/")
     @patch("lms.services._get_s3_client")
     def test_generate_h5p_presigned_post_uses_configured_upload_prefix(
@@ -1951,6 +1973,28 @@ class SCORMPackageAdminTest(TestCase):
             )
         self.assertEqual(response.status_code, 400)
         self.assertIn("zip", response.json()["error"].lower())
+
+    @override_settings(WAGTAIL_LMS_SCORM_UPLOAD_PATH="custom-scorm/")
+    @patch("lms.scorm_upload.s3_upload_enabled", return_value=True)
+    @patch("lms.scorm_upload.create_package_from_s3_key")
+    def test_finalize_endpoint_accepts_configured_upload_prefix(
+        self, mock_create, mock_s3_configured
+    ):
+        """Finalize endpoint accepts keys under configured SCORM upload prefix."""
+        mock_package = Mock()
+        mock_package.pk = 43
+        mock_create.return_value = mock_package
+
+        self.client.force_login(self.staff_user)
+        response = self.client.post(
+            reverse("admin:scormpackage_finalize_upload"),
+            data='{"s3_key": "custom-scorm/abc.zip", "title": "Configured Prefix"}',
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        mock_create.assert_called_once_with(
+            "custom-scorm/abc.zip", "Configured Prefix", ""
+        )
 
 
 class SCORMPackageWagtailAdminTest(TestCase):
