@@ -18,6 +18,15 @@ logger = logging.getLogger(__name__)
 MAX_UPLOAD_BYTES = 500 * 1024 * 1024
 
 
+def get_h5p_upload_prefix() -> str:
+    """Return normalized H5P upload prefix with a trailing slash."""
+    raw_prefix = getattr(settings, "WAGTAIL_LMS_H5P_UPLOAD_PATH", "h5p_packages/")
+    normalized = str(PurePosixPath(str(raw_prefix or "h5p_packages/"))).strip()
+    if normalized in {"", ".", "/"}:
+        normalized = "h5p_packages"
+    return normalized.rstrip("/") + "/"
+
+
 def _get_s3_client():
     """Create a boto3 S3 client using Django settings."""
     kwargs = {
@@ -88,7 +97,8 @@ def generate_h5p_presigned_post(filename: str) -> dict:
 
     safe_filename = os.path.basename(filename).strip()
     short_uuid = uuid.uuid4().hex[:8]
-    s3_key = f"h5p_packages/{short_uuid}_{safe_filename}"
+    upload_prefix = get_h5p_upload_prefix()
+    s3_key = str(PurePosixPath(upload_prefix) / f"{short_uuid}_{safe_filename}")
 
     s3_client = _get_s3_client()
 

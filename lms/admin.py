@@ -142,10 +142,6 @@ class EnrollmentRecordAdmin(admin.ModelAdmin):
 admin.site.unregister(SCORMPackage)
 
 
-def _s3_configured():
-    return s3_upload_enabled()
-
-
 @admin.register(SCORMPackage)
 class SCORMPackageUploadAdmin(admin.ModelAdmin):
     """SCORMPackage admin with optional direct-to-S3 upload."""
@@ -179,7 +175,7 @@ class SCORMPackageUploadAdmin(admin.ModelAdmin):
 
     def add_view(self, request, form_url="", extra_context=None):
         extra_context = extra_context or {}
-        extra_context["s3_upload_enabled"] = _s3_configured()
+        extra_context["s3_upload_enabled"] = s3_upload_enabled()
         return super().add_view(request, form_url, extra_context)
 
     def presigned_upload_view(self, request):

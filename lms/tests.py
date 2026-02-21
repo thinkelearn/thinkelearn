@@ -1,3 +1,4 @@
+import json
 import re
 import zipfile
 from datetime import timedelta
@@ -1757,6 +1758,28 @@ class PresignedUploadTest(TestCase):
         self.assertTrue(has_content_type)
         self.assertTrue(has_size_range)
 
+    @override_settings(**S3_TEST_SETTINGS, WAGTAIL_LMS_H5P_UPLOAD_PATH="custom-h5p/")
+    @patch("lms.services._get_s3_client")
+    def test_generate_h5p_presigned_post_uses_configured_upload_prefix(
+        self, mock_client
+    ):
+        """H5P presigned keys should respect configured upload prefix."""
+        mock_s3 = Mock()
+        mock_client.return_value = mock_s3
+        mock_s3.generate_presigned_post.return_value = {
+            "url": "https://test-bucket.s3.amazonaws.com",
+            "fields": {},
+        }
+
+        from lms.services import generate_h5p_presigned_post
+
+        result = generate_h5p_presigned_post("activity.h5p")
+
+        self.assertTrue(result["s3_key"].startswith("custom-h5p/"))
+        self.assertTrue(result["s3_key"].endswith("_activity.h5p"))
+        call_kwargs = mock_s3.generate_presigned_post.call_args.kwargs
+        self.assertTrue(call_kwargs["Key"].startswith("custom-h5p/"))
+
     @override_settings(**S3_TEST_SETTINGS, MEDIA_ROOT="/tmp/test_media")
     @patch("wagtail_lms.models.SCORMPackage.extract_package")
     @patch("lms.services._get_s3_client")
@@ -2013,6 +2036,256 @@ class SCORMPackageWagtailAdminTest(TestCase):
         self.assertEqual(
             data["redirect_url"], reverse("scormpackage:edit", args=[mock_package.pk])
         )
+
+
+class H5PActivityAdminTest(TestCase):
+    """Test H5PActivity admin endpoint access control."""
+
+    def setUp(self):
+        self.staff_user = User.objects.create_user(
+            username="h5pstaff",
+            email="h5pstaff@example.com",
+            password="testpass123",
+            is_staff=True,
+        )
+        self.regular_user = User.objects.create_user(
+            username="h5pregular",
+            email="h5pregular@example.com",
+            password="testpass123",
+        )
+
+    def test_presigned_endpoint_requires_staff(self):
+        """Non-staff users are redirected from presigned endpoint."""
+        self.client.force_login(self.regular_user)
+        response = self.client.post(
+            reverse("admin:h5pactivity_presigned_upload"),
+            data='{"filename": "test.h5p"}',
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("login/", response.url)
+
+    @patch("lms.h5p_upload.s3_upload_enabled", return_value=True)
+    @patch("lms.h5p_upload.generate_h5p_presigned_post")
+    def test_presigned_endpoint_returns_json_for_staff(
+        self, mock_generate, mock_s3_configured
+    ):
+        """Staff users get presigned POST data."""
+        mock_generate.return_value = {
+            "url": "https://bucket.s3.amazonaws.com",
+            "fields": {"key": "h5p_packages/abc_test.h5p"},
+            "s3_key": "h5p_packages/abc_test.h5p",
+        }
+
+        self.client.force_login(self.staff_user)
+        response = self.client.post(
+            reverse("admin:h5pactivity_presigned_upload"),
+            data='{"filename": "test.h5p"}',
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertIn("url", data)
+        self.assertIn("fields", data)
+        self.assertIn("s3_key", data)
+
+    def test_finalize_endpoint_requires_staff(self):
+        """Non-staff users are redirected from finalize endpoint."""
+        self.client.force_login(self.regular_user)
+        response = self.client.post(
+            reverse("admin:h5pactivity_finalize_upload"),
+            data='{"s3_key": "h5p_packages/abc.h5p", "title": "Test Activity"}',
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("login/", response.url)
+
+    @patch("lms.h5p_upload.s3_upload_enabled", return_value=True)
+    @patch("lms.h5p_upload.create_h5p_activity_from_s3_key")
+    def test_finalize_endpoint_creates_activity(self, mock_create, mock_s3_configured):
+        """Staff users can finalize an H5P upload."""
+        mock_activity = Mock()
+        mock_activity.pk = 84
+        mock_create.return_value = mock_activity
+
+        self.client.force_login(self.staff_user)
+        response = self.client.post(
+            reverse("admin:h5pactivity_finalize_upload"),
+            data='{"s3_key": "h5p_packages/abc.h5p", "title": "My H5P", "description": "desc"}',
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data["success"])
+        self.assertIn("redirect_url", data)
+        mock_create.assert_called_once_with("h5p_packages/abc.h5p", "My H5P", "desc")
+
+    def test_presigned_endpoint_rejects_non_h5p(self):
+        """Presigned endpoint rejects non-h5p filenames."""
+        self.client.force_login(self.staff_user)
+
+        with patch("lms.h5p_upload.s3_upload_enabled", return_value=True):
+            for filename in ("malware.exe", "archive.zip"):
+                with self.subTest(filename=filename):
+                    response = self.client.post(
+                        reverse("admin:h5pactivity_presigned_upload"),
+                        data=json.dumps({"filename": filename}),
+                        content_type="application/json",
+                    )
+                    self.assertEqual(response.status_code, 400)
+                    self.assertIn("h5p", response.json()["error"].lower())
+
+    @patch("lms.h5p_upload.s3_upload_enabled", return_value=True)
+    @patch("lms.h5p_upload.create_h5p_activity_from_s3_key")
+    def test_finalize_endpoint_rejects_invalid_s3_key(
+        self, mock_create, mock_s3_configured
+    ):
+        """Finalize endpoint rejects invalid S3 keys."""
+        self.client.force_login(self.staff_user)
+        response = self.client.post(
+            reverse("admin:h5pactivity_finalize_upload"),
+            data='{"s3_key": "uploads/abc.h5p", "title": "My H5P"}',
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("invalid s3_key", response.json()["error"].lower())
+        mock_create.assert_not_called()
+
+    @override_settings(WAGTAIL_LMS_H5P_UPLOAD_PATH="custom-h5p/")
+    @patch("lms.h5p_upload.s3_upload_enabled", return_value=True)
+    @patch("lms.h5p_upload.create_h5p_activity_from_s3_key")
+    def test_finalize_endpoint_accepts_configured_upload_prefix(
+        self, mock_create, mock_s3_configured
+    ):
+        """Finalize endpoint accepts keys under configured H5P upload prefix."""
+        mock_activity = Mock()
+        mock_activity.pk = 85
+        mock_create.return_value = mock_activity
+
+        self.client.force_login(self.staff_user)
+        response = self.client.post(
+            reverse("admin:h5pactivity_finalize_upload"),
+            data='{"s3_key": "custom-h5p/abc.h5p", "title": "Configured Prefix"}',
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        mock_create.assert_called_once_with(
+            "custom-h5p/abc.h5p", "Configured Prefix", ""
+        )
+
+
+class H5PActivityWagtailAdminTest(TestCase):
+    """Test Wagtail H5PActivity viewset direct upload endpoints."""
+
+    def setUp(self):
+        self.superuser = User.objects.create_superuser(
+            username="h5psuperuser",
+            email="h5psuperuser@example.com",
+            password="testpass123",
+        )
+        self.regular_user = User.objects.create_user(
+            username="h5pregular2",
+            email="h5pregular2@example.com",
+            password="testpass123",
+        )
+
+    def test_presigned_endpoint_requires_permission(self):
+        """Users without admin access are redirected to the Wagtail login screen."""
+        self.client.force_login(self.regular_user)
+        response = self.client.post(
+            reverse("h5pactivity:presigned_upload"),
+            data='{"filename": "test.h5p"}',
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("login/", response.url)
+
+    @patch("lms.h5p_upload.s3_upload_enabled", return_value=True)
+    @patch("lms.h5p_upload.generate_h5p_presigned_post")
+    def test_presigned_endpoint_returns_json_for_superuser(
+        self, mock_generate, mock_s3_configured
+    ):
+        """Superusers receive presigned upload data from Wagtail endpoint."""
+        mock_generate.return_value = {
+            "url": "https://bucket.s3.amazonaws.com",
+            "fields": {"key": "h5p_packages/abc_test.h5p"},
+            "s3_key": "h5p_packages/abc_test.h5p",
+        }
+        self.client.force_login(self.superuser)
+        response = self.client.post(
+            reverse("h5pactivity:presigned_upload"),
+            data='{"filename": "test.h5p"}',
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertIn("url", data)
+        self.assertIn("fields", data)
+        self.assertIn("s3_key", data)
+
+    @patch("lms.wagtail_lms_admin.s3_upload_enabled", return_value=True)
+    def test_wagtail_add_view_uses_upload_ui_when_s3_enabled(self, mock_s3_configured):
+        """H5P create page in Wagtail admin includes direct upload configuration."""
+        self.client.force_login(self.superuser)
+        response = self.client.get(reverse("h5pactivity:add"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "H5P_UPLOAD_CONFIG")
+        self.assertContains(response, escapejs(reverse("h5pactivity:presigned_upload")))
+        self.assertContains(response, escapejs(reverse("h5pactivity:finalize_upload")))
+
+    @patch("lms.h5p_upload.s3_upload_enabled", return_value=True)
+    @patch("lms.h5p_upload.create_h5p_activity_from_s3_key")
+    def test_finalize_endpoint_returns_wagtail_edit_url(
+        self, mock_create, mock_s3_configured
+    ):
+        """Finalize endpoint redirects to Wagtail edit view."""
+        mock_activity = Mock()
+        mock_activity.pk = 84
+        mock_create.return_value = mock_activity
+
+        self.client.force_login(self.superuser)
+        response = self.client.post(
+            reverse("h5pactivity:finalize_upload"),
+            data='{"s3_key": "h5p_packages/abc.h5p", "title": "My H5P", "description": "desc"}',
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data["success"])
+        self.assertEqual(
+            data["redirect_url"], reverse("h5pactivity:edit", args=[mock_activity.pk])
+        )
+
+    def test_presigned_endpoint_rejects_non_h5p(self):
+        """Presigned endpoint rejects non-h5p filenames."""
+        self.client.force_login(self.superuser)
+
+        with patch("lms.h5p_upload.s3_upload_enabled", return_value=True):
+            for filename in ("malware.exe", "archive.zip"):
+                with self.subTest(filename=filename):
+                    response = self.client.post(
+                        reverse("h5pactivity:presigned_upload"),
+                        data=json.dumps({"filename": filename}),
+                        content_type="application/json",
+                    )
+                    self.assertEqual(response.status_code, 400)
+                    self.assertIn("h5p", response.json()["error"].lower())
+
+    @patch("lms.h5p_upload.s3_upload_enabled", return_value=True)
+    @patch("lms.h5p_upload.create_h5p_activity_from_s3_key")
+    def test_finalize_endpoint_rejects_invalid_s3_key(
+        self, mock_create, mock_s3_configured
+    ):
+        """Finalize endpoint rejects invalid S3 keys."""
+        self.client.force_login(self.superuser)
+        response = self.client.post(
+            reverse("h5pactivity:finalize_upload"),
+            data='{"s3_key": "uploads/abc.h5p", "title": "My H5P"}',
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("invalid s3_key", response.json()["error"].lower())
+        mock_create.assert_not_called()
 
 
 class WagtailLmsTitlePanelPatchTest(TestCase):
