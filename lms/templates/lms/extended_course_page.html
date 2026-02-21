@@ -111,6 +111,11 @@
                                 </span>
                             {% endif %}
                         </div>
+                        {% if not enrollment and not perms.wagtailadmin.access_admin %}
+                            <p class="text-sm text-neutral-600 mb-4">
+                                Enroll in this course to unlock lesson content.
+                            </p>
+                        {% endif %}
 
                         {# Progress bar #}
                         {% if completed_lesson_ids %}
@@ -124,8 +129,12 @@
 
                         <div class="space-y-3">
                             {% for lesson in lesson_pages %}
-                                <a href="{% pageurl lesson %}"
-                                   class="flex items-center gap-4 p-4 rounded-lg border border-neutral-200 hover:border-secondary-400 hover:shadow-sm transition-all duration-200 group">
+                                {% if enrollment or perms.wagtailadmin.access_admin %}
+                                    <a href="{% pageurl lesson %}"
+                                       class="flex items-center gap-4 p-4 rounded-lg border border-neutral-200 hover:border-secondary-400 hover:shadow-sm transition-all duration-200 group">
+                                {% else %}
+                                    <div class="flex items-center gap-4 p-4 rounded-lg border border-neutral-200 bg-neutral-50 cursor-not-allowed">
+                                {% endif %}
                                     <div class="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center
                                         {% if lesson.pk in completed_lesson_ids %}bg-green-100{% elif not enrollment %}bg-neutral-100{% else %}bg-cyan-50{% endif %}">
                                         {% if lesson.pk in completed_lesson_ids %}
@@ -143,13 +152,23 @@
                                             </svg>
                                         {% endif %}
                                     </div>
-                                    <span class="flex-1 text-sm font-medium text-neutral-800 group-hover:text-secondary-600">
+                                    <span class="flex-1 text-sm font-medium text-neutral-800 {% if enrollment or perms.wagtailadmin.access_admin %}group-hover:text-secondary-600{% endif %}">
                                         {{ lesson.title }}
                                     </span>
-                                    <svg class="w-4 h-4 text-neutral-400 group-hover:text-secondary-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-                                    </svg>
-                                </a>
+                                    {% if enrollment or perms.wagtailadmin.access_admin %}
+                                        <svg class="w-4 h-4 text-neutral-400 group-hover:text-secondary-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                                        </svg>
+                                    {% else %}
+                                        <span class="text-xs font-semibold text-neutral-500 uppercase tracking-wide">
+                                            Locked
+                                        </span>
+                                    {% endif %}
+                                {% if enrollment or perms.wagtailadmin.access_admin %}
+                                    </a>
+                                {% else %}
+                                    </div>
+                                {% endif %}
                             {% endfor %}
                         </div>
                     </div>

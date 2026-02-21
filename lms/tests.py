@@ -15,7 +15,13 @@ from django.utils import timezone
 from django.utils.html import escapejs
 from wagtail.admin.panels import FieldPanel, TitleFieldPanel
 from wagtail.models import Page, Site
-from wagtail_lms.models import CourseEnrollment, H5PActivity, SCORMAttempt, SCORMPackage
+from wagtail_lms.models import (
+    CourseEnrollment,
+    H5PActivity,
+    LessonPage,
+    SCORMAttempt,
+    SCORMPackage,
+)
 
 from lms.models import (
     CourseCategory,
@@ -295,6 +301,31 @@ class ExtendedCoursePageTest(TestCase):
         content = response.content.decode()
         self.assertIn(f"{login_url}?next={self.course.url}", content)
         self.assertIn(f"{signup_url}?next={self.course.url}", content)
+
+    def test_course_page_hides_lesson_links_for_non_enrolled_users(self):
+        """Lesson list should be visible but locked when user is not enrolled."""
+        lesson = LessonPage(title="Locked Lesson", slug="locked-lesson")
+        self.course.add_child(instance=lesson)
+        lesson.save_revision().publish()
+
+        response = self.client.get(self.course.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Enroll in this course to unlock lesson content.")
+        self.assertNotContains(response, f'href="{lesson.url}"')
+
+    def test_course_page_shows_lesson_links_for_enrolled_users(self):
+        """Enrolled users should see clickable lesson links."""
+        lesson = LessonPage(title="Unlocked Lesson", slug="unlocked-lesson")
+        self.course.add_child(instance=lesson)
+        lesson.save_revision().publish()
+        CourseEnrollment.objects.create(user=self.user, course=self.course)
+        self.client.force_login(self.user)
+
+        response = self.client.get(self.course.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, f'href="{lesson.url}"')
 
     def test_can_user_enroll_enrollment_limit_reached(self):
         """Test cannot enroll when enrollment limit is reached"""
