@@ -257,6 +257,7 @@ WAGTAIL_LMS_AUTO_ENROLL = os.environ.get(
     "WAGTAIL_LMS_AUTO_ENROLL", "false"
 ).lower() in {"1", "true", "yes"}
 WAGTAIL_LMS_SCORM_UPLOAD_PATH = "scorm_packages/"
+WAGTAIL_LMS_CONTENT_PATH = "scorm_content/"
 WAGTAIL_LMS_H5P_UPLOAD_PATH = "h5p_packages/"
 WAGTAIL_LMS_H5P_CONTENT_PATH = "h5p_content/"
 
