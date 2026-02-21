@@ -1,3 +1,5 @@
+import json
+import re
 import zipfile
 from datetime import timedelta
 from decimal import Decimal
@@ -12,8 +14,15 @@ from django.test import RequestFactory, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.html import escapejs
+from wagtail.admin.panels import FieldPanel, TitleFieldPanel
 from wagtail.models import Page, Site
-from wagtail_lms.models import CourseEnrollment, SCORMAttempt, SCORMPackage
+from wagtail_lms.models import (
+    CourseEnrollment,
+    H5PActivity,
+    LessonPage,
+    SCORMAttempt,
+    SCORMPackage,
+)
 
 from lms.models import (
     CourseCategory,
@@ -293,6 +302,31 @@ class ExtendedCoursePageTest(TestCase):
         content = response.content.decode()
         self.assertIn(f"{login_url}?next={self.course.url}", content)
         self.assertIn(f"{signup_url}?next={self.course.url}", content)
+
+    def test_course_page_hides_lesson_links_for_non_enrolled_users(self):
+        """Lesson list should be visible but locked when user is not enrolled."""
+        lesson = LessonPage(title="Locked Lesson", slug="locked-lesson")
+        self.course.add_child(instance=lesson)
+        lesson.save_revision().publish()
+
+        response = self.client.get(self.course.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Enroll in this course to unlock lesson content.")
+        self.assertNotContains(response, f'href="{lesson.url}"')
+
+    def test_course_page_shows_lesson_links_for_enrolled_users(self):
+        """Enrolled users should see clickable lesson links."""
+        lesson = LessonPage(title="Unlocked Lesson", slug="unlocked-lesson")
+        self.course.add_child(instance=lesson)
+        lesson.save_revision().publish()
+        CourseEnrollment.objects.create(user=self.user, course=self.course)
+        self.client.force_login(self.user)
+
+        response = self.client.get(self.course.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, f'href="{lesson.url}"')
 
     def test_can_user_enroll_enrollment_limit_reached(self):
         """Test cannot enroll when enrollment limit is reached"""
@@ -1724,6 +1758,28 @@ class PresignedUploadTest(TestCase):
         self.assertTrue(has_content_type)
         self.assertTrue(has_size_range)
 
+    @override_settings(**S3_TEST_SETTINGS, WAGTAIL_LMS_H5P_UPLOAD_PATH="custom-h5p/")
+    @patch("lms.services._get_s3_client")
+    def test_generate_h5p_presigned_post_uses_configured_upload_prefix(
+        self, mock_client
+    ):
+        """H5P presigned keys should respect configured upload prefix."""
+        mock_s3 = Mock()
+        mock_client.return_value = mock_s3
+        mock_s3.generate_presigned_post.return_value = {
+            "url": "https://test-bucket.s3.amazonaws.com",
+            "fields": {},
+        }
+
+        from lms.services import generate_h5p_presigned_post
+
+        result = generate_h5p_presigned_post("activity.h5p")
+
+        self.assertTrue(result["s3_key"].startswith("custom-h5p/"))
+        self.assertTrue(result["s3_key"].endswith("_activity.h5p"))
+        call_kwargs = mock_s3.generate_presigned_post.call_args.kwargs
+        self.assertTrue(call_kwargs["Key"].startswith("custom-h5p/"))
+
     @override_settings(**S3_TEST_SETTINGS, MEDIA_ROOT="/tmp/test_media")
     @patch("wagtail_lms.models.SCORMPackage.extract_package")
     @patch("lms.services._get_s3_client")
@@ -1982,6 +2038,337 @@ class SCORMPackageWagtailAdminTest(TestCase):
         )
 
 
+class H5PActivityAdminTest(TestCase):
+    """Test H5PActivity admin endpoint access control."""
+
+    def setUp(self):
+        self.staff_user = User.objects.create_user(
+            username="h5pstaff",
+            email="h5pstaff@example.com",
+            password="testpass123",
+            is_staff=True,
+        )
+        self.regular_user = User.objects.create_user(
+            username="h5pregular",
+            email="h5pregular@example.com",
+            password="testpass123",
+        )
+
+    def test_presigned_endpoint_requires_staff(self):
+        """Non-staff users are redirected from presigned endpoint."""
+        self.client.force_login(self.regular_user)
+        response = self.client.post(
+            reverse("admin:h5pactivity_presigned_upload"),
+            data='{"filename": "test.h5p"}',
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("login/", response.url)
+
+    @patch("lms.h5p_upload.s3_upload_enabled", return_value=True)
+    @patch("lms.h5p_upload.generate_h5p_presigned_post")
+    def test_presigned_endpoint_returns_json_for_staff(
+        self, mock_generate, mock_s3_configured
+    ):
+        """Staff users get presigned POST data."""
+        mock_generate.return_value = {
+            "url": "https://bucket.s3.amazonaws.com",
+            "fields": {"key": "h5p_packages/abc_test.h5p"},
+            "s3_key": "h5p_packages/abc_test.h5p",
+        }
+
+        self.client.force_login(self.staff_user)
+        response = self.client.post(
+            reverse("admin:h5pactivity_presigned_upload"),
+            data='{"filename": "test.h5p"}',
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertIn("url", data)
+        self.assertIn("fields", data)
+        self.assertIn("s3_key", data)
+
+    def test_finalize_endpoint_requires_staff(self):
+        """Non-staff users are redirected from finalize endpoint."""
+        self.client.force_login(self.regular_user)
+        response = self.client.post(
+            reverse("admin:h5pactivity_finalize_upload"),
+            data='{"s3_key": "h5p_packages/abc.h5p", "title": "Test Activity"}',
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("login/", response.url)
+
+    @patch("lms.h5p_upload.s3_upload_enabled", return_value=True)
+    @patch("lms.h5p_upload.create_h5p_activity_from_s3_key")
+    def test_finalize_endpoint_creates_activity(self, mock_create, mock_s3_configured):
+        """Staff users can finalize an H5P upload."""
+        mock_activity = Mock()
+        mock_activity.pk = 84
+        mock_create.return_value = mock_activity
+
+        self.client.force_login(self.staff_user)
+        response = self.client.post(
+            reverse("admin:h5pactivity_finalize_upload"),
+            data='{"s3_key": "h5p_packages/abc.h5p", "title": "My H5P", "description": "desc"}',
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data["success"])
+        self.assertIn("redirect_url", data)
+        mock_create.assert_called_once_with("h5p_packages/abc.h5p", "My H5P", "desc")
+
+    def test_presigned_endpoint_rejects_non_h5p(self):
+        """Presigned endpoint rejects non-h5p filenames."""
+        self.client.force_login(self.staff_user)
+
+        with patch("lms.h5p_upload.s3_upload_enabled", return_value=True):
+            for filename in ("malware.exe", "archive.zip"):
+                with self.subTest(filename=filename):
+                    response = self.client.post(
+                        reverse("admin:h5pactivity_presigned_upload"),
+                        data=json.dumps({"filename": filename}),
+                        content_type="application/json",
+                    )
+                    self.assertEqual(response.status_code, 400)
+                    self.assertIn("h5p", response.json()["error"].lower())
+
+    @patch("lms.h5p_upload.s3_upload_enabled", return_value=True)
+    @patch("lms.h5p_upload.create_h5p_activity_from_s3_key")
+    def test_finalize_endpoint_rejects_invalid_s3_key(
+        self, mock_create, mock_s3_configured
+    ):
+        """Finalize endpoint rejects invalid S3 keys."""
+        self.client.force_login(self.staff_user)
+        response = self.client.post(
+            reverse("admin:h5pactivity_finalize_upload"),
+            data='{"s3_key": "uploads/abc.h5p", "title": "My H5P"}',
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("invalid s3_key", response.json()["error"].lower())
+        mock_create.assert_not_called()
+
+    @override_settings(WAGTAIL_LMS_H5P_UPLOAD_PATH="custom-h5p/")
+    @patch("lms.h5p_upload.s3_upload_enabled", return_value=True)
+    @patch("lms.h5p_upload.create_h5p_activity_from_s3_key")
+    def test_finalize_endpoint_accepts_configured_upload_prefix(
+        self, mock_create, mock_s3_configured
+    ):
+        """Finalize endpoint accepts keys under configured H5P upload prefix."""
+        mock_activity = Mock()
+        mock_activity.pk = 85
+        mock_create.return_value = mock_activity
+
+        self.client.force_login(self.staff_user)
+        response = self.client.post(
+            reverse("admin:h5pactivity_finalize_upload"),
+            data='{"s3_key": "custom-h5p/abc.h5p", "title": "Configured Prefix"}',
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        mock_create.assert_called_once_with(
+            "custom-h5p/abc.h5p", "Configured Prefix", ""
+        )
+
+
+class H5PActivityWagtailAdminTest(TestCase):
+    """Test Wagtail H5PActivity viewset direct upload endpoints."""
+
+    def setUp(self):
+        self.superuser = User.objects.create_superuser(
+            username="h5psuperuser",
+            email="h5psuperuser@example.com",
+            password="testpass123",
+        )
+        self.regular_user = User.objects.create_user(
+            username="h5pregular2",
+            email="h5pregular2@example.com",
+            password="testpass123",
+        )
+
+    def test_presigned_endpoint_requires_permission(self):
+        """Users without admin access are redirected to the Wagtail login screen."""
+        self.client.force_login(self.regular_user)
+        response = self.client.post(
+            reverse("h5pactivity:presigned_upload"),
+            data='{"filename": "test.h5p"}',
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("login/", response.url)
+
+    @patch("lms.h5p_upload.s3_upload_enabled", return_value=True)
+    @patch("lms.h5p_upload.generate_h5p_presigned_post")
+    def test_presigned_endpoint_returns_json_for_superuser(
+        self, mock_generate, mock_s3_configured
+    ):
+        """Superusers receive presigned upload data from Wagtail endpoint."""
+        mock_generate.return_value = {
+            "url": "https://bucket.s3.amazonaws.com",
+            "fields": {"key": "h5p_packages/abc_test.h5p"},
+            "s3_key": "h5p_packages/abc_test.h5p",
+        }
+        self.client.force_login(self.superuser)
+        response = self.client.post(
+            reverse("h5pactivity:presigned_upload"),
+            data='{"filename": "test.h5p"}',
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertIn("url", data)
+        self.assertIn("fields", data)
+        self.assertIn("s3_key", data)
+
+    @patch("lms.wagtail_lms_admin.s3_upload_enabled", return_value=True)
+    def test_wagtail_add_view_uses_upload_ui_when_s3_enabled(self, mock_s3_configured):
+        """H5P create page in Wagtail admin includes direct upload configuration."""
+        self.client.force_login(self.superuser)
+        response = self.client.get(reverse("h5pactivity:add"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "H5P_UPLOAD_CONFIG")
+        self.assertContains(response, escapejs(reverse("h5pactivity:presigned_upload")))
+        self.assertContains(response, escapejs(reverse("h5pactivity:finalize_upload")))
+
+    @patch("lms.h5p_upload.s3_upload_enabled", return_value=True)
+    @patch("lms.h5p_upload.create_h5p_activity_from_s3_key")
+    def test_finalize_endpoint_returns_wagtail_edit_url(
+        self, mock_create, mock_s3_configured
+    ):
+        """Finalize endpoint redirects to Wagtail edit view."""
+        mock_activity = Mock()
+        mock_activity.pk = 84
+        mock_create.return_value = mock_activity
+
+        self.client.force_login(self.superuser)
+        response = self.client.post(
+            reverse("h5pactivity:finalize_upload"),
+            data='{"s3_key": "h5p_packages/abc.h5p", "title": "My H5P", "description": "desc"}',
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data["success"])
+        self.assertEqual(
+            data["redirect_url"], reverse("h5pactivity:edit", args=[mock_activity.pk])
+        )
+
+    def test_presigned_endpoint_rejects_non_h5p(self):
+        """Presigned endpoint rejects non-h5p filenames."""
+        self.client.force_login(self.superuser)
+
+        with patch("lms.h5p_upload.s3_upload_enabled", return_value=True):
+            for filename in ("malware.exe", "archive.zip"):
+                with self.subTest(filename=filename):
+                    response = self.client.post(
+                        reverse("h5pactivity:presigned_upload"),
+                        data=json.dumps({"filename": filename}),
+                        content_type="application/json",
+                    )
+                    self.assertEqual(response.status_code, 400)
+                    self.assertIn("h5p", response.json()["error"].lower())
+
+    @patch("lms.h5p_upload.s3_upload_enabled", return_value=True)
+    @patch("lms.h5p_upload.create_h5p_activity_from_s3_key")
+    def test_finalize_endpoint_rejects_invalid_s3_key(
+        self, mock_create, mock_s3_configured
+    ):
+        """Finalize endpoint rejects invalid S3 keys."""
+        self.client.force_login(self.superuser)
+        response = self.client.post(
+            reverse("h5pactivity:finalize_upload"),
+            data='{"s3_key": "uploads/abc.h5p", "title": "My H5P"}',
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("invalid s3_key", response.json()["error"].lower())
+        mock_create.assert_not_called()
+
+
+class WagtailLmsTitlePanelPatchTest(TestCase):
+    """Regression tests for wagtail-lms title panel sync attributes."""
+
+    def setUp(self):
+        self.superuser = User.objects.create_superuser(
+            username="superuser_title_panel",
+            email="superuser_title_panel@example.com",
+            password="testpass123",
+        )
+
+    def test_title_panels_use_field_panel_not_title_field_panel(self):
+        """SCORM/H5P panels should not inject TitleFieldPanel w-sync attrs."""
+        for model in (SCORMPackage, H5PActivity):
+            title_panels = [
+                panel
+                for panel in getattr(model, "panels", [])
+                if getattr(panel, "field_name", None) == "title"
+            ]
+            self.assertEqual(len(title_panels), 1)
+            self.assertIsInstance(title_panels[0], FieldPanel)
+            self.assertNotIsInstance(title_panels[0], TitleFieldPanel)
+
+    def test_scorm_edit_title_input_has_no_w_sync_attributes(self):
+        """SCORM edit view should not render w-sync attrs on title input."""
+        package = SCORMPackage.objects.create(
+            title="SCORM",
+            package_file=SimpleUploadedFile("package.zip", b"fake-zip"),
+            extracted_path="package_1_dummy",
+            launch_url="index.html",
+        )
+        self.client.force_login(self.superuser)
+        response = self.client.get(reverse("scormpackage:edit", args=[package.pk]))
+        self.assertEqual(response.status_code, 200)
+
+        html = response.content.decode()
+        match = re.search(r'<input[^>]*id="id_title"[^>]*>', html)
+        self.assertIsNotNone(match)
+        title_input = match.group(0)
+        self.assertNotIn('data-controller="w-sync"', title_input)
+        self.assertNotIn("data-w-sync-target-value", title_input)
+
+    def test_h5p_edit_title_input_has_no_w_sync_attributes(self):
+        """H5P edit view should not render w-sync attrs on title input."""
+        activity = H5PActivity.objects.create(
+            title="H5P",
+            package_file=SimpleUploadedFile("activity.h5p", b"fake-h5p"),
+            extracted_path="h5p_1_dummy",
+            main_library="H5P.Dummy 1.0",
+        )
+        self.client.force_login(self.superuser)
+        response = self.client.get(reverse("h5pactivity:edit", args=[activity.pk]))
+        self.assertEqual(response.status_code, 200)
+
+        html = response.content.decode()
+        match = re.search(r'<input[^>]*id="id_title"[^>]*>', html)
+        self.assertIsNotNone(match)
+        title_input = match.group(0)
+        self.assertNotIn('data-controller="w-sync"', title_input)
+        self.assertNotIn("data-w-sync-target-value", title_input)
+
+    def test_scorm_add_view_has_no_empty_w_sync_target_selectors(self):
+        """SCORM add view should not render empty w-sync target selectors."""
+        self.client.force_login(self.superuser)
+        response = self.client.get(reverse("scormpackage:add"))
+        self.assertEqual(response.status_code, 200)
+
+        html = response.content.decode()
+        self.assertNotIn('data-w-sync-target-value=""', html)
+        self.assertNotIn('data-w-sync-target-value=" "', html)
+
+    def test_h5p_add_view_has_no_empty_w_sync_target_selectors(self):
+        """H5P add view should not render empty w-sync target selectors."""
+        self.client.force_login(self.superuser)
+        response = self.client.get(reverse("h5pactivity:add"))
+        self.assertEqual(response.status_code, 200)
+
+        html = response.content.decode()
+        self.assertNotIn('data-w-sync-target-value=""', html)
+        self.assertNotIn('data-w-sync-target-value=" "', html)
+
+
 class ServeScormContentTest(TestCase):
     """Smoke tests for the wagtail-lms SCORM content route in thinkelearn.
 
@@ -2119,3 +2506,101 @@ class ScormAccessPolicyTest(TestCase):
         self.assertEqual(response.status_code, 200)
         enrollment.refresh_from_db()
         self.assertIsNotNone(enrollment.completed_at)
+
+
+class H5PIntegrationTest(TestCase):
+    """Test H5P integration with ExtendedCoursePage and LearnerDashboardPage."""
+
+    def setUp(self):
+        from wagtail_lms.models import LessonCompletion, LessonPage
+
+        self.LessonPage = LessonPage
+        self.LessonCompletion = LessonCompletion
+
+        self.root_page = Page.add_root(title="Root")
+
+        self.courses_index = CoursesIndexPage(title="Courses", slug="courses")
+        self.root_page.add_child(instance=self.courses_index)
+
+        self.course = ExtendedCoursePage(
+            title="H5P Course", slug="h5p-course", difficulty="beginner"
+        )
+        self.courses_index.add_child(instance=self.course)
+        self.course.save_revision().publish()
+
+        self.user = User.objects.create_user(
+            username="h5puser", email="h5p@example.com", password="testpass123"
+        )
+
+        self.dashboard_root = Page.add_root(title="Dashboard Root")
+        self.dashboard = LearnerDashboardPage(title="Dashboard", slug="dashboard")
+        self.dashboard_root.add_child(instance=self.dashboard)
+
+        self.factory = RequestFactory()
+
+    def test_extended_course_page_allows_lesson_subpages(self):
+        """ExtendedCoursePage.subpage_types must include 'wagtail_lms.LessonPage'."""
+        self.assertIn("wagtail_lms.LessonPage", ExtendedCoursePage.subpage_types)
+
+    def test_lesson_pages_in_course_context(self):
+        """LessonPage children appear in ExtendedCoursePage context."""
+        lesson = self.LessonPage(title="Lesson 1", slug="lesson-1")
+        self.course.add_child(instance=lesson)
+        lesson.save_revision().publish()
+
+        request = self.factory.get("/courses/h5p-course/")
+        request.user = Mock(is_authenticated=False)
+
+        context = self.course.get_context(request)
+
+        lesson_pks = list(context["lesson_pages"].values_list("pk", flat=True))
+        self.assertIn(lesson.pk, lesson_pks)
+
+    def test_completed_lesson_ids_in_context(self):
+        """Completed lessons appear in completed_lesson_ids context variable."""
+        lesson = self.LessonPage(title="Lesson 2", slug="lesson-2")
+        self.course.add_child(instance=lesson)
+        lesson.save_revision().publish()
+
+        CourseEnrollment.objects.create(user=self.user, course=self.course)
+        self.LessonCompletion.objects.create(user=self.user, lesson=lesson)
+
+        request = self.factory.get("/courses/h5p-course/")
+        request.user = self.user
+
+        context = self.course.get_context(request)
+
+        self.assertIn(lesson.pk, context["completed_lesson_ids"])
+
+    def test_lesson_data_in_dashboard_context(self):
+        """Dashboard context includes lesson_data with correct done/total counts."""
+        lesson1 = self.LessonPage(title="L1", slug="l1")
+        lesson2 = self.LessonPage(title="L2", slug="l2")
+        self.course.add_child(instance=lesson1)
+        self.course.add_child(instance=lesson2)
+        lesson1.save_revision().publish()
+        lesson2.save_revision().publish()
+
+        CourseEnrollment.objects.create(user=self.user, course=self.course)
+        self.LessonCompletion.objects.create(user=self.user, lesson=lesson1)
+
+        request = self.factory.get("/dashboard/")
+        request.user = self.user
+
+        context = self.dashboard.get_context(request)
+
+        self.assertIn(self.course.id, context["lesson_data"])
+        ld = context["lesson_data"][self.course.id]
+        self.assertEqual(ld["total"], 2)
+        self.assertEqual(ld["done"], 1)
+
+    def test_dashboard_lesson_data_empty_for_course_without_lessons(self):
+        """lesson_data omits entries for courses that have no LessonPage children."""
+        CourseEnrollment.objects.create(user=self.user, course=self.course)
+
+        request = self.factory.get("/dashboard/")
+        request.user = self.user
+
+        context = self.dashboard.get_context(request)
+
+        self.assertNotIn(self.course.id, context["lesson_data"])

@@ -2,8 +2,12 @@
 
 from django.contrib import admin
 from django.urls import path, reverse
-from wagtail_lms.models import SCORMPackage
+from wagtail_lms.models import H5PActivity, SCORMPackage
 
+from .h5p_upload import (
+    h5p_finalize_upload_response,
+    h5p_presigned_upload_response,
+)
 from .models import CourseProduct, CourseReview, EnrollmentRecord
 from .scorm_upload import (
     finalize_upload_response,
@@ -138,10 +142,6 @@ class EnrollmentRecordAdmin(admin.ModelAdmin):
 admin.site.unregister(SCORMPackage)
 
 
-def _s3_configured():
-    return s3_upload_enabled()
-
-
 @admin.register(SCORMPackage)
 class SCORMPackageUploadAdmin(admin.ModelAdmin):
     """SCORMPackage admin with optional direct-to-S3 upload."""
@@ -175,7 +175,7 @@ class SCORMPackageUploadAdmin(admin.ModelAdmin):
 
     def add_view(self, request, form_url="", extra_context=None):
         extra_context = extra_context or {}
-        extra_context["s3_upload_enabled"] = _s3_configured()
+        extra_context["s3_upload_enabled"] = s3_upload_enabled()
         return super().add_view(request, form_url, extra_context)
 
     def presigned_upload_view(self, request):
@@ -188,5 +188,59 @@ class SCORMPackageUploadAdmin(admin.ModelAdmin):
             request,
             redirect_url_builder=lambda package: reverse(
                 "admin:wagtail_lms_scormpackage_change", args=[package.pk]
+            ),
+        )
+
+
+# Override wagtail-lms's H5PActivityAdmin to support presigned S3 uploads.
+admin.site.unregister(H5PActivity)
+
+
+@admin.register(H5PActivity)
+class H5PActivityUploadAdmin(admin.ModelAdmin):
+    """H5PActivity admin with optional direct-to-S3 upload."""
+
+    list_display = ("title", "main_library", "created_at")
+    list_filter = ("created_at",)
+    search_fields = ("title", "description", "main_library")
+    readonly_fields = (
+        "extracted_path",
+        "main_library",
+        "h5p_json",
+        "created_at",
+        "updated_at",
+    )
+    change_form_template = "admin/wagtail_lms/h5pactivity/change_form.html"
+
+    def get_urls(self):
+        custom_urls = [
+            path(
+                "presigned-upload/",
+                self.admin_site.admin_view(self.presigned_upload_view),
+                name="h5pactivity_presigned_upload",
+            ),
+            path(
+                "finalize-upload/",
+                self.admin_site.admin_view(self.finalize_upload_view),
+                name="h5pactivity_finalize_upload",
+            ),
+        ]
+        return custom_urls + super().get_urls()
+
+    def add_view(self, request, form_url="", extra_context=None):
+        extra_context = extra_context or {}
+        extra_context["s3_upload_enabled"] = s3_upload_enabled()
+        return super().add_view(request, form_url, extra_context)
+
+    def presigned_upload_view(self, request):
+        """Return presigned POST data for direct-to-S3 H5P upload."""
+        return h5p_presigned_upload_response(request)
+
+    def finalize_upload_view(self, request):
+        """Create H5PActivity from an already-uploaded S3 object."""
+        return h5p_finalize_upload_response(
+            request,
+            redirect_url_builder=lambda activity: reverse(
+                "admin:wagtail_lms_h5pactivity_change", args=[activity.pk]
             ),
         )

@@ -1,0 +1,59 @@
+{% extends "admin/change_form.html" %}
+{% load static %}
+
+{% block content %}
+{% if s3_upload_enabled and add %}
+{# S3 direct upload form — only shown when adding a new activity with S3 configured #}
+<div id="s3-upload-form" style="max-width: 600px; box-sizing: border-box;">
+  <div class="form-row">
+    <label for="id_title" class="required">Title:</label>
+    <input type="text" id="id_title" name="title" maxlength="255" required
+           style="width: 100%; padding: 6px; border: 1px solid #ccc; box-sizing: border-box;">
+  </div>
+
+  <div class="form-row" style="margin-top: 12px;">
+    <label for="id_description">Description:</label>
+    <textarea id="id_description" name="description" rows="3"
+              style="width: 100%; padding: 6px; border: 1px solid #ccc; box-sizing: border-box;"></textarea>
+  </div>
+
+  <div class="form-row" style="margin-top: 12px;">
+    <label for="id_package_file" class="required">H5P Package (.h5p):</label>
+    <input type="file" id="id_package_file" accept=".h5p"
+           style="margin-top: 4px;">
+    <p class="help">Select an H5P package (up to 500 MB). Includes library JS. The file will be uploaded directly to S3.</p>
+  </div>
+
+  <div id="upload-progress" style="display: none; margin-top: 12px;">
+    <label>Upload progress:</label>
+    <div style="background: #f0f0f0; border: 1px solid #ccc; border-radius: 4px; overflow: hidden; height: 24px;">
+      <div id="progress-bar"
+           style="background: #417690; height: 100%; width: 0%; transition: width 0.3s; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 12px;">
+        0%
+      </div>
+    </div>
+    <p id="upload-status" class="help" style="margin-top: 4px;">Preparing upload...</p>
+  </div>
+
+  <div id="upload-error" style="display: none; margin-top: 12px; padding: 8px 12px; background: #fce4e4; border: 1px solid #d32f2f; border-radius: 4px; color: #b71c1c;">
+  </div>
+
+  <div class="submit-row" style="margin-top: 16px;">
+    <input type="button" id="upload-submit" value="Upload H5P Package"
+           class="default" style="cursor: pointer;">
+  </div>
+</div>
+
+<script>
+  window.H5P_UPLOAD_CONFIG = {
+    presignedUrl: "{% url 'admin:h5pactivity_presigned_upload' %}",
+    finalizeUrl: "{% url 'admin:h5pactivity_finalize_upload' %}",
+  };
+</script>
+<script src="{% static 'lms/js/h5p_upload.js' %}"></script>
+
+{% else %}
+{# Standard Django admin form (editing existing activities, or S3 not configured) #}
+{{ block.super }}
+{% endif %}
+{% endblock %}

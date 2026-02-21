@@ -75,10 +75,26 @@
                                                 <p class="text-neutral-600 mb-4">{{ course.description|striptags|truncatewords:20 }}</p>
                                             {% endif %}
 
-                                            {# Progress Info #}
+                                            {# Lesson progress (H5P courses) #}
+                                            {% for course_id, ld in lesson_data.items %}
+                                                {% if course_id == course.id %}
+                                                    <div class="mt-3">
+                                                        <div class="flex items-center justify-between mb-1 text-sm text-neutral-600">
+                                                            <span>Lessons: {{ ld.done }} / {{ ld.total }}</span>
+                                                            <span class="text-xs text-neutral-500">{% widthratio ld.done ld.total 100 %}%</span>
+                                                        </div>
+                                                        <div class="bg-neutral-200 rounded-full h-2 overflow-hidden">
+                                                            <div class="bg-cyan-500 h-2 rounded-full transition-all duration-300"
+                                                                 style="width: {% widthratio ld.done ld.total 100 %}%"></div>
+                                                        </div>
+                                                    </div>
+                                                {% endif %}
+                                            {% endfor %}
+
+                                            {# SCORM Progress Info #}
                                             {% with progress=enrollment.get_progress %}
                                                 {% if progress %}
-                                                    <div class="flex items-center gap-4 text-sm text-neutral-600">
+                                                    <div class="flex items-center gap-4 text-sm text-neutral-600 mt-3">
                                                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
                                                             {% if progress.completion_status == 'completed' %}bg-green-100 text-green-800
                                                             {% elif progress.completion_status == 'incomplete' %}bg-yellow-100 text-yellow-800

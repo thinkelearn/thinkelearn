@@ -18,9 +18,9 @@
             </li>
             <li>
                 <div class="w-field__wrapper">
-                    <label class="w-field__label" for="id_package_file">{% trans "SCORM Package (.zip)" %}</label>
-                    <input type="file" id="id_package_file" accept=".zip">
-                    <p class="help">{% trans "Select a SCORM ZIP package (up to 500 MB). The file uploads directly to S3." %}</p>
+                    <label class="w-field__label" for="id_package_file">{% trans "H5P Package (.h5p)" %}</label>
+                    <input type="file" id="id_package_file" accept=".h5p">
+                    <p class="help">{% trans "Select an H5P package (up to 500 MB). Includes library JS. The file uploads directly to S3." %}</p>
                 </div>
             </li>
             <li id="upload-progress" style="display:none;">
@@ -47,7 +47,7 @@
 {% block main_action %}
     {% if s3_upload_enabled %}
         <button type="button" class="button button-longrunning" id="upload-submit">
-            <em>{% trans "Upload SCORM Package" %}</em>
+            <em>{% trans "Upload H5P Package" %}</em>
         </button>
     {% else %}
         {{ block.super }}
@@ -60,11 +60,11 @@
     {% endif %}
     {% if s3_upload_enabled %}
         <script>
-          window.SCORM_UPLOAD_CONFIG = {
+          window.H5P_UPLOAD_CONFIG = {
             presignedUrl: "{{ presigned_upload_url|escapejs }}",
             finalizeUrl: "{{ finalize_upload_url|escapejs }}"
           };
         </script>
-        <script src="{% static 'lms/js/scorm_upload.js' %}"></script>
+        <script src="{% static 'lms/js/h5p_upload.js' %}"></script>
     {% endif %}
 {% endblock %}
