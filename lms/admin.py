@@ -2,7 +2,6 @@
 
 from django.contrib import admin
 from django.urls import path, reverse
-from wagtail_lms.models import H5PActivity, SCORMPackage
 
 from .h5p_upload import (
     h5p_finalize_upload_response,
@@ -136,13 +135,6 @@ class EnrollmentRecordAdmin(admin.ModelAdmin):
             )
 
 
-# Override wagtail-lms's SCORMPackageAdmin to support presigned S3 uploads.
-# This is needed because Railway/Cloudflare enforces a 100 MB upload limit,
-# and SCORM packages can exceed that.
-admin.site.unregister(SCORMPackage)
-
-
-@admin.register(SCORMPackage)
 class SCORMPackageUploadAdmin(admin.ModelAdmin):
     """SCORMPackage admin with optional direct-to-S3 upload."""
 
@@ -192,11 +184,6 @@ class SCORMPackageUploadAdmin(admin.ModelAdmin):
         )
 
 
-# Override wagtail-lms's H5PActivityAdmin to support presigned S3 uploads.
-admin.site.unregister(H5PActivity)
-
-
-@admin.register(H5PActivity)
 class H5PActivityUploadAdmin(admin.ModelAdmin):
     """H5PActivity admin with optional direct-to-S3 upload."""
 
