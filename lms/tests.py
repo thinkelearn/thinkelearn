@@ -2409,7 +2409,13 @@ class H5PActivitySnippetWagtailAdminTest(TestCase):
 
 
 class WagtailLmsTitlePanelPatchTest(TestCase):
-    """Regression tests for wagtail-lms title panel sync attributes."""
+    """Regression guard: wagtail-lms must use FieldPanel (not TitleFieldPanel) for title.
+
+    wagtail-lms 0.10.1 ships FieldPanel("title") directly on SCORMPackage and
+    H5PActivity, so no local patching is required.  These tests guard against a
+    future upstream regression that would re-introduce TitleFieldPanel on models
+    without a slug field, causing a querySelectorAll("") error in the admin.
+    """
 
     def setUp(self):
         self.superuser = User.objects.create_superuser(
@@ -2661,6 +2667,13 @@ class H5PIntegrationTest(TestCase):
     def test_extended_course_page_allows_lesson_subpages(self):
         """ExtendedCoursePage.subpage_types must include 'wagtail_lms.LessonPage'."""
         self.assertIn("wagtail_lms.LessonPage", ExtendedCoursePage.subpage_types)
+        # Guard against wagtail-lms re-adding a parent restriction that would
+        # exclude ExtendedCoursePage.  parent_page_types=None means unrestricted.
+        self.assertIsNone(
+            self.LessonPage.parent_page_types,
+            "LessonPage.parent_page_types must be None (unrestricted) so that "
+            "ExtendedCoursePage can serve as a parent without runtime patching.",
+        )
 
     def test_lesson_pages_in_course_context(self):
         """LessonPage children appear in ExtendedCoursePage context."""

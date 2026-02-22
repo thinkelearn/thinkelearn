@@ -141,7 +141,6 @@ class H5PActivitySnippetUploadViewSet(H5PActivitySnippetViewSet):
 
     def get_add_view_kwargs(self, **kwargs):
         return super().get_add_view_kwargs(
-            template_name="lms/wagtail_lms/h5pactivity/create.html",
             presigned_upload_url_name=self.get_url_name("presigned_upload"),
             finalize_upload_url_name=self.get_url_name("finalize_upload"),
             **kwargs,
