@@ -2332,8 +2332,90 @@ class H5PActivityWagtailAdminTest(TestCase):
         mock_create.assert_not_called()
 
 
+class H5PActivitySnippetWagtailAdminTest(TestCase):
+    """Test Wagtail snippet H5PActivity direct upload endpoints."""
+
+    def setUp(self):
+        self.superuser = User.objects.create_superuser(
+            username="h5psnippetsuperuser",
+            email="h5psnippetsuperuser@example.com",
+            password="testpass123",
+        )
+        self.regular_user = User.objects.create_user(
+            username="h5psnippetregular",
+            email="h5psnippetregular@example.com",
+            password="testpass123",
+        )
+
+    def test_presigned_endpoint_requires_permission(self):
+        """Users without admin access are redirected to the Wagtail login screen."""
+        self.client.force_login(self.regular_user)
+        response = self.client.post(
+            reverse("wagtailsnippets_wagtail_lms_h5pactivity:presigned_upload"),
+            data='{"filename": "test.h5p"}',
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("login/", response.url)
+
+    @patch("lms.h5p_upload.s3_upload_enabled", return_value=True)
+    @patch("lms.h5p_upload.generate_h5p_presigned_post")
+    def test_presigned_endpoint_returns_json_for_superuser(
+        self, mock_generate, mock_s3_configured
+    ):
+        """Superusers receive presigned upload data from snippet endpoint."""
+        mock_generate.return_value = {
+            "url": "https://bucket.s3.amazonaws.com",
+            "fields": {"key": "h5p_packages/abc_test.h5p"},
+            "s3_key": "h5p_packages/abc_test.h5p",
+        }
+        self.client.force_login(self.superuser)
+        response = self.client.post(
+            reverse("wagtailsnippets_wagtail_lms_h5pactivity:presigned_upload"),
+            data='{"filename": "test.h5p"}',
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertIn("url", data)
+        self.assertIn("fields", data)
+        self.assertIn("s3_key", data)
+
+    @patch("lms.h5p_upload.s3_upload_enabled", return_value=True)
+    @patch("lms.h5p_upload.create_h5p_activity_from_s3_key")
+    def test_finalize_endpoint_returns_snippet_edit_url(
+        self, mock_create, mock_s3_configured
+    ):
+        """Finalize endpoint redirects to snippet edit view."""
+        mock_activity = Mock()
+        mock_activity.pk = 86
+        mock_create.return_value = mock_activity
+
+        self.client.force_login(self.superuser)
+        response = self.client.post(
+            reverse("wagtailsnippets_wagtail_lms_h5pactivity:finalize_upload"),
+            data='{"s3_key": "h5p_packages/abc.h5p", "title": "My H5P", "description": "desc"}',
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data["success"])
+        self.assertEqual(
+            data["redirect_url"],
+            reverse(
+                "wagtailsnippets_wagtail_lms_h5pactivity:edit", args=[mock_activity.pk]
+            ),
+        )
+
+
 class WagtailLmsTitlePanelPatchTest(TestCase):
-    """Regression tests for wagtail-lms title panel sync attributes."""
+    """Regression guard: wagtail-lms must use FieldPanel (not TitleFieldPanel) for title.
+
+    wagtail-lms 0.10.1 ships FieldPanel("title") directly on SCORMPackage and
+    H5PActivity, so no local patching is required.  These tests guard against a
+    future upstream regression that would re-introduce TitleFieldPanel on models
+    without a slug field, causing a querySelectorAll("") error in the admin.
+    """
 
     def setUp(self):
         self.superuser = User.objects.create_superuser(
@@ -2585,6 +2667,13 @@ class H5PIntegrationTest(TestCase):
     def test_extended_course_page_allows_lesson_subpages(self):
         """ExtendedCoursePage.subpage_types must include 'wagtail_lms.LessonPage'."""
         self.assertIn("wagtail_lms.LessonPage", ExtendedCoursePage.subpage_types)
+        # Guard against wagtail-lms re-adding a parent restriction that would
+        # exclude ExtendedCoursePage.  parent_page_types=None means unrestricted.
+        self.assertIsNone(
+            self.LessonPage.parent_page_types,
+            "LessonPage.parent_page_types must be None (unrestricted) so that "
+            "ExtendedCoursePage can serve as a parent without runtime patching.",
+        )
 
     def test_lesson_pages_in_course_context(self):
         """LessonPage children appear in ExtendedCoursePage context."""

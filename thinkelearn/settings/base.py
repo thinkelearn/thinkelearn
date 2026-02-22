@@ -42,7 +42,7 @@ INSTALLED_APPS = [
     "wagtail.admin",
     "wagtail",
     "wagtail_lms",
-    "lms",  # after wagtail_lms so admin.site.unregister(SCORMPackage) works
+    "lms",
     "payments",
     "modelcluster",
     "taggit",
@@ -253,13 +253,6 @@ DATA_UPLOAD_MAX_NUMBER_FIELDS = 10_000
 # Wagtail settings
 
 WAGTAIL_SITE_NAME = "thinkelearn"
-WAGTAIL_LMS_AUTO_ENROLL = os.environ.get(
-    "WAGTAIL_LMS_AUTO_ENROLL", "false"
-).lower() in {"1", "true", "yes"}
-WAGTAIL_LMS_SCORM_UPLOAD_PATH = "scorm_packages/"
-WAGTAIL_LMS_CONTENT_PATH = "scorm_content/"
-WAGTAIL_LMS_H5P_UPLOAD_PATH = "h5p_packages/"
-WAGTAIL_LMS_H5P_CONTENT_PATH = "h5p_content/"
 
 # Search
 # https://docs.wagtail.org/en/stable/topics/search/backends.html
@@ -289,6 +282,28 @@ WAGTAILDOCS_EXTENSIONS = [
     "xlsx",
     "zip",
 ]
+
+# Wagtail LMS settings
+
+WAGTAIL_LMS_AUTO_ENROLL = os.environ.get(
+    "WAGTAIL_LMS_AUTO_ENROLL", "false"
+).lower() in {"1", "true", "yes"}
+WAGTAIL_LMS_SCORM_UPLOAD_PATH = "scorm_packages/"
+WAGTAIL_LMS_SCORM_CONTENT_PATH = "scorm_content/"
+WAGTAIL_LMS_H5P_UPLOAD_PATH = "h5p_packages/"
+WAGTAIL_LMS_H5P_CONTENT_PATH = "h5p_content/"
+WAGTAIL_LMS_SCORM_PACKAGE_VIEWSET_CLASS = (
+    "lms.wagtail_lms_admin.SCORMPackageUploadViewSet"
+)
+WAGTAIL_LMS_H5P_ACTIVITY_VIEWSET_CLASS = (
+    "lms.wagtail_lms_admin.H5PActivityUploadViewSet"
+)
+WAGTAIL_LMS_H5P_SNIPPET_VIEWSET_CLASS = (
+    "lms.wagtail_lms_admin.H5PActivitySnippetUploadViewSet"
+)
+WAGTAIL_LMS_SCORM_ADMIN_CLASS = "lms.admin.SCORMPackageUploadAdmin"
+WAGTAIL_LMS_H5P_ADMIN_CLASS = "lms.admin.H5PActivityUploadAdmin"
+
 
 # Twilio settings
 TWILIO_ACCOUNT_SID = os.environ.get("TWILIO_ACCOUNT_SID")
