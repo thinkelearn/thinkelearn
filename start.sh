@@ -99,8 +99,8 @@ start_containers() {
     docker network prune -f > /dev/null 2>&1 || true
 
     # Start main services
-    print_status "Starting web server, database, Redis, Celery, pgAdmin, and Mailpit..."
-    docker-compose up -d web db redis celery pgadmin mailpit
+    print_status "Starting web server, database, Redis, Celery, pgAdmin, Mailpit, and MinIO..."
+    docker-compose up -d web db redis celery pgadmin mailpit minio
 
     # Start CSS build process
     print_status "Starting Tailwind CSS build process..."
@@ -121,6 +121,7 @@ start_containers() {
     echo "  🗄️  pgAdmin (database): http://localhost:5050"
     echo "  📊 Database: postgres://postgres:postgres@localhost:5432/thinkelearn"
     echo "  🧰 Redis: redis://localhost:6379/0"
+    echo "  🪣 MinIO (S3 storage): http://localhost:9001"
     echo "  🎨 CSS: Tailwind is watching for changes"
     echo ""
     print_status "Admin interfaces:"
@@ -130,6 +131,10 @@ start_containers() {
     print_status "Credentials for pgAdmin:"
     echo "  Email: admin@thinkelearn.com"
     echo "  Password: admin"
+    echo ""
+    print_status "Credentials for MinIO:"
+    echo "  Username: minioadmin"
+    echo "  Password: minioadmin"
     echo ""
     print_status "Use 'docker-compose logs -f' to view logs"
     print_status "Use '$0 stop' to stop all containers"
