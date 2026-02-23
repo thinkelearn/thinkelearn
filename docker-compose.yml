@@ -32,9 +32,14 @@ services:
     env_file:
       - .env
     depends_on:
-      - db
-      - redis
-      - minio
+      db:
+        condition: service_started
+      redis:
+        condition: service_started
+      minio:
+        condition: service_started
+      minio-init:
+        condition: service_completed_successfully
     command: python manage.py runserver 0.0.0.0:8000
 
   db:
@@ -97,8 +102,12 @@ services:
     env_file:
       - .env
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_started
+      redis:
+        condition: service_started
+      minio-init:
+        condition: service_completed_successfully
     command: celery -A thinkelearn worker -l info
 
   minio:
@@ -112,6 +121,20 @@ services:
     volumes:
       - minio_data:/data
     command: server /data --console-address ":9001"
+
+  minio-init:
+    image: minio/mc
+    depends_on:
+      - minio
+    entrypoint:
+      - /bin/sh
+      - -ec
+      - |
+        until mc alias set local http://minio:9000 minioadmin minioadmin; do
+          echo "Waiting for MinIO..."
+          sleep 1
+        done
+        mc mb local/thinkelearn-dev --ignore-existing
 
   css:
     build:
