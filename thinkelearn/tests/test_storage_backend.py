@@ -15,10 +15,10 @@ def test_rewrite_s3_url_rewrites_internal_endpoint_to_public_endpoint():
         public_url="http://localhost:9000",
     )
 
-    assert rewritten.startswith(
-        "http://localhost:9000/thinkelearn-dev/original_images/"
+    assert (
+        rewritten == "http://localhost:9000/thinkelearn-dev/original_images/example.jpg"
+        "?AWSAccessKeyId=minioadmin&Signature=abc&Expires=123"
     )
-    assert "Signature=abc" in rewritten
 
 
 def test_rewrite_s3_url_does_not_change_non_matching_urls():
@@ -71,6 +71,46 @@ def test_rewrite_s3_url_handles_trailing_slash_on_endpoint():
     )
 
     assert rewritten == "http://localhost:9000/bucket/file.jpg"
+
+
+def test_rewrite_s3_url_handles_trailing_slashes_on_both_endpoints():
+    url = (
+        "http://minio:9000/thinkelearn-dev/original_images/example.jpg"
+        "?AWSAccessKeyId=minioadmin&Signature=abc&Expires=123"
+    )
+
+    rewritten = rewrite_s3_url(
+        url=url,
+        endpoint_url="http://minio:9000/",
+        public_url="http://localhost:9000/",
+    )
+
+    assert (
+        rewritten == "http://localhost:9000/thinkelearn-dev/original_images/example.jpg"
+        "?AWSAccessKeyId=minioadmin&Signature=abc&Expires=123"
+    )
+
+
+def test_rewrite_s3_url_does_not_rewrite_url_containing_endpoint_as_non_prefix():
+    url = "http://example.com/path?redirect=http://minio:9000/bucket/file.jpg"
+
+    rewritten = rewrite_s3_url(
+        url=url,
+        endpoint_url="http://minio:9000",
+        public_url="http://localhost:9000",
+    )
+
+    assert rewritten == url
+
+
+def test_rewrite_s3_url_with_empty_url_returns_empty_string():
+    rewritten = rewrite_s3_url(
+        url="",
+        endpoint_url="http://minio:9000",
+        public_url="http://localhost:9000",
+    )
+
+    assert rewritten == ""
 
 
 def test_browser_accessible_s3_storage_url_rewrites_internal_endpoint():
