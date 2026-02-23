@@ -125,6 +125,20 @@ services:
     stdin_open: true
     tty: true
 
+  stripe:
+    image: stripe/stripe-cli:latest
+    profiles: ["stripe"]
+    env_file:
+      - .env
+    environment:
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
+    depends_on:
+      - web
+    command: >
+      listen
+      --api-key ${STRIPE_SECRET_KEY}
+      --forward-to http://web:8000/payments/webhook/
+
 volumes:
   postgres_data:
   pgadmin_data:

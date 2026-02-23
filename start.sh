@@ -102,6 +102,20 @@ start_containers() {
     print_status "Starting web server, database, Redis, Celery, pgAdmin, Mailpit, and MinIO..."
     docker-compose up -d web db redis celery pgadmin mailpit minio
 
+    # Resolve STRIPE_SECRET_KEY the same way docker-compose does (.env + env).
+    local stripe_key
+    stripe_key="$(docker-compose config 2>/dev/null | awk '/STRIPE_SECRET_KEY:/ {sub(/^[^:]*:[[:space:]]*/, "", $0); print; exit}')"
+    stripe_key="${stripe_key//\"/}"
+    stripe_key="$(echo "${stripe_key}" | tr -d '[:space:]')"
+
+    if [[ -n "${stripe_key}" ]]; then
+        print_status "Starting Stripe CLI webhook forwarder..."
+        docker-compose --profile stripe up -d stripe
+        print_success "Stripe CLI container started"
+    else
+        print_warning "Stripe container skipped (set STRIPE_SECRET_KEY to enable Stripe testing)"
+    fi
+
     # Start CSS build process
     print_status "Starting Tailwind CSS build process..."
     docker-compose up -d css
@@ -123,6 +137,9 @@ start_containers() {
     echo "  🧰 Redis: redis://localhost:6379/0"
     echo "  🪣 MinIO (S3 storage): http://localhost:9001"
     echo "  🎨 CSS: Tailwind is watching for changes"
+    if [[ -n "${stripe_key}" ]]; then
+        echo "  💳 Stripe webhook forwarder: docker-compose logs -f stripe"
+    fi
     echo ""
     print_status "Admin interfaces:"
     echo "  📝 Wagtail Admin - Content management, pages, media"

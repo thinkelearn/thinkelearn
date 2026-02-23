@@ -4,9 +4,9 @@ Use this guide to configure Stripe Checkout + webhooks for local development.
 
 ## Prereqs
 
-- Local Django server running at `http://127.0.0.1:8000/`
+- Local Django server running at `http://127.0.0.1:8000/` (or `make start`)
 - Stripe test keys for the THINK eLearn org
-- Stripe CLI installed and authenticated
+- `STRIPE_SECRET_KEY` available in `.env` (for Docker-based Stripe container)
 
 ## 1) Set environment variables
 
@@ -27,16 +27,18 @@ uv run python manage.py runserver --settings=thinkelearn.settings.dev
 
 Keep this running in a separate terminal.
 
-## 3) Start Stripe CLI and forward webhooks
+## 3) Start Stripe webhook forwarding
 
-In a new terminal:
+Preferred (Docker container, already wired in `docker-compose.yml`):
 
 ```sh
-stripe login
-stripe listen --forward-to http://127.0.0.1:8000/payments/webhook/
+make start
+docker-compose logs -f stripe
 ```
 
-Stripe CLI will print a webhook signing secret like:
+The Stripe container is started automatically by `start.sh` when
+`STRIPE_SECRET_KEY` is set. In the Stripe logs, you will see a webhook signing
+secret like:
 
 ```text
 whsec_...
@@ -48,7 +50,13 @@ Set it in your shell:
 export STRIPE_WEBHOOK_SECRET="whsec_..."
 ```
 
-Note: If you restart `stripe listen`, you’ll get a new `whsec_...`.
+Note: If you restart the `stripe` container, you’ll get a new `whsec_...`.
+
+Manual fallback (local Stripe CLI):
+
+```sh
+stripe listen --api-key "$STRIPE_SECRET_KEY" --forward-to http://127.0.0.1:8000/payments/webhook/
+```
 
 ## 4) Create a Stripe Checkout session from the app
 
@@ -72,7 +80,7 @@ After payment, you should land on:
 
 - `http://127.0.0.1:8000/payments/checkout/success/`
 
-In the terminal running `stripe listen`, you should see a
+In the Stripe logs (`docker-compose logs -f stripe`), you should see a
 `checkout.session.completed` event forwarded.
 
 ## 6) Verify webhook processing
@@ -106,7 +114,7 @@ From Stripe Dashboard (Test mode), issue a refund for the charge. Confirm:
 ## Troubleshooting
 
 - If you see `Missing Stripe signature`, confirm `STRIPE_WEBHOOK_SECRET` matches
-  the `whsec_...` from `stripe listen`.
+  the `whsec_...` shown in Stripe logs (`docker-compose logs -f stripe`).
 - If checkout fails before redirect, confirm `STRIPE_SECRET_KEY` is set and
   correct.
 - If the frontend shows a generic error, check Django logs for Stripe API errors.
