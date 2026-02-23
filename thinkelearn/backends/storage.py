@@ -1,4 +1,8 @@
-"""Custom storage backends."""
+"""Custom storage backends.
+
+NOTE: BrowserAccessibleS3Storage is for dev only (Docker/MinIO URL rewriting).
+Do NOT use in production.
+"""
 
 from __future__ import annotations
 
@@ -41,5 +45,5 @@ class BrowserAccessibleS3Storage(S3Boto3Storage):
         return rewrite_s3_url(
             url,
             getattr(settings, "AWS_S3_ENDPOINT_URL", None),
-            getattr(settings, "AWS_S3_PRESIGNED_URL", None),
+            getattr(settings, "AWS_S3_BROWSER_ENDPOINT_URL", None),
         )

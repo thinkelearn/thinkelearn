@@ -118,7 +118,7 @@ Docker Compose runs MinIO as an S3-compatible local substitute:
 | `AWS_SECRET_ACCESS_KEY` | `minioadmin` |
 | `AWS_S3_REGION_NAME` | `us-east-1` |
 | `AWS_S3_ENDPOINT_URL` | `http://minio:9000` (internal) |
-| `AWS_S3_PRESIGNED_URL` | `http://localhost:9000` (browser-accessible) |
+| `AWS_S3_BROWSER_ENDPOINT_URL` | `http://localhost:9000` (browser-accessible) |
 
 MinIO console: <http://localhost:9001> (minioadmin/minioadmin)
 
