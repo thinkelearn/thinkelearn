@@ -83,9 +83,9 @@ def generate_presigned_post(filename: str) -> dict:
 
     # Rewrite the URL for browser access (e.g. Docker: minio:9000 -> localhost:9000)
     endpoint_url = getattr(settings, "AWS_S3_ENDPOINT_URL", None)
-    presigned_url = getattr(settings, "AWS_S3_PRESIGNED_URL", None)
-    if endpoint_url and presigned_url:
-        url = url.replace(endpoint_url, presigned_url)
+    browser_endpoint_url = getattr(settings, "AWS_S3_BROWSER_ENDPOINT_URL", None)
+    if endpoint_url and browser_endpoint_url:
+        url = url.replace(endpoint_url, browser_endpoint_url)
 
     return {
         "url": url,
@@ -126,9 +126,9 @@ def generate_h5p_presigned_post(filename: str) -> dict:
     url = presigned["url"]
 
     endpoint_url = getattr(settings, "AWS_S3_ENDPOINT_URL", None)
-    presigned_url = getattr(settings, "AWS_S3_PRESIGNED_URL", None)
-    if endpoint_url and presigned_url:
-        url = url.replace(endpoint_url, presigned_url)
+    browser_endpoint_url = getattr(settings, "AWS_S3_BROWSER_ENDPOINT_URL", None)
+    if endpoint_url and browser_endpoint_url:
+        url = url.replace(endpoint_url, browser_endpoint_url)
 
     return {
         "url": url,
