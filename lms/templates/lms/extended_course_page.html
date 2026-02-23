@@ -101,76 +101,129 @@
                 {% endif %}
 
                 {# Lesson List - Only render when lessons exist #}
-                {% if lesson_pages %}
-                    <div class="bg-white rounded-lg shadow-md p-8">
-                        <div class="flex items-center justify-between mb-4">
-                            <h2 class="text-2xl font-bold text-primary-800">Lessons</h2>
-                            {% if completed_lesson_ids %}
-                                <span class="text-sm text-neutral-500">
-                                    {{ completed_lesson_ids|length }} of {{ lesson_pages|length }} completed
-                                </span>
+                {% if lesson_pages or scorm_lesson_pages %}
+                    <div id="course-lessons" class="bg-white rounded-lg shadow-md p-8">
+                        {% with h5p_done=completed_lesson_ids|length scorm_done=completed_scorm_lesson_ids|length h5p_total=lesson_pages|length scorm_total=scorm_lesson_pages|length %}
+                            <div class="flex items-center justify-between mb-4">
+                                <h2 class="text-2xl font-bold text-primary-800">Lessons</h2>
+                                {% if lesson_pages or scorm_lesson_pages %}
+                                    <span class="text-sm text-neutral-500">
+                                        {{ h5p_done|add:scorm_done }} of {{ h5p_total|add:scorm_total }} completed
+                                    </span>
+                                {% endif %}
+                            </div>
+                            {% if not enrollment and not perms.wagtailadmin.access_admin %}
+                                <p class="text-sm text-neutral-600 mb-4">
+                                    Enroll in this course to unlock lesson content.
+                                </p>
                             {% endif %}
-                        </div>
-                        {% if not enrollment and not perms.wagtailadmin.access_admin %}
-                            <p class="text-sm text-neutral-600 mb-4">
-                                Enroll in this course to unlock lesson content.
-                            </p>
-                        {% endif %}
 
-                        {# Progress bar #}
-                        {% if completed_lesson_ids and lesson_pages|length > 0 %}
-                            <div class="mb-6">
-                                <div class="bg-neutral-200 rounded-full h-2 overflow-hidden">
-                                    <div class="bg-green-500 h-2 rounded-full transition-all duration-300"
-                                         style="width: {% widthratio completed_lesson_ids|length lesson_pages|length 100 %}%"></div>
+                            {# Progress bar #}
+                            {% if h5p_total|add:scorm_total > 0 %}
+                                <div class="mb-6">
+                                    <div class="bg-neutral-200 rounded-full h-2 overflow-hidden">
+                                        <div class="bg-green-500 h-2 rounded-full transition-all duration-300"
+                                             style="width: {% widthratio h5p_done|add:scorm_done h5p_total|add:scorm_total 100 %}%"></div>
+                                    </div>
                                 </div>
+                            {% endif %}
+                        {% endwith %}
+
+                        {% if lesson_pages %}
+                            <h3 class="text-lg font-semibold text-neutral-800 mb-3">H5P Lessons</h3>
+                            <div class="space-y-3 mb-6">
+                                {% for lesson in lesson_pages %}
+                                    {% if enrollment or perms.wagtailadmin.access_admin %}
+                                        <a href="{% pageurl lesson %}"
+                                           class="flex items-center gap-4 p-4 rounded-lg border border-neutral-200 hover:border-secondary-400 hover:shadow-sm transition-all duration-200 group">
+                                    {% else %}
+                                        <div class="flex items-center gap-4 p-4 rounded-lg border border-neutral-200 bg-neutral-50 cursor-not-allowed">
+                                    {% endif %}
+                                        <div class="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center
+                                            {% if lesson.pk in completed_lesson_ids %}bg-green-100{% elif not enrollment %}bg-neutral-100{% else %}bg-cyan-50{% endif %}">
+                                            {% if lesson.pk in completed_lesson_ids %}
+                                                <svg class="w-4 h-4 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                                                </svg>
+                                            {% elif not enrollment %}
+                                                <svg class="w-4 h-4 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                                                </svg>
+                                            {% else %}
+                                                <svg class="w-4 h-4 text-cyan-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                                </svg>
+                                            {% endif %}
+                                        </div>
+                                        <span class="flex-1 text-sm font-medium text-neutral-800 {% if enrollment or perms.wagtailadmin.access_admin %}group-hover:text-secondary-600{% endif %}">
+                                            {{ lesson.title }}
+                                        </span>
+                                        {% if enrollment or perms.wagtailadmin.access_admin %}
+                                            <svg class="w-4 h-4 text-neutral-400 group-hover:text-secondary-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                                            </svg>
+                                        {% else %}
+                                            <span class="text-xs font-semibold text-neutral-500 uppercase tracking-wide">
+                                                Locked
+                                            </span>
+                                        {% endif %}
+                                    {% if enrollment or perms.wagtailadmin.access_admin %}
+                                        </a>
+                                    {% else %}
+                                        </div>
+                                    {% endif %}
+                                {% endfor %}
                             </div>
                         {% endif %}
 
-                        <div class="space-y-3">
-                            {% for lesson in lesson_pages %}
-                                {% if enrollment or perms.wagtailadmin.access_admin %}
-                                    <a href="{% pageurl lesson %}"
-                                       class="flex items-center gap-4 p-4 rounded-lg border border-neutral-200 hover:border-secondary-400 hover:shadow-sm transition-all duration-200 group">
-                                {% else %}
-                                    <div class="flex items-center gap-4 p-4 rounded-lg border border-neutral-200 bg-neutral-50 cursor-not-allowed">
-                                {% endif %}
-                                    <div class="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center
-                                        {% if lesson.pk in completed_lesson_ids %}bg-green-100{% elif not enrollment %}bg-neutral-100{% else %}bg-cyan-50{% endif %}">
-                                        {% if lesson.pk in completed_lesson_ids %}
-                                            <svg class="w-4 h-4 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
-                                            </svg>
-                                        {% elif not enrollment %}
-                                            <svg class="w-4 h-4 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                        {% if scorm_lesson_pages %}
+                            <h3 class="text-lg font-semibold text-neutral-800 mb-3">SCORM Lessons</h3>
+                            <div class="space-y-3">
+                                {% for lesson in scorm_lesson_pages %}
+                                    {% if enrollment or perms.wagtailadmin.access_admin %}
+                                        <a href="{% pageurl lesson %}"
+                                           class="flex items-center gap-4 p-4 rounded-lg border border-neutral-200 hover:border-secondary-400 hover:shadow-sm transition-all duration-200 group">
+                                    {% else %}
+                                        <div class="flex items-center gap-4 p-4 rounded-lg border border-neutral-200 bg-neutral-50 cursor-not-allowed">
+                                    {% endif %}
+                                        <div class="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center
+                                            {% if lesson.pk in completed_scorm_lesson_ids %}bg-green-100{% elif not enrollment %}bg-neutral-100{% else %}bg-cyan-50{% endif %}">
+                                            {% if lesson.pk in completed_scorm_lesson_ids %}
+                                                <svg class="w-4 h-4 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                                                </svg>
+                                            {% elif not enrollment %}
+                                                <svg class="w-4 h-4 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                                                </svg>
+                                            {% else %}
+                                                <svg class="w-4 h-4 text-cyan-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                                </svg>
+                                            {% endif %}
+                                        </div>
+                                        <span class="flex-1 text-sm font-medium text-neutral-800 {% if enrollment or perms.wagtailadmin.access_admin %}group-hover:text-secondary-600{% endif %}">
+                                            {{ lesson.title }}
+                                        </span>
+                                        {% if enrollment or perms.wagtailadmin.access_admin %}
+                                            <svg class="w-4 h-4 text-neutral-400 group-hover:text-secondary-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
                                             </svg>
                                         {% else %}
-                                            <svg class="w-4 h-4 text-cyan-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                            </svg>
+                                            <span class="text-xs font-semibold text-neutral-500 uppercase tracking-wide">
+                                                Locked
+                                            </span>
                                         {% endif %}
-                                    </div>
-                                    <span class="flex-1 text-sm font-medium text-neutral-800 {% if enrollment or perms.wagtailadmin.access_admin %}group-hover:text-secondary-600{% endif %}">
-                                        {{ lesson.title }}
-                                    </span>
                                     {% if enrollment or perms.wagtailadmin.access_admin %}
-                                        <svg class="w-4 h-4 text-neutral-400 group-hover:text-secondary-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-                                        </svg>
+                                        </a>
                                     {% else %}
-                                        <span class="text-xs font-semibold text-neutral-500 uppercase tracking-wide">
-                                            Locked
-                                        </span>
+                                        </div>
                                     {% endif %}
-                                {% if enrollment or perms.wagtailadmin.access_admin %}
-                                    </a>
-                                {% else %}
-                                    </div>
-                                {% endif %}
-                            {% endfor %}
-                        </div>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
                     </div>
                 {% endif %}
 
@@ -191,38 +244,21 @@
                                     <h4 class="text-sm font-medium text-cyan-800 mb-2">Enrolled</h4>
                                     <div class="text-sm text-cyan-700 space-y-1">
                                         <p><strong>Enrolled on:</strong> {{ enrollment.enrolled_at|date:"F d, Y" }}</p>
-                                        {% if progress %}
-                                            <p><strong>Progress:</strong>
-                                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
-                                                    {% if progress.completion_status == 'completed' %}bg-green-100 text-green-800
-                                                    {% elif progress.completion_status == 'incomplete' %}bg-yellow-100 text-yellow-800
-                                                    {% else %}bg-blue-100 text-blue-800{% endif %}">
-                                                    {{ progress.completion_status|title }}
-                                                </span>
-                                            </p>
-                                            {% if progress.score_raw %}
-                                                <p><strong>Score:</strong> {{ progress.score_raw }}{% if progress.score_max %} / {{ progress.score_max }}{% endif %}</p>
-                                            {% endif %}
-                                        {% endif %}
+                                        {% with h5p_done=completed_lesson_ids|length scorm_done=completed_scorm_lesson_ids|length h5p_total=lesson_pages|length scorm_total=scorm_lesson_pages|length %}
+                                            <p><strong>Lessons completed:</strong> {{ h5p_done|add:scorm_done }} / {{ h5p_total|add:scorm_total }}</p>
+                                        {% endwith %}
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <a href="{% url 'wagtail_lms:scorm_player' page.id %}"
+                        <a href="#course-lessons"
                            class="inline-flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-white bg-secondary-500 hover:bg-secondary-600 transition-colors duration-200 shadow-sm">
-                            {% if progress.completion_status == 'completed' %}
-                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-                                </svg>
-                                Review Course
-                            {% else %}
-                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                </svg>
-                                {% if progress %}Continue Course{% else %}Start Course{% endif %}
-                            {% endif %}
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            Open Lesson List
                         </a>
                     </div>
                 {% endif %}
@@ -441,14 +477,14 @@
                             </div>
                             <div class="px-4 py-4 space-y-2">
                                 <p class="text-xs text-neutral-500">Enrolled: {{ enrollment.enrolled_at|date:"M d, Y" }}</p>
-                                {% if progress %}
+                                {% with h5p_done=completed_lesson_ids|length scorm_done=completed_scorm_lesson_ids|length h5p_total=lesson_pages|length scorm_total=scorm_lesson_pages|length %}
                                     <p class="text-xs text-neutral-500">
-                                        Progress: <span class="font-semibold text-neutral-700">{{ progress.completion_status|title }}</span>
+                                        Lessons completed: <span class="font-semibold text-neutral-700">{{ h5p_done|add:scorm_done }} / {{ h5p_total|add:scorm_total }}</span>
                                     </p>
-                                {% endif %}
-                                <a href="{% url 'wagtail_lms:scorm_player' page.id %}"
+                                {% endwith %}
+                                <a href="#course-lessons"
                                    class="w-full inline-flex items-center justify-center px-4 py-2.5 rounded-md text-white bg-secondary-500 hover:bg-secondary-600 font-semibold text-sm shadow-sm transition-colors">
-                                    {% if progress and progress.completion_status == 'completed' %}Review Course{% else %}Continue Course{% endif %}
+                                    Open Lesson List
                                 </a>
                             </div>
                         </div>
@@ -458,16 +494,14 @@
                     <div class="bg-white rounded-lg shadow-sm border border-neutral-200 p-4 space-y-4">
                         <h3 class="text-sm font-bold text-primary-800 uppercase tracking-wide">Course Details</h3>
 
-                        {% if page.scorm_package %}
-                            <div>
-                                <dt class="text-xs font-medium text-neutral-500 mb-1">Course Type</dt>
-                                <dd class="text-sm text-neutral-900">
-                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-100 text-primary-800">
-                                        SCORM {{ page.scorm_package.version }}
-                                    </span>
-                                </dd>
-                            </div>
-                        {% endif %}
+                        <div>
+                            <dt class="text-xs font-medium text-neutral-500 mb-1">H5P Lessons</dt>
+                            <dd class="text-sm text-neutral-900">{{ lesson_pages|length }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-xs font-medium text-neutral-500 mb-1">SCORM Lessons</dt>
+                            <dd class="text-sm text-neutral-900">{{ scorm_lesson_pages|length }}</dd>
+                        </div>
 
                         {% if page.tags.all %}
                             <div>

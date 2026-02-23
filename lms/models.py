@@ -797,7 +797,7 @@ class ExtendedCoursePage(CoursePage):
 
     # Parent page / subpage type rules
     parent_page_types = ["lms.CoursesIndexPage"]
-    subpage_types = ["wagtail_lms.LessonPage"]
+    subpage_types = ["wagtail_lms.H5PLessonPage", "wagtail_lms.SCORMLessonPage"]
 
     class Meta:
         verbose_name = "Course"
@@ -1066,19 +1066,54 @@ class LearnerDashboardPage(Page):
             else:
                 context["completion_percentage"] = 0
 
-            # Lesson progress data for H5P courses
-            from wagtail_lms.models import LessonCompletion, LessonPage
+            from wagtail_lms.models import (
+                H5PLessonCompletion,
+                H5PLessonPage,
+                SCORMAttempt,
+                SCORMLessonPage,
+            )
 
             lesson_data = {}
+            scorm_lesson_data = {}
             for enrollment in active_enrollments:
-                lessons = LessonPage.objects.child_of(enrollment.course).live()
-                total = lessons.count()
-                if total:
-                    done = LessonCompletion.objects.filter(
+                h5p_lessons = H5PLessonPage.objects.child_of(enrollment.course).live()
+                h5p_total = h5p_lessons.count()
+                if h5p_total:
+                    h5p_done = H5PLessonCompletion.objects.filter(
                         user=request.user,
-                        lesson__in=lessons,
+                        lesson__in=h5p_lessons,
                     ).count()
-                    lesson_data[enrollment.course_id] = {"total": total, "done": done}
+                    lesson_data[enrollment.course_id] = {
+                        "total": h5p_total,
+                        "done": h5p_done,
+                    }
+
+                scorm_lesson_pairs = list(
+                    SCORMLessonPage.objects.child_of(enrollment.course)
+                    .live()
+                    .exclude(scorm_package=None)
+                    .values_list("id", "scorm_package_id")
+                )
+                if scorm_lesson_pairs:
+                    completed_scorm_package_ids = set(
+                        SCORMAttempt.objects.filter(
+                            user=request.user,
+                            scorm_package_id__in=[
+                                package_id for _, package_id in scorm_lesson_pairs
+                            ],
+                            completion_status__in=("completed", "passed"),
+                        ).values_list("scorm_package_id", flat=True)
+                    )
+                    scorm_done = sum(
+                        1
+                        for _, package_id in scorm_lesson_pairs
+                        if package_id in completed_scorm_package_ids
+                    )
+                    scorm_lesson_data[enrollment.course_id] = {
+                        "total": len(scorm_lesson_pairs),
+                        "done": scorm_done,
+                    }
             context["lesson_data"] = lesson_data
+            context["scorm_lesson_data"] = scorm_lesson_data
 
         return context
