@@ -52,6 +52,7 @@ if os.environ.get("AWS_STORAGE_BUCKET_NAME"):
     AWS_S3_ENDPOINT_URL = os.environ.get("AWS_S3_ENDPOINT_URL")
     AWS_S3_PRESIGNED_URL = os.environ.get("AWS_S3_PRESIGNED_URL")
     AWS_S3_CUSTOM_DOMAIN = None
+    AWS_S3_ADDRESSING_STYLE = "path"
     AWS_QUERYSTRING_AUTH = True
     AWS_QUERYSTRING_EXPIRE = 3600
     AWS_DEFAULT_ACL = None
@@ -59,7 +60,7 @@ if os.environ.get("AWS_STORAGE_BUCKET_NAME"):
 
     STORAGES = {
         "default": {
-            "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+            "BACKEND": "thinkelearn.backends.storage.BrowserAccessibleS3Storage",
         },
         "staticfiles": {
             "BACKEND": "django.contrib.staticfiles.storage.ManifestStaticFilesStorage",
