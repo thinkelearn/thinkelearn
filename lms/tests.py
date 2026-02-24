@@ -288,6 +288,7 @@ class ExtendedCoursePageTest(TestCase):
         self.assertContains(response, "4 out of 5")
         self.assertContains(response, "Solid course with clear examples.")
 
+    @override_settings(ACCOUNT_ALLOW_REGISTRATION=True)
     def test_login_cta_next_points_to_course_page(self):
         """Ensure login CTA redirects back to the course page for paid courses."""
         response = self.client.get(self.course.url)
