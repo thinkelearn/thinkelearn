@@ -806,6 +806,30 @@ class ExtendedCoursePage(CoursePage):
     def get_context(self, request):
         context = super().get_context(request)
 
+        # Build unified lesson list ordered by page-tree position.
+        # super() already evaluated lesson_pages / scorm_lesson_pages; iterating
+        # them here caches the queryset results so the template pays no extra cost.
+        all_lessons = sorted(
+            [
+                {
+                    "page": p,
+                    "is_completed": p.pk in context["completed_lesson_ids"],
+                    "is_scorm": False,
+                }
+                for p in context["lesson_pages"]
+            ]
+            + [
+                {
+                    "page": p,
+                    "is_completed": p.pk in context["completed_scorm_lesson_ids"],
+                    "is_scorm": True,
+                }
+                for p in context["scorm_lesson_pages"]
+            ],
+            key=lambda x: x["page"].path,
+        )
+        context["all_lessons"] = all_lessons
+
         product = getattr(self, "product", None)
         context["product"] = product
         context["checkout_success_url"] = request.build_absolute_uri(

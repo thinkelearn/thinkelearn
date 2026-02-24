@@ -2802,6 +2802,43 @@ class H5PIntegrationTest(TestCase):
         self.assertNotIn(self.course.id, context["lesson_data"])
         self.assertNotIn(self.course.id, context["scorm_lesson_data"])
 
+    def test_all_lessons_unified_in_course_context(self):
+        """all_lessons merges H5P and SCORM items in page-tree order with correct flags."""
+        h5p_lesson = H5PLessonPage(title="H5P Lesson", slug="unified-h5p")
+        self.course.add_child(instance=h5p_lesson)
+        h5p_lesson.save_revision().publish()
+
+        package = SCORMPackage.objects.create(
+            title="Unified SCORM Package",
+            package_file=SimpleUploadedFile("unified.zip", b"fake-zip"),
+            extracted_path="package_unified",
+            launch_url="index.html",
+        )
+        scorm_lesson = SCORMLessonPage(
+            title="SCORM Lesson",
+            slug="unified-scorm",
+            scorm_package=package,
+        )
+        self.course.add_child(instance=scorm_lesson)
+        scorm_lesson.save_revision().publish()
+
+        request = self.factory.get("/courses/h5p-course/")
+        request.user = self.user
+
+        context = self.course.get_context(request)
+
+        self.assertIn("all_lessons", context)
+        self.assertEqual(len(context["all_lessons"]), 2)
+        titles = [item["page"].title for item in context["all_lessons"]]
+        self.assertIn("H5P Lesson", titles)
+        self.assertIn("SCORM Lesson", titles)
+        scorm_items = [item for item in context["all_lessons"] if item["is_scorm"]]
+        h5p_items = [item for item in context["all_lessons"] if not item["is_scorm"]]
+        self.assertEqual(len(scorm_items), 1)
+        self.assertEqual(len(h5p_items), 1)
+        self.assertFalse(scorm_items[0]["is_completed"])
+        self.assertFalse(h5p_items[0]["is_completed"])
+
     def test_combined_lesson_data_in_dashboard_context(self):
         """combined_lesson_data merges H5P and SCORM counts for mixed-content courses."""
         h5p_lesson = H5PLessonPage(title="H5P Lesson", slug="h5p-combined")

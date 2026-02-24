@@ -44,9 +44,9 @@
                             {% endif %}
                         {% endwith %}
 
+                        {# H5P lessons #}
                         {% if lesson_pages %}
-                            <h3 class="text-lg font-semibold text-neutral-800 mb-3">H5P Lessons</h3>
-                            <div class="space-y-3 mb-6">
+                            <div class="space-y-3 {% if scorm_lesson_pages %}mb-3{% endif %}">
                                 {% for lesson in lesson_pages %}
                                     {% if enrollment or perms.wagtailadmin.access_admin %}
                                         <a href="{% pageurl lesson %}" class="flex items-center gap-4 p-4 rounded-lg border border-neutral-200 hover:border-secondary-400 hover:shadow-sm transition-all duration-200 group">
@@ -88,12 +88,12 @@
                             </div>
                         {% endif %}
 
+                        {# SCORM lessons #}
                         {% if scorm_lesson_pages %}
-                            <h3 class="text-lg font-semibold text-neutral-800 mb-3">SCORM Lessons</h3>
                             <div class="space-y-3">
                                 {% for lesson in scorm_lesson_pages %}
                                     {% if enrollment or perms.wagtailadmin.access_admin %}
-                                        <a href="{% pageurl lesson %}" class="flex items-center gap-4 p-4 rounded-lg border border-neutral-200 hover:border-secondary-400 hover:shadow-sm transition-all duration-200 group">
+                                        <a href="{% url 'wagtail_lms:scorm_player' lesson.id %}" class="flex items-center gap-4 p-4 rounded-lg border border-neutral-200 hover:border-secondary-400 hover:shadow-sm transition-all duration-200 group">
                                     {% else %}
                                         <div class="flex items-center gap-4 p-4 rounded-lg border border-neutral-200 bg-neutral-50 cursor-not-allowed">
                                     {% endif %}
@@ -179,6 +179,7 @@
                                 <dt>Lessons</dt>
                                 <dd>{{ lesson_pages|length|add:scorm_lesson_pages|length }}</dd>
                             </div>
+
                             {% if enrollment %}
                                 <div class="flex justify-between pt-2 border-t border-neutral-200">
                                     <dt>Enrolled</dt>
