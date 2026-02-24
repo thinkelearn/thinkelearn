@@ -252,14 +252,22 @@
                             </div>
                         </div>
 
-                        <a href="#course-lessons"
+                        {% with h5p_done=completed_lesson_ids|length scorm_done=completed_scorm_lesson_ids|length h5p_total=lesson_pages|length scorm_total=scorm_lesson_pages|length %}
+                        {% with total_lessons=h5p_total|add:scorm_total done_lessons=h5p_done|add:scorm_done %}
+                        <a href="{% if total_lessons %}#course-lessons{% else %}{% pageurl page %}{% endif %}"
                            class="inline-flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-white bg-secondary-500 hover:bg-secondary-600 transition-colors duration-200 shadow-sm">
                             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                             </svg>
-                            Open Lesson List
+                            {% if not total_lessons %}View Course
+                            {% elif done_lessons == 0 %}Start Learning
+                            {% elif done_lessons == total_lessons %}Review Lessons
+                            {% else %}Continue Learning
+                            {% endif %}
                         </a>
+                        {% endwith %}
+                        {% endwith %}
                     </div>
                 {% endif %}
 
@@ -482,10 +490,18 @@
                                         Lessons completed: <span class="font-semibold text-neutral-700">{{ h5p_done|add:scorm_done }} / {{ h5p_total|add:scorm_total }}</span>
                                     </p>
                                 {% endwith %}
-                                <a href="#course-lessons"
+                                {% with h5p_done=completed_lesson_ids|length scorm_done=completed_scorm_lesson_ids|length h5p_total=lesson_pages|length scorm_total=scorm_lesson_pages|length %}
+                                {% with total_lessons=h5p_total|add:scorm_total done_lessons=h5p_done|add:scorm_done %}
+                                <a href="{% if total_lessons %}#course-lessons{% else %}{% pageurl page %}{% endif %}"
                                    class="w-full inline-flex items-center justify-center px-4 py-2.5 rounded-md text-white bg-secondary-500 hover:bg-secondary-600 font-semibold text-sm shadow-sm transition-colors">
-                                    Open Lesson List
+                                    {% if not total_lessons %}View Course
+                                    {% elif done_lessons == 0 %}Start Learning
+                                    {% elif done_lessons == total_lessons %}Review Lessons
+                                    {% else %}Continue Learning
+                                    {% endif %}
                                 </a>
+                                {% endwith %}
+                                {% endwith %}
                             </div>
                         </div>
                     {% endif %}

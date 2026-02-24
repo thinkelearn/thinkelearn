@@ -3,12 +3,14 @@ import re
 import zipfile
 from datetime import timedelta
 from decimal import Decimal
+from io import StringIO
 from unittest.mock import Mock, patch
 
 from django.contrib.auth.models import User
 from django.core import mail
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.core.management import call_command
 from django.db import IntegrityError
 from django.test import RequestFactory, TestCase, override_settings
 from django.urls import reverse
@@ -2639,10 +2641,6 @@ class H5PIntegrationTest(TestCase):
     """Test H5P integration with ExtendedCoursePage and LearnerDashboardPage."""
 
     def setUp(self):
-        self.LessonPage = H5PLessonPage
-        self.LessonCompletion = H5PLessonCompletion
-        self.SCORMLessonPage = SCORMLessonPage
-
         self.root_page = Page.add_root(title="Root")
 
         self.courses_index = CoursesIndexPage(title="Courses", slug="courses")
@@ -2671,19 +2669,19 @@ class H5PIntegrationTest(TestCase):
         # Guard against wagtail-lms re-adding a parent restriction that would
         # exclude ExtendedCoursePage.  parent_page_types=None means unrestricted.
         self.assertIsNone(
-            self.LessonPage.parent_page_types,
+            H5PLessonPage.parent_page_types,
             "H5PLessonPage.parent_page_types must be None (unrestricted) so that "
             "ExtendedCoursePage can serve as a parent without runtime patching.",
         )
         self.assertIsNone(
-            self.SCORMLessonPage.parent_page_types,
+            SCORMLessonPage.parent_page_types,
             "SCORMLessonPage.parent_page_types must be None (unrestricted) so that "
             "ExtendedCoursePage can serve as a parent without runtime patching.",
         )
 
     def test_lesson_pages_in_course_context(self):
         """H5PLessonPage children appear in ExtendedCoursePage context."""
-        lesson = self.LessonPage(title="Lesson 1", slug="lesson-1")
+        lesson = H5PLessonPage(title="Lesson 1", slug="lesson-1")
         self.course.add_child(instance=lesson)
         lesson.save_revision().publish()
 
@@ -2703,7 +2701,7 @@ class H5PIntegrationTest(TestCase):
             extracted_path="package_dashboard",
             launch_url="index.html",
         )
-        lesson = self.SCORMLessonPage(
+        lesson = SCORMLessonPage(
             title="SCORM Lesson 1",
             slug="scorm-lesson-1",
             scorm_package=package,
@@ -2723,12 +2721,12 @@ class H5PIntegrationTest(TestCase):
 
     def test_completed_lesson_ids_in_context(self):
         """Completed lessons appear in completed_lesson_ids context variable."""
-        lesson = self.LessonPage(title="Lesson 2", slug="lesson-2")
+        lesson = H5PLessonPage(title="Lesson 2", slug="lesson-2")
         self.course.add_child(instance=lesson)
         lesson.save_revision().publish()
 
         CourseEnrollment.objects.create(user=self.user, course=self.course)
-        self.LessonCompletion.objects.create(user=self.user, lesson=lesson)
+        H5PLessonCompletion.objects.create(user=self.user, lesson=lesson)
 
         request = self.factory.get("/courses/h5p-course/")
         request.user = self.user
@@ -2739,15 +2737,15 @@ class H5PIntegrationTest(TestCase):
 
     def test_lesson_data_in_dashboard_context(self):
         """Dashboard context includes lesson_data with correct done/total counts."""
-        lesson1 = self.LessonPage(title="L1", slug="l1")
-        lesson2 = self.LessonPage(title="L2", slug="l2")
+        lesson1 = H5PLessonPage(title="L1", slug="l1")
+        lesson2 = H5PLessonPage(title="L2", slug="l2")
         self.course.add_child(instance=lesson1)
         self.course.add_child(instance=lesson2)
         lesson1.save_revision().publish()
         lesson2.save_revision().publish()
 
         CourseEnrollment.objects.create(user=self.user, course=self.course)
-        self.LessonCompletion.objects.create(user=self.user, lesson=lesson1)
+        H5PLessonCompletion.objects.create(user=self.user, lesson=lesson1)
 
         request = self.factory.get("/dashboard/")
         request.user = self.user
@@ -2767,7 +2765,7 @@ class H5PIntegrationTest(TestCase):
             extracted_path="package_progress",
             launch_url="index.html",
         )
-        lesson = self.SCORMLessonPage(
+        lesson = SCORMLessonPage(
             title="SCORM Progress Lesson",
             slug="scorm-progress-lesson",
             scorm_package=package,
@@ -2803,3 +2801,53 @@ class H5PIntegrationTest(TestCase):
 
         self.assertNotIn(self.course.id, context["lesson_data"])
         self.assertNotIn(self.course.id, context["scorm_lesson_data"])
+
+    def test_combined_lesson_data_in_dashboard_context(self):
+        """combined_lesson_data merges H5P and SCORM counts for mixed-content courses."""
+        h5p_lesson = H5PLessonPage(title="H5P Lesson", slug="h5p-combined")
+        self.course.add_child(instance=h5p_lesson)
+        h5p_lesson.save_revision().publish()
+
+        package = SCORMPackage.objects.create(
+            title="Combined SCORM Package",
+            package_file=SimpleUploadedFile("combined.zip", b"fake-zip"),
+            extracted_path="package_combined",
+            launch_url="index.html",
+        )
+        scorm_lesson = SCORMLessonPage(
+            title="SCORM Lesson",
+            slug="scorm-combined",
+            scorm_package=package,
+        )
+        self.course.add_child(instance=scorm_lesson)
+        scorm_lesson.save_revision().publish()
+
+        CourseEnrollment.objects.create(user=self.user, course=self.course)
+        H5PLessonCompletion.objects.create(user=self.user, lesson=h5p_lesson)
+        SCORMAttempt.objects.create(
+            user=self.user,
+            scorm_package=package,
+            completion_status="completed",
+        )
+
+        request = self.factory.get("/dashboard/")
+        request.user = self.user
+
+        context = self.dashboard.get_context(request)
+
+        self.assertIn(self.course.id, context["combined_lesson_data"])
+        cd = context["combined_lesson_data"][self.course.id]
+        self.assertEqual(cd["total"], 2)
+        self.assertEqual(cd["done"], 2)
+
+
+class VerifyUpgradeCommandTest(TestCase):
+    """Smoke tests for the verify_wagtail_lms_upgrade management command."""
+
+    def test_smoke_clean_db(self):
+        """Command exits 0 and prints success on a clean test database."""
+        out = StringIO()
+        # On a clean test DB: no stale content types, no legacy SCORM courses,
+        # and the Wagtail page tree is consistent.
+        call_command("verify_wagtail_lms_upgrade", stdout=out)
+        self.assertIn("checks passed", out.getvalue())

@@ -7,6 +7,7 @@ from collections.abc import Iterable
 
 from django.contrib.contenttypes.models import ContentType
 from django.core.management.base import BaseCommand, CommandError
+from django.db.models import Q
 from wagtail.models import Page, Revision
 from wagtail_lms.models import CoursePage, SCORMLessonPage
 
@@ -97,32 +98,55 @@ class Command(BaseCommand):
     def _find_courses_missing_scorm_lessons(
         self, legacy_course_ids: Iterable[int]
     ) -> list[int]:
-        """Return legacy course IDs that still have no SCORMLessonPage children."""
-        missing_course_ids: list[int] = []
+        """Return legacy course IDs that still have no SCORMLessonPage children.
 
-        for course_id in sorted(set(legacy_course_ids)):
-            try:
-                course = CoursePage.objects.get(pk=course_id)
-            except CoursePage.DoesNotExist:
-                continue
-
-            has_scorm_lesson = SCORMLessonPage.objects.child_of(course).exists()
-            if not has_scorm_lesson:
-                missing_course_ids.append(course_id)
-
-        return missing_course_ids
+        Uses 2 queries instead of 2N: one to fetch courses, one OR'd query for
+        all direct SCORM lesson children.
+        """
+        ids = sorted(set(legacy_course_ids))
+        if not ids:
+            return []
+        courses = list(
+            CoursePage.objects.filter(pk__in=ids).only("id", "path", "depth")
+        )
+        if not courses:
+            return []
+        q = Q()
+        for course in courses:
+            q |= Q(path__startswith=course.path, depth=course.depth + 1)
+        scorm_child_paths = set(
+            SCORMLessonPage.objects.filter(q).values_list("path", flat=True)
+        )
+        return sorted(
+            course.pk
+            for course in courses
+            if not any(p.startswith(course.path) for p in scorm_child_paths)
+        )
 
     def _find_tree_numchild_mismatches(self) -> list[int]:
-        """Return Page IDs whose numchild counters do not match actual children."""
-        mismatched: list[int] = []
-        pages = Page.objects.only("id", "numchild")
+        """Return Page IDs whose numchild counters do not match actual children.
 
-        for page in pages.iterator():
-            actual_children = page.get_children().count()
-            if actual_children != page.numchild:
-                mismatched.append(page.id)
+        Uses 1 query instead of N+1 by computing parent-child counts from the
+        treebeard path field entirely in Python.
+        """
+        pages = list(
+            Page.objects.only("id", "path", "depth", "numchild").order_by("path")
+        )
+        steplen = Page.steplen  # 4 for Wagtail
 
-        return mismatched
+        actual_child_counts: dict[str, int] = {}
+        for page in pages:
+            parent_path = page.path[:-steplen]
+            if parent_path:
+                actual_child_counts[parent_path] = (
+                    actual_child_counts.get(parent_path, 0) + 1
+                )
+
+        return [
+            page.id
+            for page in pages
+            if actual_child_counts.get(page.path, 0) != page.numchild
+        ]
 
     def _to_mapping(self, content: object) -> dict[str, object]:
         """Convert revision content payload to a dictionary safely."""

@@ -1116,4 +1116,14 @@ class LearnerDashboardPage(Page):
             context["lesson_data"] = lesson_data
             context["scorm_lesson_data"] = scorm_lesson_data
 
+            combined_lesson_data = {}
+            for course_id in set(list(lesson_data) + list(scorm_lesson_data)):
+                h5p = lesson_data.get(course_id, {"total": 0, "done": 0})
+                scorm = scorm_lesson_data.get(course_id, {"total": 0, "done": 0})
+                combined_lesson_data[course_id] = {
+                    "total": h5p["total"] + scorm["total"],
+                    "done": h5p["done"] + scorm["done"],
+                }
+            context["combined_lesson_data"] = combined_lesson_data
+
         return context
