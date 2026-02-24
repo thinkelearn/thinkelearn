@@ -4,20 +4,19 @@
 {% block title %}{{ page.title }}{% endblock %}
 
 {% block content %}
+{% with course=page.get_parent.specific %}
 <div class="min-h-screen bg-neutral-50">
     {# Hero / Nav bar #}
     <div class="bg-gradient-to-r from-primary-800 to-primary-700 text-white py-8">
         <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
             <nav class="mb-4">
-                {% with course=page.get_parent.specific %}
-                    <a href="{{ course.url }}"
-                       class="inline-flex items-center text-primary-200 hover:text-white text-sm font-medium transition-colors duration-150">
-                        <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
-                        </svg>
-                        {{ course.title }}
-                    </a>
-                {% endwith %}
+                <a href="{{ course.url }}#course-lessons"
+                   class="inline-flex items-center text-primary-200 hover:text-white text-sm font-medium transition-colors duration-150">
+                    <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                    </svg>
+                    {{ course.title }}
+                </a>
             </nav>
             <h1 class="text-3xl md:text-4xl font-bold">{{ page.title }}</h1>
         </div>
@@ -43,18 +42,17 @@
 
         {# Bottom back link #}
         <div class="mt-8">
-            {% with course=page.get_parent.specific %}
-                <a href="{{ course.url }}"
-                   class="inline-flex items-center text-secondary-600 hover:text-secondary-700 font-medium transition-colors duration-150">
-                    <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
-                    </svg>
-                    Back to {{ course.title }}
-                </a>
-            {% endwith %}
+            <a href="{{ course.url }}#course-lessons"
+               class="inline-flex items-center text-secondary-600 hover:text-secondary-700 font-medium transition-colors duration-150">
+                <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                </svg>
+                Back to {{ course.title }}
+            </a>
         </div>
     </div>
 </div>
+{% endwith %}
 
 {% if page.has_h5p_activity_blocks %}
     {# CSRF token for h5p-lesson.js xAPI fetch calls #}

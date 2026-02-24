@@ -179,7 +179,6 @@ This creates:
 - Click "Add child page" → Choose "Course"
 - Fill in course details:
   - Title, description, and learning objectives
-  - Select SCORM package
   - Choose categories and tags
   - Set difficulty level and duration
   - Add prerequisites (if any)
@@ -187,7 +186,15 @@ This creates:
   - Add instructors
 - Publish the course
 
-**3. Students Can:**
+**3. Add Lessons:**
+
+- Under the published course, click "Add child page"
+- Add one or both lesson types:
+  - **H5P lesson page** for long-scroll H5P content
+  - **SCORM lesson page** and select the SCORM package there
+- Publish lessons
+
+**4. Students Can:**
 
 - Browse courses at `/courses/`
 - Filter by category, tag, or search
@@ -219,7 +226,18 @@ This creates:
 - `/courses/` - Course catalog
 - `/courses/{slug}/` - Individual course pages
 - `/dashboard/` - Student dashboard (requires login)
-- `/lms/course/{id}/play/` - SCORM player
+- `/lms/scorm-lesson/{id}/play/` - SCORM player
+
+### Post-Upgrade Verification (wagtail-lms 0.11.0)
+
+After upgrading dependencies, run:
+
+```bash
+python manage.py migrate wagtail_lms
+python manage.py fixtree
+python manage.py verify_wagtail_lms_upgrade
+python manage.py check
+```
 
 For detailed LMS implementation information, see [docs/lms-implementation-plan.md](docs/lms-implementation-plan.md).
 

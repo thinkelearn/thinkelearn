@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="refresh" content="0;url={% url 'wagtail_lms:scorm_player' page.id %}">
+    <title>{{ page.title }}</title>
+</head>
+<body>
+    <script>window.location.replace("{% url 'wagtail_lms:scorm_player' page.id %}");</script>
+    <noscript>
+        <p><a href="{% url 'wagtail_lms:scorm_player' page.id %}">Start {{ page.title }}</a></p>
+    </noscript>
+</body>
+</html>

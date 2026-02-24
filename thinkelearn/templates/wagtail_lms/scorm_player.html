@@ -3,7 +3,7 @@
 <html lang="en" class="h-full">
 <head>
     <meta charset="utf-8">
-    <title>{{ course.title }} - SCORM Player | THINK eLearn</title>
+    <title>{{ lesson.title }} | THINK eLearn</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
     {# Security headers - CSP should be configured at the web server/middleware level #}
@@ -33,22 +33,21 @@
             <div class="max-w-full px-4 sm:px-6 lg:px-8 py-3">
                 <div class="flex items-center justify-between flex-wrap gap-3">
                     <div class="flex items-center space-x-4">
-                        <a href="{{ course.url }}"
+                        <a href="{{ course.url }}#course-lessons"
                            class="inline-flex items-center px-3 py-2 bg-primary-700 hover:bg-primary-600 text-white text-sm font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
                             </svg>
-                            Exit Course
+                            Back to {{ course.title }}
                         </a>
-                        <h1 class="text-lg font-semibold truncate max-w-md">{{ course.title }}</h1>
+                        <h1 class="text-lg font-semibold truncate max-w-md">{{ lesson.title }}</h1>
                     </div>
                     <div class="flex items-center">
                         <div class="flex items-center bg-primary-700 rounded-lg px-3 py-2">
                             <svg class="w-5 h-5 mr-2 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                             </svg>
-                            <span class="text-sm font-medium">Status:</span>
-                            <span id="scorm-status" class="ml-2 text-sm font-semibold text-cyan-300">Loading...</span>
+                            <span id="scorm-status" class="text-sm font-semibold text-cyan-300">Loading…</span>
                         </div>
                     </div>
                 </div>
