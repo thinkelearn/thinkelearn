@@ -830,6 +830,29 @@ class ExtendedCoursePage(CoursePage):
         )
         context["all_lessons"] = all_lessons
 
+        # Compute next lesson for CTA buttons and resume strip
+        next_lesson = None
+        for lesson in all_lessons:
+            if not lesson["is_completed"]:
+                next_lesson = lesson
+                break
+        # Fall back to lesson 1 when all lessons are complete (review mode)
+        if next_lesson is None and all_lessons:
+            next_lesson = all_lessons[0]
+
+        if next_lesson:
+            if next_lesson["is_scorm"]:
+                next_lesson_url = reverse(
+                    "wagtail_lms:scorm_player", args=[next_lesson["page"].id]
+                )
+            else:
+                next_lesson_url = next_lesson["page"].url
+        else:
+            next_lesson_url = None
+
+        context["next_lesson"] = next_lesson
+        context["next_lesson_url"] = next_lesson_url
+
         product = getattr(self, "product", None)
         context["product"] = product
         context["checkout_success_url"] = request.build_absolute_uri(
