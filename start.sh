@@ -191,7 +191,8 @@ setup_environment() {
 # Function to stop containers
 stop_containers() {
     print_status "Stopping all containers..."
-    docker-compose down
+    # Remove profile-started services (e.g., Stripe) as orphans too.
+    docker-compose down --remove-orphans
     print_success "All containers stopped"
 }
 
