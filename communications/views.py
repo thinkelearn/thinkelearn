@@ -47,12 +47,24 @@ def _is_allowed_twilio_recording_url(recording_url: str) -> bool:
         settings, "TWILIO_RECORDING_ALLOWED_HOSTS", ("api.twilio.com",)
     )
     for allowed_host in allowed_hosts:
-        normalized = str(allowed_host).strip().lower().lstrip(".")
-        if not normalized:
-            continue
-        if hostname == normalized or hostname.endswith(f".{normalized}"):
+        if _hostname_matches_allowed_host(hostname, allowed_host):
             return True
     return False
+
+
+def _hostname_matches_allowed_host(hostname: str, allowed_host: str) -> bool:
+    """Match hostnames exactly unless the allowlist entry starts with a dot."""
+    normalized = str(allowed_host).strip().lower()
+    if not normalized:
+        return False
+
+    # Explicit wildcard mode: ".example.com" allows "example.com" and subdomains.
+    if normalized.startswith("."):
+        suffix = normalized.lstrip(".")
+        return hostname == suffix or hostname.endswith(f".{suffix}")
+
+    # Default behavior is strict exact match.
+    return hostname == normalized
 
 
 def _ensure_staff_access(request) -> None:
@@ -160,7 +172,18 @@ def recording_proxy_view(request, voicemail_id):
             stream=True,
             auth=(settings.TWILIO_ACCOUNT_SID, settings.TWILIO_AUTH_TOKEN),
             timeout=10,
+            allow_redirects=False,
         )
+        if 300 <= response.status_code < 400:
+            logger.warning(
+                "Blocked recording proxy redirect response",
+                extra={
+                    "voicemail_id": voicemail_id,
+                    "recording_url": recording_url,
+                    "redirect_location": response.headers.get("location", ""),
+                },
+            )
+            raise Http404("Recording not available")
         response.raise_for_status()
 
         # Create streaming response

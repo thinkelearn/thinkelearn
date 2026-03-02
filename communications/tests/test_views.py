@@ -1,10 +1,11 @@
 from unittest.mock import Mock, patch
 
 from django.contrib.auth.models import User
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from communications.models import SMSMessage, VoicemailMessage
+from communications.views import _is_allowed_twilio_recording_url
 
 
 class TwilioWebhookSecurityTest(TestCase):
@@ -99,12 +100,26 @@ class RecordingAccessSecurityTest(TestCase):
         )
         self.assertEqual(response.status_code, 404)
 
+    def test_recording_proxy_requires_login(self):
+        response = self.client.get(
+            reverse("communications:recording_proxy", args=[self.voicemail.id])
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/accounts/login/", response.url)
+
     def test_recording_player_is_staff_only(self):
         self.client.force_login(self.non_staff_user)
         response = self.client.get(
             reverse("communications:recording_player", args=[self.voicemail.id])
         )
         self.assertEqual(response.status_code, 404)
+
+    def test_recording_player_requires_login(self):
+        response = self.client.get(
+            reverse("communications:recording_player", args=[self.voicemail.id])
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/accounts/login/", response.url)
 
     def test_recording_proxy_blocks_untrusted_recording_host(self):
         self.voicemail.recording_url = "https://example.com/fake.wav"
@@ -120,8 +135,24 @@ class RecordingAccessSecurityTest(TestCase):
         mock_get.assert_not_called()
 
     @patch("communications.views.requests.get")
+    def test_recording_proxy_blocks_redirect_responses(self, mock_get):
+        mock_response = Mock()
+        mock_response.status_code = 302
+        mock_response.headers = {"location": "https://evil.example/target.wav"}
+        mock_get.return_value = mock_response
+
+        self.client.force_login(self.staff_user)
+        response = self.client.get(
+            reverse("communications:recording_proxy", args=[self.voicemail.id])
+        )
+
+        self.assertEqual(response.status_code, 404)
+        self.assertFalse(mock_response.raise_for_status.called)
+
+    @patch("communications.views.requests.get")
     def test_recording_proxy_streams_from_trusted_twilio_host(self, mock_get):
         mock_response = Mock()
+        mock_response.status_code = 200
         mock_response.raise_for_status.return_value = None
         mock_response.headers = {"content-type": "audio/wav", "content-length": "6"}
         mock_response.iter_content.return_value = [b"abc", b"def"]
@@ -135,3 +166,21 @@ class RecordingAccessSecurityTest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(b"".join(response.streaming_content), b"abcdef")
         self.assertEqual(response["Content-Type"], "audio/wav")
+
+
+class TwilioRecordingHostAllowlistTest(TestCase):
+    @override_settings(TWILIO_RECORDING_ALLOWED_HOSTS=("api.twilio.com",))
+    def test_exact_host_mode_does_not_allow_subdomain_by_default(self):
+        self.assertFalse(
+            _is_allowed_twilio_recording_url(
+                "https://sub.api.twilio.com/2010-04-01/Accounts/AC/Recordings/RE"
+            )
+        )
+
+    @override_settings(TWILIO_RECORDING_ALLOWED_HOSTS=(".api.twilio.com",))
+    def test_wildcard_mode_allows_subdomains_when_explicit(self):
+        self.assertTrue(
+            _is_allowed_twilio_recording_url(
+                "https://sub.api.twilio.com/2010-04-01/Accounts/AC/Recordings/RE"
+            )
+        )
