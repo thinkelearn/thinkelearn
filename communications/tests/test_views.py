@@ -1,11 +1,15 @@
 from unittest.mock import Mock, patch
 
 from django.contrib.auth.models import User
-from django.test import TestCase, override_settings
+from django.test import RequestFactory, TestCase, override_settings
 from django.urls import reverse
+from twilio.request_validator import RequestValidator
 
 from communications.models import SMSMessage, VoicemailMessage
-from communications.views import _is_allowed_twilio_recording_url
+from communications.views import (
+    _is_allowed_twilio_recording_url,
+    _twilio_signature_is_valid,
+)
 
 
 class TwilioWebhookSecurityTest(TestCase):
@@ -72,6 +76,58 @@ class TwilioWebhookSecurityTest(TestCase):
 
         self.assertEqual(response.status_code, 403)
         self.assertEqual(SMSMessage.objects.count(), 0)
+
+
+class TwilioSignatureValidatorIntegrationTest(TestCase):
+    def setUp(self):
+        self.factory = RequestFactory()
+
+    @override_settings(TWILIO_AUTH_TOKEN="twilio_test_auth_token")
+    def test_signature_validation_accepts_real_valid_signature(self):
+        request = self.factory.post(
+            "/communications/sms-webhook/",
+            {
+                "MessageSid": "SM123456",
+                "From": "+15555550123",
+                "To": "+15555550199",
+                "Body": "Hello from Twilio",
+            },
+            secure=True,
+        )
+        validator = RequestValidator("twilio_test_auth_token")
+        signature = validator.compute_signature(
+            request.build_absolute_uri(),
+            dict(request.POST.items()),
+        )
+        request.META["HTTP_X_TWILIO_SIGNATURE"] = signature
+
+        self.assertTrue(_twilio_signature_is_valid(request))
+
+    @override_settings(TWILIO_AUTH_TOKEN="twilio_test_auth_token")
+    def test_signature_validation_rejects_signature_for_different_payload(self):
+        request = self.factory.post(
+            "/communications/sms-webhook/",
+            {
+                "MessageSid": "SM123456",
+                "From": "+15555550123",
+                "To": "+15555550199",
+                "Body": "tampered payload",
+            },
+            secure=True,
+        )
+        validator = RequestValidator("twilio_test_auth_token")
+        signature = validator.compute_signature(
+            request.build_absolute_uri(),
+            {
+                "MessageSid": "SM123456",
+                "From": "+15555550123",
+                "To": "+15555550199",
+                "Body": "original payload",
+            },
+        )
+        request.META["HTTP_X_TWILIO_SIGNATURE"] = signature
+
+        self.assertFalse(_twilio_signature_is_valid(request))
 
 
 class RecordingAccessSecurityTest(TestCase):
