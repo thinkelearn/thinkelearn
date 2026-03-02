@@ -21,6 +21,9 @@ print_success() {
     echo -e "${GREEN}[SUCCESS]${NC} $1"
 }
 
+# Core Docker services used throughout this script
+CORE_SERVICES=(web db redis celery pgadmin mailpit minio)
+
 print_warning() {
     echo -e "${YELLOW}[WARNING]${NC} $1"
 }
@@ -39,8 +42,9 @@ check_dependencies() {
         exit 1
     fi
 
-    if ! command -v docker-compose &> /dev/null; then
-        print_error "Docker Compose is not installed or not in PATH"
+    # Check for Docker Compose (support both V1 `docker-compose` and V2 `docker compose`)
+    if ! command -v docker-compose &> /dev/null && ! docker compose version &> /dev/null; then
+        print_error "Docker Compose is not installed or not available via Docker CLI"
         print_error "Please install Docker Compose: https://docs.docker.com/compose/install/"
         exit 1
     fi
@@ -100,11 +104,11 @@ start_containers() {
 
     # Start main services
     print_status "Starting web server, database, Redis, Celery, pgAdmin, Mailpit, and MinIO..."
-    docker-compose up -d web db redis celery pgadmin mailpit minio
+    docker-compose up -d "${CORE_SERVICES[@]}"
 
     # Resolve STRIPE_SECRET_KEY the same way docker-compose does (.env + env).
     local stripe_key
-    stripe_key="$(docker-compose config 2>/dev/null | awk '/STRIPE_SECRET_KEY:/ {sub(/^[^:]*:[[:space:]]*/, "", $0); print; exit}')"
+    stripe_key="$(docker-compose config 2>/dev/null | grep -m1 '^ *STRIPE_SECRET_KEY:' | cut -d':' -f2-)"
     stripe_key="${stripe_key//\"/}"
     stripe_key="$(echo "${stripe_key}" | tr -d '[:space:]')"
 
@@ -249,7 +253,9 @@ rebuild_containers() {
 
     # Remove images
     print_status "Removing existing images..."
-    docker-compose down --rmi all 2>/dev/null || true
+    if ! docker-compose down --rmi all; then
+        print_warning "Failed to remove Docker images during rebuild. Proceeding, but some old images may remain. Run 'docker images' to check and 'docker-compose down --rmi all' to clean up manually."
+    fi
 
     # Rebuild and start
     print_status "Rebuilding images..."
