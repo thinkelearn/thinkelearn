@@ -1,7 +1,10 @@
 import os
+import warnings
 
 import dj_database_url
 import sentry_sdk
+from django.core.exceptions import ImproperlyConfigured
+from django.core.management.utils import get_random_secret_key
 from sentry_sdk.integrations.django import DjangoIntegration
 
 from .base import *  # noqa: F403,F405
@@ -21,22 +24,34 @@ if os.environ.get("SENTRY_DSN"):
 DEBUG = False
 SECRET_KEY = os.environ.get("SECRET_KEY")
 if not SECRET_KEY:
-    # During Docker build, use a temporary key for collectstatic
-    # This will be overridden at runtime with the real SECRET_KEY
-    SECRET_KEY = "django-insecure-build-time-key-will-be-overridden-at-runtime"  # nosec
-    import warnings
+    if os.environ.get("DJANGO_ALLOW_INSECURE_BUILD_SECRET", "").lower() in {
+        "1",
+        "true",
+        "yes",
+    }:
+        SECRET_KEY = get_random_secret_key()
+        warnings.warn(
+            "Using temporary SECRET_KEY for build-only step. Set SECRET_KEY at runtime.",
+            stacklevel=2,
+        )
+    else:
+        raise ImproperlyConfigured("SECRET_KEY must be set in production.")
 
-    warnings.warn(
-        "Using temporary SECRET_KEY during build. Ensure SECRET_KEY is set at runtime.",
-        stacklevel=2,
-    )
-
-# Railway deployment settings
+# Allowed hosts
 ALLOWED_HOSTS = [
-    "thinkelearn.com",
-    "www.thinkelearn.com",
-    ".railway.app",
+    host.strip()
+    for host in os.environ.get(
+        "ALLOWED_HOSTS",
+        "thinkelearn.com,www.thinkelearn.com",
+    ).split(",")
+    if host.strip()
 ]
+railway_public_domain = os.environ.get("RAILWAY_PUBLIC_DOMAIN", "").strip()
+if railway_public_domain:
+    ALLOWED_HOSTS.append(railway_public_domain)
+ALLOWED_HOSTS = list(dict.fromkeys(ALLOWED_HOSTS))
+if not ALLOWED_HOSTS:
+    raise ImproperlyConfigured("ALLOWED_HOSTS cannot be empty in production.")
 
 # Stripe is optional for initial deployment - payments won't work without real credentials
 required_stripe_settings = [
@@ -48,8 +63,6 @@ missing_stripe_settings = [
     key for key in required_stripe_settings if not os.environ.get(key)
 ]
 if missing_stripe_settings:
-    import warnings
-
     warnings.warn(
         f"Stripe settings not configured: {', '.join(missing_stripe_settings)}. "
         "Payment functionality will not work until these are set.",

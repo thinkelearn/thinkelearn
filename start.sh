@@ -165,8 +165,18 @@ setup_environment() {
     start_containers
 
     # Create admin user
+    local admin_password
+    admin_password="$(docker-compose config 2>/dev/null | awk '/ADMIN_PASSWORD:/ {sub(/^[^:]*:[[:space:]]*/, "", $0); print; exit}')"
+    admin_password="$(echo "${admin_password}" | sed 's/^"//;s/"$//' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+    if [[ -z "${admin_password}" || "${admin_password}" == "null" ]]; then
+        print_error "ADMIN_PASSWORD is not configured for Docker setup."
+        print_error "Set ADMIN_PASSWORD in .env before running '$0 setup'."
+        exit 1
+    fi
+
     print_status "Creating admin user..."
-    print_status "Using defaults: admin / admin@thinkelearn.com / defaultpassword123"
+    print_status "Ensure ADMIN_PASSWORD is set in your .env file before running setup."
+    print_status "Using username/email defaults unless overridden via ADMIN_USERNAME/ADMIN_EMAIL."
     docker-compose exec -T web python manage.py create_admin --reset
 
     # Setup initial pages
@@ -178,8 +188,8 @@ setup_environment() {
     echo ""
     print_success "🎉 Complete setup finished!"
     print_status "You can now log in to both admin interfaces with:"
-    echo "  👤 Username: admin"
-    echo "  🔒 Password: defaultpassword123"
+    echo "  👤 Username: (value from ADMIN_USERNAME in .env, defaults to admin)"
+    echo "  🔒 Password: (value from ADMIN_PASSWORD in your .env)"
     echo ""
     print_status "Admin interfaces:"
     echo "  📝 Wagtail Admin (CMS): http://localhost:8000/admin/"

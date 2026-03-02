@@ -16,7 +16,7 @@ def package_viewer(request, page_id, document_id):
     View for displaying packaged learning content (Rise, Storyline, etc.)
     Extracts ZIP files and serves the main index.html in an iframe
     """
-    page = get_object_or_404(ProjectPage, pk=page_id)
+    page = get_object_or_404(ProjectPage.objects.live().public(), pk=page_id)
     document = get_object_or_404(Document, pk=document_id)
 
     # Check if document belongs to this page's content
@@ -136,12 +136,15 @@ def serve_extracted_content(request, document_id, file_path):
 
     # Normalize the file path to prevent path traversal
     file_path = file_path.replace("\\", "/")
-    full_path = os.path.join(extract_path, file_path)
-    full_path = os.path.normpath(full_path)
+    extract_root = os.path.abspath(extract_path)
+    full_path = os.path.abspath(os.path.normpath(os.path.join(extract_root, file_path)))
 
     # Security check - ensure the resolved path is within the extract directory
-    if not full_path.startswith(extract_path):
-        raise Http404("Access denied")
+    try:
+        if os.path.commonpath([extract_root, full_path]) != extract_root:
+            raise Http404("Access denied")
+    except ValueError as exc:
+        raise Http404("Access denied") from exc
 
     if not os.path.exists(full_path):
         raise Http404(f"File not found: {file_path}")

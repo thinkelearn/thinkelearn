@@ -34,7 +34,7 @@ cmds = [
     "npm run build-css-prod",
 
     # Collect static files
-    "uv run python manage.py collectstatic --noinput",
+    "DJANGO_ALLOW_INSECURE_BUILD_SECRET=1 uv run python manage.py collectstatic --noinput",
 ]
 
 # Custom phase for database setup (runs after build, before start)

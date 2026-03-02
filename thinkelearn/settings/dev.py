@@ -13,6 +13,13 @@ ALLOWED_HOSTS = ["*"]
 
 # Store full Stripe webhook payloads in development for debugging
 STRIPE_WEBHOOK_STORE_FULL_PAYLOAD = True
+TWILIO_VALIDATE_SIGNATURES = os.environ.get(
+    "TWILIO_VALIDATE_SIGNATURES", "false"
+).lower() in {
+    "1",
+    "true",
+    "yes",
+}
 
 # Email configuration for development with Mailpit
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"

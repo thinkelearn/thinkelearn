@@ -69,8 +69,8 @@ RUN chown -R wagtail:wagtail /app
 # Switch to wagtail user for Django operations
 USER wagtail
 
-# Collect static files
-RUN python manage.py collectstatic --noinput --clear
+# Collect static files (allow temporary build-time SECRET_KEY only for this step)
+RUN DJANGO_ALLOW_INSECURE_BUILD_SECRET=1 python manage.py collectstatic --noinput --clear
 
 # Runtime command that executes when "docker run" is called, it does the
 # following:
