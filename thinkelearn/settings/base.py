@@ -309,6 +309,17 @@ WAGTAIL_LMS_H5P_ADMIN_CLASS = "lms.admin.H5PActivityUploadAdmin"
 TWILIO_ACCOUNT_SID = os.environ.get("TWILIO_ACCOUNT_SID")
 TWILIO_AUTH_TOKEN = os.environ.get("TWILIO_AUTH_TOKEN")
 TWILIO_PHONE_NUMBER = os.environ.get("TWILIO_PHONE_NUMBER")
+TWILIO_VALIDATE_SIGNATURES = os.environ.get(
+    "TWILIO_VALIDATE_SIGNATURES", "true"
+).lower() in {"1", "true", "yes"}
+TWILIO_RECORDING_ALLOWED_HOSTS = tuple(
+    host.strip()
+    for host in os.environ.get(
+        "TWILIO_RECORDING_ALLOWED_HOSTS",
+        "api.twilio.com",
+    ).split(",")
+    if host.strip()
+)
 
 # Communication notifications
 SITE_NAME = "THINK eLearn"

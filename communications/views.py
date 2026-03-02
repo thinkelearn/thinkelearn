@@ -1,4 +1,5 @@
 import logging
+from urllib.parse import urlparse
 
 import requests
 from django.conf import settings
@@ -9,6 +10,7 @@ from django.template.response import TemplateResponse
 from django.utils.decorators import method_decorator
 from django.views import View
 from django.views.decorators.csrf import csrf_exempt
+from twilio.request_validator import RequestValidator
 from twilio.twiml.messaging_response import MessagingResponse
 from twilio.twiml.voice_response import VoiceResponse
 
@@ -18,9 +20,60 @@ from .utils import send_sms_notification, send_voicemail_notification
 logger = logging.getLogger(__name__)
 
 
+def _twilio_signature_is_valid(request) -> bool:
+    """Validate Twilio webhook signatures for inbound requests."""
+    if not getattr(settings, "TWILIO_VALIDATE_SIGNATURES", True):
+        return True
+
+    auth_token = getattr(settings, "TWILIO_AUTH_TOKEN", "")
+    signature = request.headers.get("X-Twilio-Signature", "")
+    if not auth_token or not signature:
+        return False
+
+    validator = RequestValidator(auth_token)
+    request_url = request.build_absolute_uri()
+    params = dict(request.POST.items())
+    return validator.validate(request_url, params, signature)
+
+
+def _is_allowed_twilio_recording_url(recording_url: str) -> bool:
+    """Allow proxying only HTTPS recording URLs from trusted Twilio hosts."""
+    parsed = urlparse(recording_url)
+    if parsed.scheme != "https" or not parsed.hostname:
+        return False
+
+    hostname = parsed.hostname.lower()
+    allowed_hosts = getattr(
+        settings, "TWILIO_RECORDING_ALLOWED_HOSTS", ("api.twilio.com",)
+    )
+    for allowed_host in allowed_hosts:
+        normalized = str(allowed_host).strip().lower().lstrip(".")
+        if not normalized:
+            continue
+        if hostname == normalized or hostname.endswith(f".{normalized}"):
+            return True
+    return False
+
+
+def _ensure_staff_access(request) -> None:
+    """Restrict voicemail playback/proxy endpoints to staff users only."""
+    if request.user.is_staff:
+        return
+
+    logger.warning(
+        "Non-staff attempted voicemail access",
+        extra={"user_id": request.user.id, "path": request.path},
+    )
+    raise Http404("Recording not available")
+
+
 @method_decorator(csrf_exempt, name="dispatch")
 class VoicemailWebhookView(View):
     def post(self, request):
+        if not _twilio_signature_is_valid(request):
+            logger.warning("Rejected voicemail webhook with invalid Twilio signature")
+            return HttpResponse("Forbidden", status=403)
+
         recording_url = request.POST.get("RecordingUrl")
         recording_sid = request.POST.get("RecordingSid")
         caller_number = request.POST.get("From")
@@ -50,6 +103,10 @@ class VoicemailWebhookView(View):
 @method_decorator(csrf_exempt, name="dispatch")
 class SMSWebhookView(View):
     def post(self, request):
+        if not _twilio_signature_is_valid(request):
+            logger.warning("Rejected SMS webhook with invalid Twilio signature")
+            return HttpResponse("Forbidden", status=403)
+
         message_sid = request.POST.get("MessageSid")
         from_number = request.POST.get("From")
         to_number = request.POST.get("To")
@@ -80,6 +137,8 @@ class SMSWebhookView(View):
 @login_required
 def recording_proxy_view(request, voicemail_id):
     """Proxy voicemail recordings from Twilio with authentication."""
+    _ensure_staff_access(request)
+
     voicemail = get_object_or_404(VoicemailMessage, id=voicemail_id)
 
     if not voicemail.recording_url:
@@ -88,6 +147,12 @@ def recording_proxy_view(request, voicemail_id):
     try:
         # Get recording URL from Twilio
         recording_url = voicemail.recording_url
+        if not _is_allowed_twilio_recording_url(recording_url):
+            logger.warning(
+                "Blocked recording proxy request for untrusted host",
+                extra={"voicemail_id": voicemail_id, "recording_url": recording_url},
+            )
+            raise Http404("Recording not available")
 
         # Fetch the recording from Twilio with authentication
         response = requests.get(
@@ -117,6 +182,8 @@ def recording_proxy_view(request, voicemail_id):
 
         return streaming_response
 
+    except Http404:
+        raise
     except Exception as e:
         logger.error(f"Error streaming recording {voicemail_id}: {e}")
         raise Http404("Recording could not be loaded") from e
@@ -125,6 +192,8 @@ def recording_proxy_view(request, voicemail_id):
 @login_required
 def recording_player_view(request, voicemail_id):
     """Display audio player for voicemail recording."""
+    _ensure_staff_access(request)
+
     voicemail = get_object_or_404(VoicemailMessage, id=voicemail_id)
 
     if not voicemail.recording_url:

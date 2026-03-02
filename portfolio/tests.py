@@ -1,8 +1,11 @@
+import os
+import tempfile
 import zipfile
 from io import BytesIO
 from unittest.mock import Mock, patch
 
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.http import Http404
 from django.test import RequestFactory, TestCase
 from django.urls import reverse
 from wagtail.documents import get_document_model
@@ -420,3 +423,52 @@ class PortfolioIntegrationTest(TestCase):
 
         for expected_type in expected_types:
             self.assertIn(expected_type, content_block_types)
+
+
+class PortfolioViewSecurityRegressionTest(TestCase):
+    def setUp(self):
+        self.root_page = Page.add_root(title="Root")
+        self.index_page = create_portfolio_index_page(self.root_page)
+        self.project = create_project_page(self.index_page, title="Draft Project")
+        self.factory = RequestFactory()
+
+    def test_package_viewer_rejects_non_public_pages(self):
+        """Draft/private pages must not be viewable by direct ID."""
+        from portfolio.views import package_viewer
+
+        request = self.factory.get("/")
+        with self.assertRaises(Http404):
+            package_viewer(request, self.project.id, 99999)
+
+    def test_serve_extracted_content_blocks_prefix_traversal(self):
+        """Path traversal via sibling directory prefixes must be denied."""
+        from portfolio.views import serve_extracted_content
+
+        file_obj = SimpleUploadedFile(
+            name="asset.txt",
+            content=b"safe",
+            content_type="text/plain",
+        )
+        document = Document.objects.create(title="Doc", file=file_obj)
+        sibling_id = int(f"{document.id}0")
+
+        with tempfile.TemporaryDirectory() as media_root:
+            with self.settings(MEDIA_ROOT=media_root):
+                doc_extract_root = os.path.join(
+                    media_root, "portfolio_extracted", str(document.id)
+                )
+                sibling_extract_root = os.path.join(
+                    media_root, "portfolio_extracted", str(sibling_id)
+                )
+                os.makedirs(doc_extract_root, exist_ok=True)
+                os.makedirs(sibling_extract_root, exist_ok=True)
+                with open(os.path.join(sibling_extract_root, "secret.txt"), "wb") as f:
+                    f.write(b"secret")
+
+                request = self.factory.get("/")
+                with self.assertRaises(Http404):
+                    serve_extracted_content(
+                        request,
+                        document.id,
+                        f"../{sibling_id}/secret.txt",
+                    )
