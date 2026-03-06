@@ -3193,7 +3193,7 @@ class PrivateCourseServeTest(CourseVisibilityMixin, TestCase):
         except (Http404, PermissionDenied):
             self.fail("Editor should not be blocked from private course.")
         except Exception:
-            pass
+            pass  # Other Wagtail rendering errors are fine for this access-control test
 
     def test_unlisted_course_unenrolled_user_passes(self):
         """UNLISTED courses have no enrollment gate — only hidden from catalog."""
