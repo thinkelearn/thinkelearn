@@ -52,15 +52,39 @@ class Command(BaseCommand):
                 invite=invite, revoke_on_expiry=True
             ).select_related("user", "course")
 
-            count = to_revoke.count()
-            if count == 0:
+            if not to_revoke.exists():
                 continue
 
-            self.stdout.write(f"Invite '{invite}' — revoking {count} enrollment(s).")
+            self.stdout.write(
+                f"Invite '{invite}' — processing revocable enrollment(s)."
+            )
 
             if not dry_run:
                 with transaction.atomic():
                     for demo_enrollment in to_revoke:
+                        # Skip deletion if another active/non-expired invite still
+                        # grants this user access to the same course.
+                        still_covered = (
+                            ClientDemoEnrollment.objects.filter(
+                                user=demo_enrollment.user,
+                                course=demo_enrollment.course,
+                                invite__is_active=True,
+                            )
+                            .exclude(invite=invite)
+                            .filter(
+                                Q(invite__expires_at__isnull=True)
+                                | Q(invite__expires_at__gte=timezone.now())
+                            )
+                            .exists()
+                        )
+
+                        if still_covered:
+                            self.stdout.write(
+                                f"  Skipped (another active invite covers this): "
+                                f"{demo_enrollment.user} from '{demo_enrollment.course}'"
+                            )
+                            continue
+
                         CourseEnrollment.objects.filter(
                             user=demo_enrollment.user,
                             course=demo_enrollment.course,
@@ -69,9 +93,11 @@ class Command(BaseCommand):
                             f"  Revoked: {demo_enrollment.user} from "
                             f"'{demo_enrollment.course}'"
                         )
-                    to_revoke.delete()
+                        total_revoked += 1
 
-            total_revoked += count
+                    to_revoke.delete()
+            else:
+                total_revoked += to_revoke.count()
 
         if dry_run:
             self.stdout.write(

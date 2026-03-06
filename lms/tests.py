@@ -3596,6 +3596,30 @@ class RevokeDemoInvitesCommandTest(CourseVisibilityMixin, TestCase):
         call_command("revoke_expired_demo_invites", verbosity=0)
         self.assertFalse(CourseEnrollment.objects.filter(course=self.course1).exists())
 
+    def test_preserves_enrollment_when_another_active_invite_covers_same_course(self):
+        """Enrollment is NOT revoked if another still-valid invite covers the same user+course."""
+        # user_a enrolled via both the expired invite and the active invite for course1
+        self._enroll(self.user_a, self.course1, self.expired_invite, revoke=True)
+        ClientDemoEnrollment.objects.create(
+            invite=self.active_invite,
+            user=self.user_a,
+            course=self.course1,
+            revoke_on_expiry=True,
+        )
+        call_command("revoke_expired_demo_invites", verbosity=0)
+        # Enrollment must survive because the active invite still grants access
+        self.assertTrue(
+            CourseEnrollment.objects.filter(
+                user=self.user_a, course=self.course1
+            ).exists()
+        )
+        # The expired invite's tracking record is still cleaned up
+        self.assertFalse(
+            ClientDemoEnrollment.objects.filter(
+                invite=self.expired_invite, user=self.user_a
+            ).exists()
+        )
+
     def test_no_revocable_enrollments_outputs_done(self):
         """Command exits cleanly when expired invites exist but have no revocable enrollments."""
         out = StringIO()
