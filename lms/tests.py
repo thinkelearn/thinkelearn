@@ -3210,7 +3210,7 @@ class PrivateCourseServeTest(CourseVisibilityMixin, TestCase):
         except (Http404, PermissionDenied):
             self.fail("Unlisted course should not require enrollment.")
         except Exception:
-            pass
+            pass  # Other Wagtail rendering errors are fine for this access-control test
 
 
 class ClientDemoInviteModelTest(CourseVisibilityMixin, TestCase):
