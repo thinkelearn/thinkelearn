@@ -207,6 +207,11 @@ function initTopbarScroll() {
     let isHidden = false;
     let ticking = false;
 
+    // Sync sticky banners that need to track below the full nav height
+    const stickyBanners = document.querySelectorAll('.private-course-banner');
+    const TOPBAR_HEIGHT = '6.5rem';  // topbar (2.5rem) + main nav (4rem)
+    const NAV_HEIGHT    = '4rem';    // main nav only
+
     // Hide once scrolled past this point (px).
     // Must be larger than the topbar height (40px) to avoid feedback loops.
     const HIDE_THRESHOLD = 50;
@@ -235,15 +240,22 @@ function initTopbarScroll() {
             wrapper.style.height = '0';
             wrapper.inert = true;
             closeUserMenuIfOpen();
+            document.body.classList.add('topbar-hidden');
+            stickyBanners.forEach(function(b) { b.style.top = NAV_HEIGHT; });
         } else if (isHidden && currentScrollY <= SHOW_THRESHOLD) {
             isHidden = false;
             topbar.style.transform = '';
             wrapper.style.height = '2.5rem';
             wrapper.inert = false;
+            document.body.classList.remove('topbar-hidden');
+            stickyBanners.forEach(function(b) { b.style.top = TOPBAR_HEIGHT; });
         }
 
         ticking = false;
     }
+
+    // Set initial banner top before first update so there's no flash
+    stickyBanners.forEach(function(b) { b.style.top = TOPBAR_HEIGHT; });
 
     // Run once at init so state matches if page loads already scrolled
     update();

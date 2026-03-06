@@ -26,6 +26,7 @@ urlpatterns = [
         lms_views.submit_course_feedback,
         name="course_feedback",
     ),
+    path("demo/<uuid:token>/", lms_views.client_demo_view, name="client_demo"),
     path("lms/", include("wagtail_lms.urls")),
     # django-allauth authentication URLs - must be before Wagtail catch-all
     # Reserved path: avoid other "accounts/" URL patterns to prevent conflicts

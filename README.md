@@ -139,12 +139,14 @@ THINK eLearn includes a comprehensive LMS built on wagtail-lms with extensive cu
 
 - **SCORM Support**: Full SCORM 1.2 and 2004 compliance
 - **Course Catalog**: Searchable course library with categories and tags
+- **Course Visibility**: PUBLIC / UNLISTED / PRIVATE_DEMO visibility levels with access guards
 - **Prerequisites**: Course dependency management
 - **Progress Tracking**: Student dashboard with completion statistics
 - **Reviews & Ratings**: 5-star rating system with moderation
 - **Instructors**: Course instructor profiles with photos and bios
 - **Enrollment Management**: Enrollment limits and validation
 - **Responsive Player**: Full-screen SCORM player with auto-save
+- **Private Client Demos**: UUID invite links grant time-limited access to private or public courses without payment; enrollments auto-revoked on expiry
 
 ### Setting Up the LMS
 
@@ -220,6 +222,15 @@ This creates:
 - View enrollment data in Django Admin → Course Enrollments
 - Track SCORM attempts and scores
 - Monitor completion rates
+
+**Private Client Demos:**
+
+1. Set a course's **Visibility** to `Private Demo` in Wagtail admin (hides it from public catalog; 404 for anonymous users, 403 for unenrolled authenticated users)
+2. In Django Admin → **Client Demo Invites** → Add — enter client name/email, select demo courses, set expiry
+3. Copy the generated link (e.g. `/demo/<uuid>/`) from the invite list view and send to the client
+4. Client logs in via Google/Microsoft OAuth and lands on a branded demo page with their courses
+5. Staff can visit the same link for a live walkthrough — a "Staff Preview" banner is shown and no enrollments are created
+6. To revoke access, deactivate the invite or let it expire; run `revoke_expired_demo_invites` (or schedule it as a cron job) to clean up auto-created enrollments
 
 ### LMS URLs
 

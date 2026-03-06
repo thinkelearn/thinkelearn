@@ -54,6 +54,31 @@
             </div>
         </header>
 
+        {# Demo mode bar #}
+        {% if demo_return_url %}
+        <div class="bg-primary-900 text-white px-4 py-2.5 flex-shrink-0 flex items-center justify-between gap-4">
+            <div class="flex items-center gap-2.5 min-w-0">
+                {% if course.visibility == "private_demo" %}
+                    <i class="fas fa-lock text-amber-400 text-sm flex-shrink-0"></i>
+                    <span class="text-sm">
+                        <span class="font-semibold text-amber-300">Private Course.</span>
+                        <span class="text-primary-100 ml-1">This content is not publicly listed and is for your private viewing only.</span>
+                    </span>
+                {% else %}
+                    <i class="fas fa-eye text-cyan-400 text-sm flex-shrink-0"></i>
+                    <span class="text-primary-100 text-sm">You are viewing this content as part of your private demo.</span>
+                {% endif %}
+            </div>
+            <a href="{{ demo_return_url }}"
+               class="flex-shrink-0 inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-primary-700 hover:bg-primary-600 rounded-md px-3 py-1.5 transition-colors duration-150 whitespace-nowrap">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                </svg>
+                Back to Demo
+            </a>
+        </div>
+        {% endif %}
+
         {# SCORM Content Frame #}
         <div class="flex-1 relative bg-white overflow-hidden">
             <iframe

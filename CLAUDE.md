@@ -55,17 +55,19 @@ Production-ready Django 6.0/Wagtail 7.2.1 educational platform with SCORM LMS, S
 
 ## LMS (wagtail-lms + custom)
 
-**Features**: SCORM 1.2/2004, prerequisites validation, enrollment limits, reviews (moderation required), ratings, instructor profiles, student dashboard
+**Features**: SCORM 1.2/2004, prerequisites validation, enrollment limits, reviews (moderation required), ratings, instructor profiles, student dashboard, private client demos
 
-**Models**: ExtendedCoursePage (categories, tags, duration, difficulty, prerequisites, enrollment limits), CourseCategory, CourseTag, CourseInstructor, CourseReview (is_approved=False default), LearnerDashboardPage, EnrollmentRecord (states: PENDING_PAYMENT→ACTIVE/PAYMENT_FAILED/CANCELLED/REFUNDED)
+**Models**: ExtendedCoursePage (categories, tags, duration, difficulty, prerequisites, enrollment limits, `visibility`: PUBLIC/UNLISTED/PRIVATE_DEMO with `clean()` guards), CourseCategory, CourseTag, CourseInstructor, CourseReview (is_approved=False default), LearnerDashboardPage, EnrollmentRecord (states: PENDING_PAYMENT→ACTIVE/PAYMENT_FAILED/CANCELLED/REFUNDED), ClientDemoInvite (UUID token, expiry, M2M to courses), ClientDemoEnrollment (tracks per-invite enrollments with `revoke_on_expiry`)
 
-**URLs**: `/courses/`, `/courses/<slug>/`, `/dashboard/`, `/lms/course/<id>/play/`, `/lms/scorm-content/<package>/<file>`
+**Private Demo Access**: PRIVATE_DEMO courses → 404 for anonymous, 403 for unenrolled auth users. `client_demo_view` validates token, idempotently enrolls clients, skips enrollment for staff (wagtailadmin.access_admin). Session key `active_demo_token` + `lms.context_processors.active_demo` injects `demo_return_url` into all templates for persistent "Back to Demo" bar. `revoke_expired_demo_invites` management command cleans up revocable enrollments.
+
+**URLs**: `/courses/`, `/courses/<slug>/`, `/dashboard/`, `/lms/course/<id>/play/`, `/lms/scorm-content/<package>/<file>`, `/demo/<uuid:token>/`
 
 **Performance**: `select_related("user")` for reviews (line 272), `prefetch_related("categories","tags")` for listings (lines 108,283), `select_related("course")` for dashboard (line 423)
 
-**Security**: Review moderation, SCORM iframe sandboxing
+**Security**: Review moderation, SCORM iframe sandboxing, visibility guards prevent PRIVATE_DEMO↔PUBLIC transitions while enrollments/products exist
 
-**Tests**: 32 tests in `lms/tests.py` (100% business logic coverage) - prerequisites, enrollment, ratings, completion tracking
+**Tests**: 209 tests in `lms/tests.py` (100% business logic coverage) - prerequisites, enrollment, ratings, completion tracking, demo invites, visibility guards, context processor
 
 ## Portfolio (Unified client/educational)
 
@@ -108,7 +110,7 @@ Production-ready Django 6.0/Wagtail 7.2.1 educational platform with SCORM LMS, S
 
 **Test**: Custom methods, prerequisites validation, enrollment limits, rating calculations, Twilio workflows, ZIP security, StreamField validation, category filtering, performance optimizations (select_related/prefetch_related)
 
-**Coverage**: 55%+ overall, 100% on lms/models.py business logic. 32 LMS tests, 22 portfolio tests, 49 payment tests, 28 auth/adapter tests, plus home/blog/communications
+**Coverage**: 55%+ overall, 100% on lms/models.py business logic. 209 LMS tests, 22 portfolio tests, 49 payment tests, 28 auth/adapter tests, plus home/blog/communications
 
 **Files**: `home/tests/test_models.py`, `lms/tests.py`, `portfolio/tests.py`, `blog/tests/`, `communications/tests/`, `payments/tests/`, `thinkelearn/tests/test_{social,account}_adapter.py`, `test_integration.py`
 
@@ -136,7 +138,7 @@ Production-ready Django 6.0/Wagtail 7.2.1 educational platform with SCORM LMS, S
 
 **Existing Features** (check before building):
 
-- LMS: SCORM, prerequisites, enrollment, payments, reviews/ratings, dashboard (32 tests, 100% coverage)
+- LMS: SCORM, prerequisites, enrollment, payments, reviews/ratings, dashboard, private client demos (209 tests, 100% coverage)
 - Portfolio: Unified client/educational with ZIP security, videos, galleries (22 tests)
 - Payments: Stripe checkout, ledger, refunds (49 tests)
 - Auth: django-allauth email-only + Google/Microsoft OAuth with auto-linking (28 tests)
