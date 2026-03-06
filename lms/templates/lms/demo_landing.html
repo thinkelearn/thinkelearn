@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% load wagtailimages_tags %}
+
+{% block title %}Your Private Demo — {{ invite.client_name }}{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-neutral-50">
+
+  {# ── Staff Preview Banner ─────────────────────────────────────────────── #}
+  {% if is_staff_preview %}
+  <div class="bg-amber-500 text-white text-sm font-semibold text-center py-2 px-4">
+    <i class="fas fa-eye mr-2"></i>
+    Staff Preview — viewing demo as client <strong>{{ invite.client_name }}</strong>.
+    Courses are shown as the client will see them. No enrollments have been created for your account.
+  </div>
+  {% endif %}
+
+  {# ── Header ───────────────────────────────────────────────────────────── #}
+  <div class="bg-gradient-to-r from-primary-800 to-primary-700 text-white py-14">
+    <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+      <p class="text-primary-200 text-sm font-medium uppercase tracking-widest mb-2">Private Client Demo</p>
+      <h1 class="font-poppins text-4xl md:text-5xl font-bold mb-3">
+        Welcome, {{ invite.client_name }}
+      </h1>
+      <p class="text-primary-100 text-lg max-w-2xl">
+        Your private access is ready. Browse the courses below and click <strong>Start Course</strong> to begin.
+      </p>
+    </div>
+  </div>
+
+  <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-14">
+
+    {# ── Private Courses ──────────────────────────────────────────────────── #}
+    {% if private_courses %}
+    <section>
+      <div class="flex items-center gap-3 mb-6">
+        <span class="inline-flex items-center gap-1.5 bg-primary-800 text-white text-xs font-bold uppercase tracking-widest px-3 py-1.5 rounded-full">
+          <i class="fas fa-lock text-xs"></i> Private
+        </span>
+        <h2 class="font-poppins text-2xl font-bold text-primary-800">Exclusive Demo Courses</h2>
+      </div>
+      <p class="text-neutral-500 text-sm mb-6 -mt-2">
+        These courses are private and available exclusively to you as part of this demonstration.
+      </p>
+      <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        {% for course in private_courses %}
+          {% include "lms/includes/demo_course_card.html" with course=course is_private=True %}
+        {% endfor %}
+      </div>
+    </section>
+    {% endif %}
+
+    {# ── Public Courses ───────────────────────────────────────────────────── #}
+    {% if public_courses %}
+    <section>
+      <div class="flex items-center gap-3 mb-6">
+        <span class="inline-flex items-center gap-1.5 bg-cyan-600 text-white text-xs font-bold uppercase tracking-widest px-3 py-1.5 rounded-full">
+          <i class="fas fa-globe text-xs"></i> Public
+        </span>
+        <h2 class="font-poppins text-2xl font-bold text-primary-800">Also Included</h2>
+      </div>
+      <p class="text-neutral-500 text-sm mb-6 -mt-2">
+        These courses are from our public catalogue and included in your demo access.
+      </p>
+      <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        {% for course in public_courses %}
+          {% include "lms/includes/demo_course_card.html" with course=course is_private=False %}
+        {% endfor %}
+      </div>
+    </section>
+    {% endif %}
+
+    {# ── Empty state ──────────────────────────────────────────────────────── #}
+    {% if not private_courses and not public_courses %}
+    <div class="bg-white rounded-2xl border border-neutral-200 p-12 text-center text-neutral-500">
+      <i class="fas fa-inbox text-4xl mb-4 text-neutral-300"></i>
+      <p class="text-lg font-medium">No courses are available for this demo yet.</p>
+      <p class="text-sm mt-1">Please contact us if you believe this is an error.</p>
+    </div>
+    {% endif %}
+
+  </div>
+
+  {# ── Footer note ──────────────────────────────────────────────────────── #}
+  {% if not is_staff_preview %}
+  <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pb-10 text-center">
+    <p class="text-neutral-500 text-sm">
+      To exit demo mode, <a href="{% url 'account_logout' %}" class="underline hover:text-neutral-700 transition-colors">sign out</a>.
+    </p>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

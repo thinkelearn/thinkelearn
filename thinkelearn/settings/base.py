@@ -91,6 +91,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "thinkelearn.context_processors.registration_settings",
+                "lms.context_processors.active_demo",
             ],
         },
     },

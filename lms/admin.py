@@ -2,17 +2,58 @@
 
 from django.contrib import admin
 from django.urls import path, reverse
+from django.utils.html import format_html
 
 from .h5p_upload import (
     h5p_finalize_upload_response,
     h5p_presigned_upload_response,
 )
-from .models import CourseProduct, CourseReview, EnrollmentRecord
+from .models import (
+    ClientDemoEnrollment,
+    ClientDemoInvite,
+    CourseProduct,
+    CourseReview,
+    EnrollmentRecord,
+)
 from .scorm_upload import (
     finalize_upload_response,
     presigned_upload_response,
     s3_upload_enabled,
 )
+
+
+class ClientDemoEnrollmentInline(admin.TabularInline):
+    model = ClientDemoEnrollment
+    extra = 0
+    readonly_fields = ["user", "course", "revoke_on_expiry", "created_at"]
+    can_delete = False
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(ClientDemoInvite)
+class ClientDemoInviteAdmin(admin.ModelAdmin):
+    list_display = [
+        "client_name",
+        "client_email",
+        "is_active",
+        "created_at",
+        "expires_at",
+        "demo_link",
+    ]
+    list_filter = ["is_active"]
+    search_fields = ["client_name", "client_email"]
+    readonly_fields = ["token", "created_at", "demo_link"]
+    filter_horizontal = ["demo_courses"]
+    inlines = [ClientDemoEnrollmentInline]
+
+    @admin.display(description="Demo Link")
+    def demo_link(self, obj):
+        if obj.pk:
+            url = obj.get_absolute_url()
+            return format_html('<a href="{}" target="_blank">{}</a>', url, url)
+        return "—"
 
 
 @admin.register(CourseReview)

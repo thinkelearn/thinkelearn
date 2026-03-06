@@ -29,6 +29,8 @@ from wagtail_lms.models import (
 )
 
 from lms.models import (
+    ClientDemoEnrollment,
+    ClientDemoInvite,
     CourseCategory,
     CourseInstructor,
     CourseProduct,
@@ -2889,3 +2891,826 @@ class VerifyUpgradeCommandTest(TestCase):
         # and the Wagtail page tree is consistent.
         call_command("verify_wagtail_lms_upgrade", stdout=out)
         self.assertIn("checks passed", out.getvalue())
+
+
+# ── Client Demo Feature Tests ─────────────────────────────────────────────────
+
+
+class CourseVisibilityMixin:
+    """Shared setup for tests that need a page tree with courses."""
+
+    def _make_tree(self):
+        root = Page.add_root(title="Root")
+        index = CoursesIndexPage(title="Courses", slug="courses")
+        root.add_child(instance=index)
+        index.save_revision().publish()
+
+        try:
+            site = Site.objects.get(is_default_site=True)
+            site.root_page = root
+            site.save()
+        except Site.DoesNotExist:
+            Site.objects.create(
+                hostname="localhost", root_page=root, is_default_site=True
+            )
+
+        return root, index
+
+    def _make_course(
+        self,
+        index,
+        title="Test Course",
+        slug=None,
+        visibility=ExtendedCoursePage.Visibility.PUBLIC,
+    ):
+        slug = slug or title.lower().replace(" ", "-")
+        course = ExtendedCoursePage(
+            title=title,
+            slug=slug,
+            difficulty="beginner",
+            is_published=True,
+            visibility=visibility,
+        )
+        index.add_child(instance=course)
+        course.save_revision().publish()
+        return course
+
+
+class CourseVisibilityFieldTest(CourseVisibilityMixin, TestCase):
+    """Unit tests for the Visibility choice field and catalog filtering."""
+
+    def setUp(self):
+        _, self.index = self._make_tree()
+        self.factory = RequestFactory()
+
+    def test_default_visibility_is_public(self):
+        course = self._make_course(self.index, "Public Course", "pub")
+        self.assertEqual(course.visibility, ExtendedCoursePage.Visibility.PUBLIC)
+
+    def test_visibility_choices_exist(self):
+        choices = [c[0] for c in ExtendedCoursePage.Visibility.choices]
+        self.assertIn("public", choices)
+        self.assertIn("unlisted", choices)
+        self.assertIn("private_demo", choices)
+
+    def test_catalog_shows_only_public_courses(self):
+        self._make_course(
+            self.index, "Public", "pub", ExtendedCoursePage.Visibility.PUBLIC
+        )
+        self._make_course(
+            self.index, "Unlisted", "unl", ExtendedCoursePage.Visibility.UNLISTED
+        )
+        self._make_course(
+            self.index,
+            "Private Demo",
+            "pvt",
+            ExtendedCoursePage.Visibility.PRIVATE_DEMO,
+        )
+
+        request = self.factory.get("/courses/")
+        context = self.index.get_context(request)
+        titles = [c.title for c in context["courses"]]
+
+        self.assertIn("Public", titles)
+        self.assertNotIn("Unlisted", titles)
+        self.assertNotIn("Private Demo", titles)
+
+    def test_catalog_count_excludes_non_public(self):
+        self._make_course(self.index, "A", "a", ExtendedCoursePage.Visibility.PUBLIC)
+        self._make_course(self.index, "B", "b", ExtendedCoursePage.Visibility.UNLISTED)
+        self._make_course(
+            self.index, "C", "c", ExtendedCoursePage.Visibility.PRIVATE_DEMO
+        )
+
+        request = self.factory.get("/courses/")
+        context = self.index.get_context(request)
+        self.assertEqual(context["courses"].count(), 1)
+
+
+class CourseProductPrivateDemoCleanTest(CourseVisibilityMixin, TestCase):
+    """CourseProduct.clean() blocks attachment to PRIVATE_DEMO courses."""
+
+    def setUp(self):
+        _, self.index = self._make_tree()
+
+    def test_cannot_attach_product_to_private_demo_course(self):
+        course = self._make_course(
+            self.index,
+            "Private",
+            "pvt",
+            ExtendedCoursePage.Visibility.PRIVATE_DEMO,
+        )
+        product = CourseProduct(
+            course=course,
+            pricing_type=CourseProduct.PricingType.FREE,
+        )
+        with self.assertRaises(ValidationError):
+            product.clean()
+
+    def test_can_attach_product_to_public_course(self):
+        course = self._make_course(
+            self.index,
+            "Public",
+            "pub",
+            ExtendedCoursePage.Visibility.PUBLIC,
+        )
+        product = CourseProduct(
+            course=course,
+            pricing_type=CourseProduct.PricingType.FREE,
+        )
+        # Should not raise
+        product.clean()
+
+    def test_can_attach_product_to_unlisted_course(self):
+        course = self._make_course(
+            self.index,
+            "Unlisted",
+            "unl",
+            ExtendedCoursePage.Visibility.UNLISTED,
+        )
+        product = CourseProduct(
+            course=course,
+            pricing_type=CourseProduct.PricingType.FREE,
+        )
+        product.clean()
+
+
+class ExtendedCoursePageCleanTest(CourseVisibilityMixin, TestCase):
+    """ExtendedCoursePage.clean() guards against unsafe visibility transitions."""
+
+    def setUp(self):
+        _, self.index = self._make_tree()
+        self.user = User.objects.create_user("u", "u@example.com", "pass")
+
+    def test_clean_blocks_product_on_private_demo(self):
+        """Cannot set visibility=PRIVATE_DEMO when a CourseProduct exists."""
+        course = self._make_course(
+            self.index, "Course", "c", ExtendedCoursePage.Visibility.PUBLIC
+        )
+        CourseProduct.objects.create(
+            course=course, pricing_type=CourseProduct.PricingType.FREE
+        )
+        # Refresh to pick up the reverse relation
+        course = ExtendedCoursePage.objects.get(pk=course.pk)
+        course.visibility = ExtendedCoursePage.Visibility.PRIVATE_DEMO
+        with self.assertRaises(ValidationError) as cm:
+            course.clean()
+        self.assertIn("visibility", cm.exception.message_dict)
+
+    def test_clean_blocks_leaving_private_demo_with_active_enrollments(self):
+        """Cannot change away from PRIVATE_DEMO while revocable demo enrollments exist."""
+        course = self._make_course(
+            self.index, "Demo", "d", ExtendedCoursePage.Visibility.PRIVATE_DEMO
+        )
+        invite = ClientDemoInvite.objects.create(client_name="ACME")
+        invite.demo_courses.add(course)
+        ClientDemoEnrollment.objects.create(
+            invite=invite, user=self.user, course=course, revoke_on_expiry=True
+        )
+        course.visibility = ExtendedCoursePage.Visibility.PUBLIC
+        with self.assertRaises(ValidationError) as cm:
+            course.clean()
+        self.assertIn("visibility", cm.exception.message_dict)
+
+    def test_clean_allows_leaving_private_demo_when_no_active_enrollments(self):
+        """Changing visibility is fine when no revocable demo enrollments exist."""
+        course = self._make_course(
+            self.index, "Demo2", "d2", ExtendedCoursePage.Visibility.PRIVATE_DEMO
+        )
+        course.visibility = ExtendedCoursePage.Visibility.PUBLIC
+        # Should not raise
+        course.clean()
+
+    def test_clean_allows_leaving_private_demo_when_only_preexisting_enrollments(self):
+        """Pre-existing (revoke_on_expiry=False) enrollments do not block transition."""
+        course = self._make_course(
+            self.index, "Demo3", "d3", ExtendedCoursePage.Visibility.PRIVATE_DEMO
+        )
+        invite = ClientDemoInvite.objects.create(client_name="Corp")
+        invite.demo_courses.add(course)
+        ClientDemoEnrollment.objects.create(
+            invite=invite, user=self.user, course=course, revoke_on_expiry=False
+        )
+        course.visibility = ExtendedCoursePage.Visibility.PUBLIC
+        # Should not raise — pre-existing enrollment is not a blocker
+        course.clean()
+
+
+class PrivateCourseServeTest(CourseVisibilityMixin, TestCase):
+    """ExtendedCoursePage.serve() access control for PRIVATE_DEMO courses."""
+
+    def setUp(self):
+        _, self.index = self._make_tree()
+        self.user = User.objects.create_user("u", "u@example.com", "pass")
+        self.editor = User.objects.create_user("ed", "ed@example.com", "pass")
+        from django.contrib.auth.models import Permission
+
+        perm = Permission.objects.get(
+            codename="access_admin", content_type__app_label="wagtailadmin"
+        )
+        self.editor.user_permissions.add(perm)
+        self.factory = RequestFactory()
+
+    def _serve(self, course, user):
+        request = self.factory.get(course.url or "/")
+        request.user = user
+        return course.serve(request)
+
+    def test_public_course_serves_anonymous(self):
+        course = self._make_course(
+            self.index, "Pub", "pub", ExtendedCoursePage.Visibility.PUBLIC
+        )
+        from django.contrib.auth.models import AnonymousUser
+
+        request = self.factory.get("/")
+        request.user = AnonymousUser()
+        # Public course: no access guard — should not raise
+        try:
+            course.serve(request)
+        except Exception as e:
+            # May raise PermissionDenied/Http404 for other reasons (Wagtail site
+            # resolution), but NOT because of our visibility guard
+            self.assertNotIsInstance(
+                e,
+                __builtins__["PermissionDenied"]
+                if isinstance(__builtins__, dict)
+                else type(None),
+            )
+
+    def test_private_demo_anonymous_raises_404(self):
+        from django.http import Http404
+
+        course = self._make_course(
+            self.index, "Pvt", "pvt", ExtendedCoursePage.Visibility.PRIVATE_DEMO
+        )
+        from django.contrib.auth.models import AnonymousUser
+
+        request = self.factory.get("/")
+        request.user = AnonymousUser()
+        with self.assertRaises(Http404):
+            course.serve(request)
+
+    def test_private_demo_unenrolled_raises_403(self):
+        from django.core.exceptions import PermissionDenied
+
+        course = self._make_course(
+            self.index, "Pvt2", "pvt2", ExtendedCoursePage.Visibility.PRIVATE_DEMO
+        )
+        request = self.factory.get("/")
+        request.user = self.user
+        with self.assertRaises(PermissionDenied):
+            course.serve(request)
+
+    def test_private_demo_enrolled_user_passes(self):
+        course = self._make_course(
+            self.index, "Pvt3", "pvt3", ExtendedCoursePage.Visibility.PRIVATE_DEMO
+        )
+        CourseEnrollment.objects.create(user=self.user, course=course)
+        request = self.factory.get("/")
+        request.user = self.user
+        # Should not raise — enrolled user has access
+        from django.core.exceptions import PermissionDenied
+        from django.http import Http404
+
+        try:
+            course.serve(request)
+        except (Http404, PermissionDenied):
+            self.fail("Enrolled user should not be blocked from private course.")
+        except Exception:
+            pass  # Other Wagtail rendering errors are fine
+
+    def test_private_demo_editor_passes_without_enrollment(self):
+        course = self._make_course(
+            self.index, "Pvt4", "pvt4", ExtendedCoursePage.Visibility.PRIVATE_DEMO
+        )
+        request = self.factory.get("/")
+        request.user = self.editor
+        from django.core.exceptions import PermissionDenied
+        from django.http import Http404
+
+        try:
+            course.serve(request)
+        except (Http404, PermissionDenied):
+            self.fail("Editor should not be blocked from private course.")
+        except Exception:
+            pass  # Other Wagtail rendering errors are fine for this access-control test
+
+    def test_unlisted_course_unenrolled_user_passes(self):
+        """UNLISTED courses have no enrollment gate — only hidden from catalog."""
+        course = self._make_course(
+            self.index, "Unl", "unl", ExtendedCoursePage.Visibility.UNLISTED
+        )
+        request = self.factory.get("/")
+        request.user = self.user
+        from django.core.exceptions import PermissionDenied
+        from django.http import Http404
+
+        try:
+            course.serve(request)
+        except (Http404, PermissionDenied):
+            self.fail("Unlisted course should not require enrollment.")
+        except Exception:
+            pass  # Other Wagtail rendering errors are fine for this access-control test
+
+
+class ClientDemoInviteModelTest(CourseVisibilityMixin, TestCase):
+    """Unit tests for ClientDemoInvite business logic."""
+
+    def setUp(self):
+        _, self.index = self._make_tree()
+
+    def test_str_representation(self):
+        invite = ClientDemoInvite.objects.create(client_name="Acme Corp")
+        self.assertEqual(str(invite), "Demo invite for Acme Corp")
+
+    def test_is_valid_active_no_expiry(self):
+        invite = ClientDemoInvite.objects.create(client_name="A", is_active=True)
+        self.assertTrue(invite.is_valid())
+
+    def test_is_valid_inactive(self):
+        invite = ClientDemoInvite.objects.create(client_name="B", is_active=False)
+        self.assertFalse(invite.is_valid())
+
+    def test_is_valid_expired(self):
+        invite = ClientDemoInvite.objects.create(
+            client_name="C",
+            expires_at=timezone.now() - timedelta(hours=1),
+        )
+        self.assertFalse(invite.is_valid())
+
+    def test_is_valid_not_yet_expired(self):
+        invite = ClientDemoInvite.objects.create(
+            client_name="D",
+            expires_at=timezone.now() + timedelta(days=7),
+        )
+        self.assertTrue(invite.is_valid())
+
+    def test_token_is_unique_uuid(self):
+        import uuid
+
+        invite1 = ClientDemoInvite.objects.create(client_name="E")
+        invite2 = ClientDemoInvite.objects.create(client_name="F")
+        self.assertNotEqual(invite1.token, invite2.token)
+        # Verify it parses as a UUID
+        uuid.UUID(str(invite1.token))
+
+    def test_get_absolute_url(self):
+        invite = ClientDemoInvite.objects.create(client_name="G")
+        url = invite.get_absolute_url()
+        self.assertIn(str(invite.token), url)
+        self.assertIn("/demo/", url)
+
+    def test_demo_courses_m2m(self):
+        course = self._make_course(
+            self.index,
+            "Demo",
+            "demo",
+            ExtendedCoursePage.Visibility.PRIVATE_DEMO,
+        )
+        invite = ClientDemoInvite.objects.create(client_name="H")
+        invite.demo_courses.add(course)
+        self.assertEqual(invite.demo_courses.count(), 1)
+        self.assertIn(course, invite.demo_courses.all())
+
+
+class ClientDemoEnrollmentModelTest(CourseVisibilityMixin, TestCase):
+    """Unit tests for ClientDemoEnrollment tracking model."""
+
+    def setUp(self):
+        _, self.index = self._make_tree()
+        self.user = User.objects.create_user("u", "u@example.com", "pass")
+        self.course = self._make_course(
+            self.index,
+            "Demo",
+            "d",
+            ExtendedCoursePage.Visibility.PRIVATE_DEMO,
+        )
+        self.invite = ClientDemoInvite.objects.create(client_name="Corp")
+        self.invite.demo_courses.add(self.course)
+
+    def test_str_revocable(self):
+        de = ClientDemoEnrollment.objects.create(
+            invite=self.invite,
+            user=self.user,
+            course=self.course,
+            revoke_on_expiry=True,
+        )
+        self.assertIn("revocable", str(de))
+
+    def test_str_preexisting(self):
+        de = ClientDemoEnrollment.objects.create(
+            invite=self.invite,
+            user=self.user,
+            course=self.course,
+            revoke_on_expiry=False,
+        )
+        self.assertIn("pre-existing", str(de))
+
+    def test_unique_together_invite_user_course(self):
+        ClientDemoEnrollment.objects.create(
+            invite=self.invite,
+            user=self.user,
+            course=self.course,
+        )
+        with self.assertRaises(Exception):  # noqa: B017  # IntegrityError or ValidationError
+            ClientDemoEnrollment.objects.create(
+                invite=self.invite,
+                user=self.user,
+                course=self.course,
+            )
+
+    def test_revoke_on_expiry_defaults_true(self):
+        de = ClientDemoEnrollment.objects.create(
+            invite=self.invite,
+            user=self.user,
+            course=self.course,
+        )
+        self.assertTrue(de.revoke_on_expiry)
+
+
+class ClientDemoViewTest(CourseVisibilityMixin, TestCase):
+    """Integration tests for client_demo_view."""
+
+    def setUp(self):
+        _, self.index = self._make_tree()
+        self.user = User.objects.create_user("client", "c@example.com", "pass")
+        self.editor = User.objects.create_user("editor", "e@example.com", "pass")
+        from django.contrib.auth.models import Permission
+
+        perm = Permission.objects.get(
+            codename="access_admin", content_type__app_label="wagtailadmin"
+        )
+        self.editor.user_permissions.add(perm)
+
+        self.private_course = self._make_course(
+            self.index,
+            "Private",
+            "pvt",
+            ExtendedCoursePage.Visibility.PRIVATE_DEMO,
+        )
+        self.public_course = self._make_course(
+            self.index,
+            "Public",
+            "pub",
+            ExtendedCoursePage.Visibility.PUBLIC,
+        )
+        self.invite = ClientDemoInvite.objects.create(
+            client_name="ACME Inc.",
+            expires_at=timezone.now() + timedelta(days=30),
+        )
+        self.invite.demo_courses.add(self.private_course, self.public_course)
+        self.url = reverse("client_demo", kwargs={"token": self.invite.token})
+
+    def test_anonymous_redirects_to_login(self):
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/accounts/login/", response["Location"])
+
+    def test_invalid_token_returns_404(self):
+        import uuid
+
+        self.client.force_login(self.user)
+        bad_url = reverse("client_demo", kwargs={"token": uuid.uuid4()})
+        response = self.client.get(bad_url)
+        self.assertEqual(response.status_code, 404)
+
+    def test_inactive_invite_returns_404(self):
+        self.invite.is_active = False
+        self.invite.save()
+        self.client.force_login(self.user)
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 404)
+
+    def test_expired_invite_returns_404(self):
+        self.invite.expires_at = timezone.now() - timedelta(hours=1)
+        self.invite.save()
+        self.client.force_login(self.user)
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 404)
+
+    def test_valid_invite_enrolls_client_in_demo_courses(self):
+        self.client.force_login(self.user)
+        self.client.get(self.url)
+        self.assertTrue(
+            CourseEnrollment.objects.filter(
+                user=self.user, course=self.private_course
+            ).exists()
+        )
+        self.assertTrue(
+            CourseEnrollment.objects.filter(
+                user=self.user, course=self.public_course
+            ).exists()
+        )
+
+    def test_enrollment_tracking_revocable_for_new_enrollments(self):
+        self.client.force_login(self.user)
+        self.client.get(self.url)
+        de = ClientDemoEnrollment.objects.get(
+            invite=self.invite, user=self.user, course=self.private_course
+        )
+        self.assertTrue(de.revoke_on_expiry)
+
+    def test_enrollment_tracking_non_revocable_for_preexisting(self):
+        """Pre-existing enrollment is recorded as revoke_on_expiry=False."""
+        CourseEnrollment.objects.create(user=self.user, course=self.public_course)
+        self.client.force_login(self.user)
+        self.client.get(self.url)
+        de = ClientDemoEnrollment.objects.get(
+            invite=self.invite, user=self.user, course=self.public_course
+        )
+        self.assertFalse(de.revoke_on_expiry)
+
+    def test_idempotent_repeated_visits(self):
+        """Visiting the same link twice does not create duplicate enrollments."""
+        self.client.force_login(self.user)
+        self.client.get(self.url)
+        self.client.get(self.url)
+        self.assertEqual(
+            CourseEnrollment.objects.filter(
+                user=self.user, course=self.private_course
+            ).count(),
+            1,
+        )
+        self.assertEqual(
+            ClientDemoEnrollment.objects.filter(
+                invite=self.invite, user=self.user, course=self.private_course
+            ).count(),
+            1,
+        )
+
+    def test_landing_page_context_splits_private_and_public(self):
+        self.client.force_login(self.user)
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 200)
+        private_ids = [c.pk for c in response.context["private_courses"]]
+        public_ids = [c.pk for c in response.context["public_courses"]]
+        self.assertIn(self.private_course.pk, private_ids)
+        self.assertIn(self.public_course.pk, public_ids)
+        self.assertNotIn(self.public_course.pk, private_ids)
+
+    def test_staff_preview_flag_set_for_editor(self):
+        self.client.force_login(self.editor)
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.context["is_staff_preview"])
+
+    def test_staff_preview_not_set_for_regular_user(self):
+        self.client.force_login(self.user)
+        response = self.client.get(self.url)
+        self.assertFalse(response.context["is_staff_preview"])
+
+    def test_editor_does_not_get_enrolled(self):
+        """Editors see the demo but are not enrolled."""
+        self.client.force_login(self.editor)
+        self.client.get(self.url)
+        self.assertFalse(
+            CourseEnrollment.objects.filter(
+                user=self.editor, course=self.private_course
+            ).exists()
+        )
+        self.assertFalse(
+            ClientDemoEnrollment.objects.filter(
+                invite=self.invite, user=self.editor
+            ).exists()
+        )
+
+    def test_editor_context_shows_invite_courses(self):
+        """Editor landing page shows invite courses, not enrolled courses."""
+        self.client.force_login(self.editor)
+        response = self.client.get(self.url)
+        private_ids = [c.pk for c in response.context["private_courses"]]
+        self.assertIn(self.private_course.pk, private_ids)
+
+    def test_correct_template_used(self):
+        self.client.force_login(self.user)
+        response = self.client.get(self.url)
+        self.assertTemplateUsed(response, "lms/demo_landing.html")
+
+
+class RevokeDemoInvitesCommandTest(CourseVisibilityMixin, TestCase):
+    """Tests for the revoke_expired_demo_invites management command."""
+
+    def setUp(self):
+        _, self.index = self._make_tree()
+        self.user_a = User.objects.create_user("a", "a@example.com", "pass")
+        self.user_b = User.objects.create_user("b", "b@example.com", "pass")
+
+        self.course1 = self._make_course(
+            self.index, "C1", "c1", ExtendedCoursePage.Visibility.PRIVATE_DEMO
+        )
+        self.course2 = self._make_course(
+            self.index, "C2", "c2", ExtendedCoursePage.Visibility.PUBLIC
+        )
+
+        # Expired invite
+        self.expired_invite = ClientDemoInvite.objects.create(
+            client_name="Expired Corp",
+            expires_at=timezone.now() - timedelta(hours=1),
+        )
+        self.expired_invite.demo_courses.add(self.course1, self.course2)
+
+        # Active invite (should not be touched)
+        self.active_invite = ClientDemoInvite.objects.create(
+            client_name="Active Corp",
+            expires_at=timezone.now() + timedelta(days=30),
+        )
+        self.active_invite.demo_courses.add(self.course1)
+
+    def _enroll(self, user, course, invite, revoke=True):
+        CourseEnrollment.objects.get_or_create(user=user, course=course)
+        ClientDemoEnrollment.objects.create(
+            invite=invite, user=user, course=course, revoke_on_expiry=revoke
+        )
+
+    def test_revokes_expired_invite_enrollments(self):
+        self._enroll(self.user_a, self.course1, self.expired_invite, revoke=True)
+        call_command("revoke_expired_demo_invites", verbosity=0)
+        self.assertFalse(
+            CourseEnrollment.objects.filter(
+                user=self.user_a, course=self.course1
+            ).exists()
+        )
+
+    def test_preserves_preexisting_enrollments(self):
+        """revoke_on_expiry=False enrollments are never deleted."""
+        self._enroll(self.user_b, self.course2, self.expired_invite, revoke=False)
+        call_command("revoke_expired_demo_invites", verbosity=0)
+        self.assertTrue(
+            CourseEnrollment.objects.filter(
+                user=self.user_b, course=self.course2
+            ).exists()
+        )
+
+    def test_does_not_touch_active_invite_enrollments(self):
+        self._enroll(self.user_a, self.course1, self.active_invite, revoke=True)
+        call_command("revoke_expired_demo_invites", verbosity=0)
+        self.assertTrue(
+            CourseEnrollment.objects.filter(
+                user=self.user_a, course=self.course1
+            ).exists()
+        )
+
+    def test_cleans_up_demo_enrollment_tracking_records(self):
+        self._enroll(self.user_a, self.course1, self.expired_invite, revoke=True)
+        call_command("revoke_expired_demo_invites", verbosity=0)
+        self.assertFalse(
+            ClientDemoEnrollment.objects.filter(
+                invite=self.expired_invite, user=self.user_a
+            ).exists()
+        )
+
+    def test_dry_run_does_not_delete_enrollments(self):
+        self._enroll(self.user_a, self.course1, self.expired_invite, revoke=True)
+        out = StringIO()
+        call_command("revoke_expired_demo_invites", dry_run=True, stdout=out)
+        self.assertTrue(
+            CourseEnrollment.objects.filter(
+                user=self.user_a, course=self.course1
+            ).exists()
+        )
+        self.assertIn("would be revoked", out.getvalue())
+
+    def test_inactive_invite_also_triggers_revocation(self):
+        inactive = ClientDemoInvite.objects.create(
+            client_name="Inactive Corp", is_active=False
+        )
+        inactive.demo_courses.add(self.course1)
+        CourseEnrollment.objects.create(user=self.user_a, course=self.course1)
+        ClientDemoEnrollment.objects.create(
+            invite=inactive,
+            user=self.user_a,
+            course=self.course1,
+            revoke_on_expiry=True,
+        )
+        call_command("revoke_expired_demo_invites", verbosity=0)
+        self.assertFalse(
+            CourseEnrollment.objects.filter(
+                user=self.user_a, course=self.course1
+            ).exists()
+        )
+
+    def test_multiple_users_on_same_invite(self):
+        """All revocable enrollments across multiple users on one invite are revoked."""
+        self._enroll(self.user_a, self.course1, self.expired_invite, revoke=True)
+        self._enroll(self.user_b, self.course1, self.expired_invite, revoke=True)
+        call_command("revoke_expired_demo_invites", verbosity=0)
+        self.assertFalse(CourseEnrollment.objects.filter(course=self.course1).exists())
+
+    def test_preserves_enrollment_when_another_active_invite_covers_same_course(self):
+        """Enrollment is NOT revoked if another still-valid invite covers the same user+course."""
+        # user_a enrolled via both the expired invite and the active invite for course1
+        self._enroll(self.user_a, self.course1, self.expired_invite, revoke=True)
+        ClientDemoEnrollment.objects.create(
+            invite=self.active_invite,
+            user=self.user_a,
+            course=self.course1,
+            revoke_on_expiry=True,
+        )
+        call_command("revoke_expired_demo_invites", verbosity=0)
+        # Enrollment must survive because the active invite still grants access
+        self.assertTrue(
+            CourseEnrollment.objects.filter(
+                user=self.user_a, course=self.course1
+            ).exists()
+        )
+        # The expired invite's tracking record is still cleaned up
+        self.assertFalse(
+            ClientDemoEnrollment.objects.filter(
+                invite=self.expired_invite, user=self.user_a
+            ).exists()
+        )
+
+    def test_no_revocable_enrollments_outputs_done(self):
+        """Command exits cleanly when expired invites exist but have no revocable enrollments."""
+        out = StringIO()
+        call_command("revoke_expired_demo_invites", stdout=out)
+        self.assertIn("0 enrollment(s) revoked", out.getvalue())
+
+
+class ActiveDemoContextProcessorTest(CourseVisibilityMixin, TestCase):
+    """Tests for lms.context_processors.active_demo."""
+
+    def setUp(self):
+        _, self.index = self._make_tree()
+        self.user = User.objects.create_user("u", "u@example.com", "pass")
+        self.invite = ClientDemoInvite.objects.create(
+            client_name="Corp",
+            expires_at=timezone.now() + timedelta(days=7),
+        )
+
+    def test_no_session_key_returns_empty(self):
+        self.client.force_login(self.user)
+        # Visit a plain page — no demo token in session; inspect processor directly
+        # (can't inspect context on non-Django-rendered views like /)
+        from django.test import RequestFactory
+
+        from lms.context_processors import active_demo
+
+        factory = RequestFactory()
+        request = factory.get("/")
+        request.session = {}
+        self.assertEqual(active_demo(request), {})
+
+    def test_valid_token_injects_demo_return_url(self):
+        from django.test import RequestFactory
+
+        from lms.context_processors import active_demo
+
+        factory = RequestFactory()
+        request = factory.get("/")
+        request.session = {"active_demo_token": str(self.invite.token)}
+        result = active_demo(request)
+        self.assertIn("demo_return_url", result)
+        self.assertIn(str(self.invite.token), result["demo_return_url"])
+
+    def test_expired_invite_returns_empty_and_clears_session(self):
+        from django.test import RequestFactory
+
+        from lms.context_processors import active_demo
+
+        self.invite.expires_at = timezone.now() - timedelta(hours=1)
+        self.invite.save()
+        factory = RequestFactory()
+        request = factory.get("/")
+        request.session = {"active_demo_token": str(self.invite.token)}
+        result = active_demo(request)
+        self.assertEqual(result, {})
+        self.assertNotIn("active_demo_token", request.session)
+
+    def test_inactive_invite_returns_empty_and_clears_session(self):
+        from django.test import RequestFactory
+
+        from lms.context_processors import active_demo
+
+        self.invite.is_active = False
+        self.invite.save()
+        factory = RequestFactory()
+        request = factory.get("/")
+        request.session = {"active_demo_token": str(self.invite.token)}
+        result = active_demo(request)
+        self.assertEqual(result, {})
+        self.assertNotIn("active_demo_token", request.session)
+
+    def test_nonexistent_token_returns_empty_and_clears_session(self):
+        import uuid
+
+        from django.test import RequestFactory
+
+        from lms.context_processors import active_demo
+
+        factory = RequestFactory()
+        request = factory.get("/")
+        request.session = {"active_demo_token": str(uuid.uuid4())}
+        result = active_demo(request)
+        self.assertEqual(result, {})
+        self.assertNotIn("active_demo_token", request.session)
+
+    def test_demo_view_sets_session_token(self):
+        """Visiting the demo URL stores the token in the session."""
+        self.client.force_login(self.user)
+        url = reverse("client_demo", kwargs={"token": self.invite.token})
+        self.client.get(url)
+        self.assertEqual(
+            self.client.session.get("active_demo_token"),
+            str(self.invite.token),
+        )

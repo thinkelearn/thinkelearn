@@ -132,6 +132,17 @@ class CourseProduct(models.Model):
         """Validate pricing configuration consistency."""
         super().clean()
 
+        # Private demo courses must never enter the payment flow.
+        if (
+            self.course_id
+            and hasattr(self, "course")
+            and self.course.visibility == ExtendedCoursePage.Visibility.PRIVATE_DEMO
+        ):
+            raise ValidationError(
+                "A Course Product cannot be attached to a Private Demo course. "
+                "Change the course visibility first."
+            )
+
         # Fixed-price courses must have price > 0
         if self.pricing_type == self.PricingType.FIXED and self.fixed_price == 0:
             raise ValidationError(
@@ -638,10 +649,11 @@ class CoursesIndexPage(Page):
         tag = request.GET.get("tag")
         search_query = request.GET.get("q")
 
-        # Get all live courses with optimized queries
+        # Get all live, publicly listed courses with optimized queries
         courses = (
             ExtendedCoursePage.objects.live()
             .descendant_of(self)
+            .filter(visibility=ExtendedCoursePage.Visibility.PUBLIC)
             .prefetch_related("reviews")
             .order_by("-first_published_at")
         )
@@ -756,6 +768,22 @@ class ExtendedCoursePage(CoursePage):
         help_text="Make this course available for enrollment",
     )
 
+    class Visibility(models.TextChoices):
+        PUBLIC = "public", "Public — listed in the catalogue"
+        UNLISTED = "unlisted", "Unlisted — accessible by direct URL, not listed"
+        PRIVATE_DEMO = "private_demo", "Private Demo — client invite only"
+
+    visibility = models.CharField(
+        max_length=20,
+        choices=Visibility,
+        default=Visibility.PUBLIC,
+        help_text=(
+            "Public: listed in the catalogue. "
+            "Unlisted: accessible by direct URL but not listed. "
+            "Private Demo: hidden from the catalogue; access via Client Demo Invite only."
+        ),
+    )
+
     enrollment_limit = models.PositiveIntegerField(
         null=True,
         blank=True,
@@ -782,6 +810,7 @@ class ExtendedCoursePage(CoursePage):
             [
                 FieldPanel("is_published"),
                 FieldPanel("enrollment_limit"),
+                FieldPanel("visibility"),
             ],
             heading="Enrollment Settings",
         ),
@@ -793,6 +822,7 @@ class ExtendedCoursePage(CoursePage):
         index.SearchField("prerequisites_description"),
         index.FilterField("difficulty"),
         index.FilterField("duration_minutes"),
+        index.FilterField("visibility"),
     ]
 
     # Parent page / subpage type rules
@@ -920,6 +950,57 @@ class ExtendedCoursePage(CoursePage):
         )
 
         return context
+
+    def clean(self):
+        super().clean()
+        if self.visibility == self.Visibility.PRIVATE_DEMO:
+            # Belt-and-braces: block a CourseProduct being present on a private demo course.
+            # The CourseProduct.clean() enforces the same rule on the product side.
+            if self.pk and hasattr(self, "product"):
+                raise ValidationError(
+                    {
+                        "visibility": (
+                            "Cannot set visibility to Private Demo while a Course Product "
+                            "is attached. Remove the Course Product first."
+                        )
+                    }
+                )
+        else:
+            # Guard against accidentally promoting a private demo course that still
+            # has active demo enrollments — require explicit cleanup first.
+            if self.pk:
+                active_demo_enrollments = ClientDemoEnrollment.objects.filter(
+                    course=self, revoke_on_expiry=True
+                ).exists()
+                if active_demo_enrollments:
+                    original = ExtendedCoursePage.objects.get(pk=self.pk)
+                    if original.visibility == self.Visibility.PRIVATE_DEMO:
+                        raise ValidationError(
+                            {
+                                "visibility": (
+                                    "This course has active client demo enrollments. "
+                                    "Run 'revoke_expired_demo_invites' or manually deactivate "
+                                    "all associated demo invites before changing visibility."
+                                )
+                            }
+                        )
+
+    def serve(self, request):
+        if self.visibility == self.Visibility.PRIVATE_DEMO:
+            if not request.user.is_authenticated:
+                from django.http import Http404
+
+                raise Http404
+            if not request.user.has_perm("wagtailadmin.access_admin"):
+                from wagtail_lms.models import CourseEnrollment
+
+                if not CourseEnrollment.objects.filter(
+                    user=request.user, course=self
+                ).exists():
+                    from django.core.exceptions import PermissionDenied
+
+                    raise PermissionDenied
+        return super().serve(request)
 
     def get_average_rating(self):
         """Calculate average rating for this course"""
@@ -1174,3 +1255,86 @@ class LearnerDashboardPage(Page):
             context["combined_lesson_data"] = combined_lesson_data
 
         return context
+
+
+# ── Client Demo Models ────────────────────────────────────────────────────────
+
+
+class ClientDemoInvite(models.Model):
+    """
+    A time-limited, token-authenticated invite that grants a client access to
+    a curated bundle of courses (private and/or public).
+
+    On first visit the view creates CourseEnrollment records for the client and
+    tracks each one in ClientDemoEnrollment so they can be revoked precisely
+    when the invite expires or is deactivated.
+    """
+
+    token = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    client_name = models.CharField(max_length=200)
+    client_email = models.EmailField(blank=True)
+    demo_courses = models.ManyToManyField(
+        "ExtendedCoursePage",
+        blank=True,
+        related_name="demo_invites",
+        help_text="Courses included in this demo (private and/or public).",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Leave blank for no expiry.",
+    )
+    is_active = models.BooleanField(default=True)
+
+    def is_valid(self):
+        if not self.is_active:
+            return False
+        if self.expires_at and self.expires_at < timezone.now():
+            return False
+        return True
+
+    def get_absolute_url(self):
+        return reverse("client_demo", kwargs={"token": self.token})
+
+    def __str__(self):
+        return f"Demo invite for {self.client_name}"
+
+
+class ClientDemoEnrollment(models.Model):
+    """
+    Tracks every enrollment that a ClientDemoInvite created (or touched).
+
+    revoke_on_expiry=True  → we created this CourseEnrollment; delete it when
+                              the invite expires or is deactivated.
+    revoke_on_expiry=False → the user was already enrolled before the invite;
+                              leave their enrollment untouched on revocation.
+    """
+
+    invite = models.ForeignKey(
+        ClientDemoInvite,
+        on_delete=models.CASCADE,
+        related_name="demo_enrollments",
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="demo_enrollments",
+    )
+    course = models.ForeignKey(
+        "ExtendedCoursePage",
+        on_delete=models.CASCADE,
+        related_name="demo_enrollments",
+    )
+    revoke_on_expiry = models.BooleanField(
+        default=True,
+        help_text="False when the user was already enrolled before this invite was used.",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = [("invite", "user", "course")]
+
+    def __str__(self):
+        action = "revocable" if self.revoke_on_expiry else "pre-existing"
+        return f"{self.user} → {self.course} via {self.invite} ({action})"
