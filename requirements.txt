@@ -74,7 +74,7 @@ modelsearch==1.1.1
 multidict==6.7.1
 mypy==1.19.1
 mypy-extensions==1.1.0
-nltk==3.9.2
+nltk==3.9.4
 nodeenv==1.10.0
 oauthlib==3.3.1
 openpyxl==3.1.5
