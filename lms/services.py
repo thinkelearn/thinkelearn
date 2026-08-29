@@ -10,12 +10,27 @@ import zipfile
 from pathlib import PurePosixPath
 
 import boto3
+from botocore.exceptions import ClientError
 from django.conf import settings
+from django.db import models as django_models
 
 logger = logging.getLogger(__name__)
 
 # Maximum upload size: 500 MB
 MAX_UPLOAD_BYTES = 500 * 1024 * 1024
+
+SCORM_EXTRACTION_PENDING_PATH = "__scorm_extraction_pending__"
+SCORM_EXTRACTION_FAILED_PATH = "__scorm_extraction_failed__"
+SCORM_PROCESSING_STATUS_KEY = "processing_status"
+SCORM_PROCESSING_ERROR_KEY = "processing_error"
+SCORM_BACKGROUND_PROCESSING_REQUIRED_MESSAGE = (
+    "SCORM background processing is not configured. Set REDIS_URL and run "
+    "a Celery worker before using direct SCORM uploads."
+)
+SCORM_BACKGROUND_QUEUE_FAILED_MESSAGE = (
+    "SCORM background processing could not be queued. Check REDIS_URL and "
+    "the Celery worker."
+)
 
 
 def get_scorm_upload_prefix() -> str:
@@ -195,8 +210,9 @@ def create_h5p_activity_from_s3_key(s3_key: str, title: str, description: str = 
 def create_package_from_s3_key(s3_key: str, title: str, description: str = ""):
     """Create a SCORMPackage from an already-uploaded S3 object.
 
-    Downloads the ZIP from S3 for pre-validation (is_zipfile + path traversal),
-    then delegates extraction and manifest parsing to wagtail-lms's save().
+    Direct-to-S3 uploads can be large, especially SCORM packages with HLS video
+    segments. Keep the finalize request short by creating the database record
+    here and queueing extraction/manifest parsing for a Celery worker.
 
     Args:
         s3_key: The S3 object key where the ZIP was uploaded.
@@ -207,7 +223,7 @@ def create_package_from_s3_key(s3_key: str, title: str, description: str = ""):
         The created SCORMPackage instance.
 
     Raises:
-        ValueError: If the ZIP is invalid or contains path traversal.
+        ValueError: If the uploaded object is missing or violates upload limits.
     """
     from wagtail_lms.models import SCORMPackage
 
@@ -215,38 +231,60 @@ def create_package_from_s3_key(s3_key: str, title: str, description: str = ""):
     s3_client = _get_s3_client()
 
     try:
-        # Download ZIP to a temp file for validation
-        with tempfile.NamedTemporaryFile(suffix=".zip", delete=False) as tmp:
-            tmp_path = tmp.name
-            s3_client.download_file(bucket_name, s3_key, tmp_path)
+        head = s3_client.head_object(Bucket=bucket_name, Key=s3_key)
+    except ClientError as exc:
+        error_code = exc.response.get("Error", {}).get("Code")
+        if error_code in {"404", "NoSuchKey", "NotFound"}:
+            raise ValueError("Uploaded file was not found in S3.") from exc
+        raise
 
-        # Validate ZIP format
-        if not zipfile.is_zipfile(tmp_path):
-            raise ValueError("Uploaded file is not a valid ZIP archive.")
+    content_length = head.get("ContentLength", 0)
+    if content_length <= 0:
+        raise ValueError("Uploaded file is empty.")
+    if content_length > MAX_UPLOAD_BYTES:
+        raise ValueError("Uploaded file exceeds the 500 MB size limit.")
 
-        # Pre-check for path traversal (raise ValueError for admin UX;
-        # wagtail-lms also skips unsafe paths but only logs warnings)
-        try:
-            with zipfile.ZipFile(tmp_path, "r") as zf:
-                for member in zf.namelist():
-                    parts = PurePosixPath(member).parts
-                    if ".." in parts or (parts and parts[0].startswith("/")):
-                        raise ValueError(f"ZIP contains unsafe path: {member}")
-        except zipfile.BadZipFile as exc:
-            raise ValueError("Uploaded file is not a valid ZIP archive.") from exc
+    package = SCORMPackage(
+        title=title,
+        description=description,
+        extracted_path=SCORM_EXTRACTION_PENDING_PATH,
+        manifest_data={SCORM_PROCESSING_STATUS_KEY: "queued"},
+    )
+    package.package_file.name = s3_key
 
-        # Create package — save() triggers extract_package() which handles
-        # extraction via default_storage and manifest parsing
-        package = SCORMPackage(
-            title=title,
-            description=description,
+    # wagtail-lms extracts in SCORMPackage.save(); direct-S3 finalization must
+    # only persist the row so the HTTP worker is not tied up unzipping to S3.
+    django_models.Model.save(package, force_insert=True)
+    try:
+        queue_scorm_package_extraction(package.pk)
+    except RuntimeError:
+        package.delete()
+        logger.exception(
+            "Failed to queue SCORM package extraction",
+            extra={"package_id": package.pk, "s3_key": s3_key},
         )
-        package.package_file.name = s3_key
-        package.save()
+        raise
+    except Exception as exc:
+        package.delete()
+        logger.exception(
+            "Failed to queue SCORM package extraction",
+            extra={"package_id": package.pk, "s3_key": s3_key},
+        )
+        raise RuntimeError(SCORM_BACKGROUND_QUEUE_FAILED_MESSAGE) from exc
 
-        logger.info("Created SCORM package %s from S3 key %s", package.id, s3_key)
-        return package
+    logger.info(
+        "Created SCORM package %s from S3 key %s and queued extraction",
+        package.id,
+        s3_key,
+    )
+    return package
 
-    finally:
-        if "tmp_path" in locals() and os.path.exists(tmp_path):
-            os.unlink(tmp_path)
+
+def queue_scorm_package_extraction(package_id: int) -> None:
+    """Queue background SCORM extraction for a package."""
+    from .tasks import extract_scorm_package
+
+    if getattr(settings, "CELERY_TASK_ALWAYS_EAGER", False):
+        raise RuntimeError(SCORM_BACKGROUND_PROCESSING_REQUIRED_MESSAGE)
+
+    extract_scorm_package.apply_async(args=[package_id], retry=False)

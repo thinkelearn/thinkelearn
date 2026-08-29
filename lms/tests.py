@@ -1804,30 +1804,21 @@ class PresignedUploadTest(TestCase):
 
     @override_settings(**S3_TEST_SETTINGS, MEDIA_ROOT="/tmp/test_media")
     @patch("wagtail_lms.models.SCORMPackage.extract_package")
+    @patch("lms.services.queue_scorm_package_extraction")
     @patch("lms.services._get_s3_client")
-    def test_create_package_from_s3_key_with_valid_zip(self, mock_client, mock_extract):
-        """Test creating a package from S3 with a valid SCORM ZIP."""
-        import io
-
-        # Create a real ZIP in memory with a manifest
-        zip_buffer = io.BytesIO()
-        with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
-            manifest = '<?xml version="1.0"?><manifest></manifest>'
-            zf.writestr("imsmanifest.xml", manifest)
-            zf.writestr("index.html", "<html>SCORM content</html>")
-        zip_bytes = zip_buffer.getvalue()
-
+    def test_create_package_from_s3_key_queues_extraction(
+        self, mock_client, mock_queue, mock_extract
+    ):
+        """Direct-S3 finalization should queue extraction instead of doing it inline."""
         mock_s3 = Mock()
         mock_client.return_value = mock_s3
+        mock_s3.head_object.return_value = {"ContentLength": 1024}
 
-        # Mock download_file to write the real ZIP to the temp file
-        def fake_download(bucket, key, path):
-            with open(path, "wb") as f:
-                f.write(zip_bytes)
-
-        mock_s3.download_file.side_effect = fake_download
-
-        from lms.services import create_package_from_s3_key
+        from lms.services import (
+            SCORM_EXTRACTION_PENDING_PATH,
+            SCORM_PROCESSING_STATUS_KEY,
+            create_package_from_s3_key,
+        )
 
         package = None
         try:
@@ -1840,40 +1831,159 @@ class PresignedUploadTest(TestCase):
             self.assertEqual(package.title, "Test Package")
             self.assertEqual(package.description, "A test SCORM package")
             self.assertEqual(package.package_file.name, "scorm_packages/abc_test.zip")
-            mock_extract.assert_called_once()
+            self.assertEqual(package.extracted_path, SCORM_EXTRACTION_PENDING_PATH)
+            self.assertEqual(
+                package.manifest_data[SCORM_PROCESSING_STATUS_KEY], "queued"
+            )
+            mock_s3.download_file.assert_not_called()
+            mock_extract.assert_not_called()
+            mock_queue.assert_called_once_with(package.pk)
         finally:
             if package and package.pk:
                 package.delete()
 
     @override_settings(**S3_TEST_SETTINGS, MEDIA_ROOT="/tmp/test_media")
     @patch("lms.services._get_s3_client")
-    def test_create_package_rejects_path_traversal(self, mock_client):
-        """Test ZIP with path traversal is rejected."""
-        import io
-
-        # Create a ZIP with path traversal attempt
-        zip_buffer = io.BytesIO()
-        with zipfile.ZipFile(zip_buffer, "w") as zf:
-            zf.writestr("../../../etc/passwd", "malicious content")
-        zip_bytes = zip_buffer.getvalue()
+    def test_create_package_rejects_missing_s3_object(self, mock_client):
+        """Missing S3 objects are rejected before creating a package row."""
+        from botocore.exceptions import ClientError
 
         mock_s3 = Mock()
         mock_client.return_value = mock_s3
-
-        def fake_download(bucket, key, path):
-            with open(path, "wb") as f:
-                f.write(zip_bytes)
-
-        mock_s3.download_file.side_effect = fake_download
+        mock_s3.head_object.side_effect = ClientError(
+            {"Error": {"Code": "404", "Message": "Not Found"}},
+            "HeadObject",
+        )
 
         from lms.services import create_package_from_s3_key
 
         with self.assertRaises(ValueError) as cm:
-            create_package_from_s3_key("scorm_packages/evil.zip", "Evil Package")
-        self.assertIn("unsafe path", str(cm.exception))
+            create_package_from_s3_key("scorm_packages/missing.zip", "Missing Package")
+        self.assertIn("not found", str(cm.exception))
 
-        # Package should have been cleaned up
-        self.assertEqual(SCORMPackage.objects.filter(title="Evil Package").count(), 0)
+        self.assertEqual(
+            SCORMPackage.objects.filter(title="Missing Package").count(), 0
+        )
+
+    @override_settings(**S3_TEST_SETTINGS, MEDIA_ROOT="/tmp/test_media")
+    @patch("lms.services.queue_scorm_package_extraction")
+    @patch("lms.services._get_s3_client")
+    def test_create_package_cleans_up_if_queue_publish_fails(
+        self, mock_client, mock_queue
+    ):
+        """A broker failure should not leave a pending package row behind."""
+        mock_s3 = Mock()
+        mock_client.return_value = mock_s3
+        mock_s3.head_object.return_value = {"ContentLength": 1024}
+        mock_queue.side_effect = Exception("broker down")
+
+        from lms.services import create_package_from_s3_key
+
+        with self.assertRaises(RuntimeError) as cm:
+            create_package_from_s3_key("scorm_packages/broker.zip", "Broker Failure")
+
+        self.assertIn("could not be queued", str(cm.exception))
+        self.assertEqual(SCORMPackage.objects.filter(title="Broker Failure").count(), 0)
+
+    @override_settings(CELERY_TASK_ALWAYS_EAGER=True)
+    def test_queue_scorm_package_extraction_rejects_eager_mode(self):
+        """SCORM extraction must not run synchronously in direct-S3 finalization."""
+        from lms.services import queue_scorm_package_extraction
+
+        with self.assertRaises(RuntimeError) as cm:
+            queue_scorm_package_extraction(123)
+        self.assertIn("Celery worker", str(cm.exception))
+
+    @override_settings(CELERY_TASK_ALWAYS_EAGER=False)
+    @patch("lms.tasks.extract_scorm_package.apply_async")
+    def test_queue_scorm_package_extraction_publishes_without_retry(
+        self, mock_apply_async
+    ):
+        """Queue publication should fail fast if the broker is unavailable."""
+        from lms.services import queue_scorm_package_extraction
+
+        queue_scorm_package_extraction(123)
+
+        mock_apply_async.assert_called_once_with(args=[123], retry=False)
+
+    def test_extract_scorm_package_task_streams_zip_and_parses_manifest(self):
+        """Background extraction writes ZIP members and persists manifest metadata."""
+        import io
+
+        from django.core.files.storage import default_storage
+
+        from lms.services import SCORM_EXTRACTION_PENDING_PATH
+        from lms.tasks import extract_scorm_package
+
+        manifest = """<?xml version="1.0"?>
+<manifest xmlns="http://www.imsproject.org/xsd/imscp_rootv1p1p2">
+  <organizations>
+    <organization>
+      <title>Task Package</title>
+    </organization>
+  </organizations>
+  <resources>
+    <resource type="webcontent" href="index.html" />
+  </resources>
+</manifest>
+"""
+        zip_buffer = io.BytesIO()
+        with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+            zf.writestr("imsmanifest.xml", manifest)
+            zf.writestr("index.html", "<html>SCORM content</html>")
+
+        package = SCORMPackage.objects.create(
+            title="Task Package",
+            package_file=SimpleUploadedFile(
+                "task_package.zip",
+                zip_buffer.getvalue(),
+                content_type="application/zip",
+            ),
+            extracted_path=SCORM_EXTRACTION_PENDING_PATH,
+        )
+
+        extract_scorm_package.run(package.pk)
+
+        package.refresh_from_db()
+        self.assertTrue(package.extracted_path.startswith(f"package_{package.pk}_"))
+        self.assertEqual(package.launch_url, "index.html")
+        self.assertEqual(package.manifest_data["launch_url"], "index.html")
+        self.assertTrue(
+            default_storage.exists(f"scorm_content/{package.extracted_path}/index.html")
+        )
+
+    def test_extract_scorm_package_task_rejects_path_traversal(self):
+        """Unsafe ZIP member paths are marked failed by the background task."""
+        import io
+
+        from lms.services import (
+            SCORM_EXTRACTION_FAILED_PATH,
+            SCORM_EXTRACTION_PENDING_PATH,
+            SCORM_PROCESSING_ERROR_KEY,
+            SCORM_PROCESSING_STATUS_KEY,
+        )
+        from lms.tasks import extract_scorm_package
+
+        zip_buffer = io.BytesIO()
+        with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+            zf.writestr("../../../etc/passwd", "malicious content")
+
+        package = SCORMPackage.objects.create(
+            title="Evil Package",
+            package_file=SimpleUploadedFile(
+                "evil.zip",
+                zip_buffer.getvalue(),
+                content_type="application/zip",
+            ),
+            extracted_path=SCORM_EXTRACTION_PENDING_PATH,
+        )
+
+        extract_scorm_package.run(package.pk)
+
+        package.refresh_from_db()
+        self.assertEqual(package.extracted_path, SCORM_EXTRACTION_FAILED_PATH)
+        self.assertEqual(package.manifest_data[SCORM_PROCESSING_STATUS_KEY], "failed")
+        self.assertIn("unsafe path", package.manifest_data[SCORM_PROCESSING_ERROR_KEY])
 
 
 class SCORMPackageAdminTest(TestCase):
@@ -1904,6 +2014,7 @@ class SCORMPackageAdminTest(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertIn("login/", response.url)
 
+    @override_settings(CELERY_TASK_ALWAYS_EAGER=False)
     @patch("lms.scorm_upload.s3_upload_enabled", return_value=True)
     @patch("lms.scorm_upload.generate_presigned_post")
     def test_presigned_endpoint_returns_json_for_staff(
@@ -1939,6 +2050,7 @@ class SCORMPackageAdminTest(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertIn("login/", response.url)
 
+    @override_settings(CELERY_TASK_ALWAYS_EAGER=False)
     @patch("lms.scorm_upload.s3_upload_enabled", return_value=True)
     @patch("lms.scorm_upload.create_package_from_s3_key")
     def test_finalize_endpoint_creates_package(self, mock_create, mock_s3_configured):
@@ -1956,11 +2068,43 @@ class SCORMPackageAdminTest(TestCase):
         self.assertEqual(response.status_code, 200)
         data = response.json()
         self.assertTrue(data["success"])
+        self.assertTrue(data["processing"])
         self.assertIn("redirect_url", data)
         mock_create.assert_called_once_with(
             "scorm_packages/abc.zip", "My Package", "desc"
         )
 
+    @patch("lms.scorm_upload.s3_upload_enabled", return_value=True)
+    def test_finalize_endpoint_reports_unavailable_background_processing(
+        self, mock_s3_configured
+    ):
+        """Queue configuration errors are returned without timing out the worker."""
+        self.client.force_login(self.staff_user)
+        response = self.client.post(
+            reverse("admin:scormpackage_finalize_upload"),
+            data='{"s3_key": "scorm_packages/abc.zip", "title": "My Package"}',
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 503)
+        self.assertIn("background processing", response.json()["error"])
+
+    @patch("lms.scorm_upload.s3_upload_enabled", return_value=True)
+    def test_presigned_endpoint_reports_unavailable_background_processing(
+        self, mock_s3_configured
+    ):
+        """Presign fails before browser upload when no worker is configured."""
+        self.client.force_login(self.staff_user)
+        response = self.client.post(
+            reverse("admin:scormpackage_presigned_upload"),
+            data='{"filename": "test.zip"}',
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 503)
+        self.assertIn("background processing", response.json()["error"])
+
+    @override_settings(CELERY_TASK_ALWAYS_EAGER=False)
     def test_presigned_endpoint_rejects_non_zip(self):
         """Presigned endpoint rejects non-zip filenames."""
         self.client.force_login(self.staff_user)
@@ -1974,7 +2118,10 @@ class SCORMPackageAdminTest(TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn("zip", response.json()["error"].lower())
 
-    @override_settings(WAGTAIL_LMS_SCORM_UPLOAD_PATH="custom-scorm/")
+    @override_settings(
+        CELERY_TASK_ALWAYS_EAGER=False,
+        WAGTAIL_LMS_SCORM_UPLOAD_PATH="custom-scorm/",
+    )
     @patch("lms.scorm_upload.s3_upload_enabled", return_value=True)
     @patch("lms.scorm_upload.create_package_from_s3_key")
     def test_finalize_endpoint_accepts_configured_upload_prefix(
@@ -2023,6 +2170,7 @@ class SCORMPackageWagtailAdminTest(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertIn("login/", response.url)
 
+    @override_settings(CELERY_TASK_ALWAYS_EAGER=False)
     @patch("lms.scorm_upload.s3_upload_enabled", return_value=True)
     @patch("lms.scorm_upload.generate_presigned_post")
     def test_presigned_endpoint_returns_json_for_superuser(
@@ -2058,6 +2206,7 @@ class SCORMPackageWagtailAdminTest(TestCase):
         )
         self.assertContains(response, escapejs(reverse("scormpackage:finalize_upload")))
 
+    @override_settings(CELERY_TASK_ALWAYS_EAGER=False)
     @patch("lms.scorm_upload.s3_upload_enabled", return_value=True)
     @patch("lms.scorm_upload.create_package_from_s3_key")
     def test_finalize_endpoint_returns_wagtail_edit_url(
@@ -2077,6 +2226,7 @@ class SCORMPackageWagtailAdminTest(TestCase):
         self.assertEqual(response.status_code, 200)
         data = response.json()
         self.assertTrue(data["success"])
+        self.assertTrue(data["processing"])
         self.assertEqual(
             data["redirect_url"], reverse("scormpackage:edit", args=[mock_package.pk])
         )

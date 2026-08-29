@@ -11,6 +11,7 @@ from django.http import HttpRequest, JsonResponse
 from wagtail_lms.models import SCORMPackage
 
 from .services import (
+    SCORM_BACKGROUND_PROCESSING_REQUIRED_MESSAGE,
     create_package_from_s3_key,
     generate_presigned_post,
     get_scorm_upload_prefix,
@@ -24,6 +25,11 @@ def s3_upload_enabled() -> bool:
     return bool(getattr(settings, "AWS_STORAGE_BUCKET_NAME", ""))
 
 
+def scorm_background_processing_enabled() -> bool:
+    """Return True when SCORM extraction can be handed to a worker."""
+    return not getattr(settings, "CELERY_TASK_ALWAYS_EAGER", False)
+
+
 def presigned_upload_response(request: HttpRequest) -> JsonResponse:
     """Return presigned POST data for direct-to-S3 upload."""
     if request.method != "POST":
@@ -31,6 +37,10 @@ def presigned_upload_response(request: HttpRequest) -> JsonResponse:
 
     if not s3_upload_enabled():
         return JsonResponse({"error": "S3 storage is not configured"}, status=400)
+    if not scorm_background_processing_enabled():
+        return JsonResponse(
+            {"error": SCORM_BACKGROUND_PROCESSING_REQUIRED_MESSAGE}, status=503
+        )
 
     try:
         body = json.loads(request.body)
@@ -58,12 +68,16 @@ def finalize_upload_response(
     *,
     redirect_url_builder: Callable[[SCORMPackage], str],
 ) -> JsonResponse:
-    """Create SCORMPackage from an uploaded S3 object and return redirect target."""
+    """Create SCORMPackage from an S3 object and queue background extraction."""
     if request.method != "POST":
         return JsonResponse({"error": "POST required"}, status=405)
 
     if not s3_upload_enabled():
         return JsonResponse({"error": "S3 storage is not configured"}, status=400)
+    if not scorm_background_processing_enabled():
+        return JsonResponse(
+            {"error": SCORM_BACKGROUND_PROCESSING_REQUIRED_MESSAGE}, status=503
+        )
 
     try:
         body = json.loads(request.body)
@@ -87,11 +101,19 @@ def finalize_upload_response(
         package = create_package_from_s3_key(s3_key, title, description)
     except ValueError as exc:
         return JsonResponse({"error": str(exc)}, status=400)
+    except RuntimeError as exc:
+        logger.error("SCORM upload could not be queued: %s", exc)
+        return JsonResponse({"error": str(exc)}, status=503)
     except Exception:
         logger.exception("Failed to finalize SCORM upload")
         return JsonResponse({"error": "Failed to process SCORM package"}, status=500)
 
     redirect_url = redirect_url_builder(package)
     return JsonResponse(
-        {"success": True, "redirect_url": redirect_url, "id": package.pk}
+        {
+            "success": True,
+            "processing": True,
+            "redirect_url": redirect_url,
+            "id": package.pk,
+        }
     )
