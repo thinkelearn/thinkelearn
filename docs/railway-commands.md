@@ -192,11 +192,18 @@ railway up
 
 ### Celery Worker Service
 
-Use a separate Railway service for background tasks:
+Use the Railway Infrastructure as Code partial in `.railway/railway.ts` for the
+background worker service:
 
-1. Duplicate the web service in Railway and name it `worker`.
-2. Set the start command to: `celery -A thinkelearn worker -l info`.
-3. Ensure the worker has the same env vars as web, including `REDIS_URL`.
+```bash
+railway upgrade
+railway config plan
+railway config apply
+```
+
+Ensure the worker has access to the same required env vars as web, including
+`DATABASE_URL`, `REDIS_URL`, Django settings/secrets, and the S3 settings used by
+SCORM package extraction.
 
 ### Database Setup
 
