@@ -19,6 +19,10 @@ from .services import (
 
 logger = logging.getLogger(__name__)
 
+SCORM_UPLOAD_QUEUE_UNAVAILABLE_MESSAGE = (
+    "SCORM background processing is unavailable. Please contact an administrator."
+)
+
 
 def s3_upload_enabled() -> bool:
     """Return True when S3-backed storage is configured."""
@@ -103,7 +107,9 @@ def finalize_upload_response(
         return JsonResponse({"error": str(exc)}, status=400)
     except RuntimeError as exc:
         logger.error("SCORM upload could not be queued: %s", exc)
-        return JsonResponse({"error": str(exc)}, status=503)
+        return JsonResponse(
+            {"error": SCORM_UPLOAD_QUEUE_UNAVAILABLE_MESSAGE}, status=503
+        )
     except Exception:
         logger.exception("Failed to finalize SCORM upload")
         return JsonResponse({"error": "Failed to process SCORM package"}, status=500)

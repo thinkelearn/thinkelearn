@@ -173,10 +173,8 @@ def _safe_zip_members(zip_ref: zipfile.ZipFile) -> list[tuple[zipfile.ZipInfo, s
 
 
 def _delete_if_present(path: str) -> None:
-    try:
+    if default_storage.exists(path):
         default_storage.delete(path)
-    except FileNotFoundError:
-        pass
 
 
 def _mark_scorm_extraction_failed(package: SCORMPackage, error: str) -> None:

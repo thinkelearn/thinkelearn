@@ -167,7 +167,9 @@ jobs:
       env:
         SAFETY_API_KEY: ${{ secrets.SAFETY_API_KEY }}
       run: |
-        uv run safety --key "${SAFETY_API_KEY}" scan
+        mkdir -p "${RUNNER_TEMP}/safety-scan"
+        cp pyproject.toml uv.lock requirements.txt "${RUNNER_TEMP}/safety-scan/"
+        uv run safety --key "${SAFETY_API_KEY}" scan --target "${RUNNER_TEMP}/safety-scan"
 
     - name: Run bandit security linter
       run: |

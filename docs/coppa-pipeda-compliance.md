@@ -57,18 +57,18 @@ We don't ask, don't store, and don't need to know users' ages.
 
 INSTALLED_APPS = [
     # ... existing
-    'allauth.socialaccount.providers.google',
-    'allauth.socialaccount.providers.microsoft',  # Add this
+    "allauth.socialaccount.providers.google",
+    "allauth.socialaccount.providers.microsoft",  # Add this
 ]
 
 SOCIALACCOUNT_PROVIDERS = {
-    'google': {
-        'SCOPE': ['profile', 'email'],
-        'AUTH_PARAMS': {'access_type': 'online'},
+    "google": {
+        "SCOPE": ["profile", "email"],
+        "AUTH_PARAMS": {"access_type": "online"},
     },
-    'microsoft': {
-        'SCOPE': ['User.Read'],
-    }
+    "microsoft": {
+        "SCOPE": ["User.Read"],
+    },
 }
 ```
 
@@ -105,15 +105,17 @@ Environment variables:
 from django.conf import settings
 from django.db import models
 
+
 class UserAccount(models.Model):
     """
     Optional profile extension. Named UserAccount to avoid
     Wagtail's UserProfile conflict.
     """
+
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
-        related_name='account_profile'
+        related_name="account_profile",
     )
 
     # Optional deletion tracking for parent requests
@@ -128,6 +130,7 @@ class UserAccount(models.Model):
 
     def mark_for_deletion(self):
         from django.utils import timezone
+
         self.pending_deletion = True
         self.deletion_requested_at = timezone.now()
         self.save()

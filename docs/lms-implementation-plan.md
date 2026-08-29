@@ -260,10 +260,7 @@ def create_checkout_session(request):
 course = product.course
 if not course.can_user_enroll(request.user):
     # Returns detailed error (already enrolled, prerequisites, limits)
-    return JsonResponse(
-        {"error": "Not eligible to enroll"},
-        status=403
-    )
+    return JsonResponse({"error": "Not eligible to enroll"}, status=403)
 ```
 
 ### 4. Input Validation
@@ -839,11 +836,11 @@ lms/tests/
 # Use unittest.mock for Stripe API calls
 from unittest.mock import patch, MagicMock
 
-@patch('payments.stripe_client.stripe.checkout.Session.create')
+
+@patch("payments.stripe_client.stripe.checkout.Session.create")
 def test_create_checkout_session_success(mock_create):
     mock_create.return_value = MagicMock(
-        id='cs_test_123',
-        url='https://checkout.stripe.com/test'
+        id="cs_test_123", url="https://checkout.stripe.com/test"
     )
     # Test logic
 ```
@@ -859,11 +856,9 @@ CHECKOUT_SESSION_COMPLETED = {
         "object": {
             "id": "cs_test_123",
             "payment_status": "paid",
-            "metadata": {
-                "enrollment_record_id": "1"
-            }
+            "metadata": {"enrollment_record_id": "1"},
         }
-    }
+    },
 }
 ```
 
