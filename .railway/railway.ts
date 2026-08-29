@@ -12,7 +12,7 @@ export default defineRailway(() => {
       runtime: "V2",
       numReplicas: 1,
       startCommand:
-        "DJANGO_SETTINGS_MODULE=thinkelearn.settings.production celery -A thinkelearn worker --loglevel=info",
+        "DJANGO_SETTINGS_MODULE=thinkelearn.settings.production celery -A thinkelearn worker --loglevel=info --concurrency=2 --prefetch-multiplier=1",
       restartPolicyType: "ON_FAILURE",
       restartPolicyMaxRetries: 10,
     },
