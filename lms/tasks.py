@@ -10,7 +10,7 @@ from celery import shared_task
 from django.core.files import File
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
-from django.db import models as django_models
+from django.utils import timezone
 from wagtail_lms import conf
 from wagtail_lms.models import SCORMPackage
 
@@ -36,8 +36,8 @@ def extract_scorm_package(self, package_id: int) -> None:
         package = SCORMPackage.objects.get(pk=package_id)
     except SCORMPackage.DoesNotExist:
         logger.warning(
-            "SCORM package missing during extraction",
-            extra={"package_id": package_id},
+            "SCORM package %s missing during extraction",
+            package_id,
         )
         return
 
@@ -46,49 +46,43 @@ def extract_scorm_package(self, package_id: int) -> None:
         and package.extracted_path not in _SCORM_EXTRACTION_SENTINELS
     ):
         logger.info(
-            "SCORM package already extracted",
-            extra={"package_id": package_id, "extracted_path": package.extracted_path},
+            "SCORM package %s already extracted at %s",
+            package_id,
+            package.extracted_path,
         )
         return
 
     try:
-        _extract_scorm_package(
-            package,
-            overwrite_existing=bool(getattr(self.request, "retries", 0)),
-        )
+        _extract_scorm_package(package)
     except ValueError as exc:
         _mark_scorm_extraction_failed(package, str(exc))
         logger.warning(
-            "SCORM package extraction rejected",
-            extra={"package_id": package_id, "error": str(exc)},
+            "SCORM package %s extraction rejected: %s",
+            package_id,
+            exc,
         )
     except Exception as exc:
         retries = getattr(self.request, "retries", 0)
         if retries >= self.max_retries:
             _mark_scorm_extraction_failed(package, str(exc))
             logger.exception(
-                "SCORM package extraction failed permanently",
-                extra={"package_id": package_id},
+                "SCORM package %s extraction failed permanently",
+                package_id,
             )
             return
 
         countdown = min(300, 2 ** (retries + 1))
         logger.exception(
-            "SCORM package extraction failed; retrying",
-            extra={
-                "package_id": package_id,
-                "retry": retries + 1,
-                "countdown": countdown,
-            },
+            "SCORM package %s extraction failed; retrying in %s seconds (attempt %s/%s)",
+            package_id,
+            countdown,
+            retries + 1,
+            self.max_retries,
         )
         raise self.retry(exc=exc, countdown=countdown) from exc
 
 
-def _extract_scorm_package(
-    package: SCORMPackage,
-    *,
-    overwrite_existing: bool = False,
-) -> None:
+def _extract_scorm_package(package: SCORMPackage) -> None:
     """Stream a SCORM ZIP into configured storage and parse its manifest."""
     if not package.package_file:
         raise ValueError("SCORM package has no package file.")
@@ -96,7 +90,16 @@ def _extract_scorm_package(
     package_name = os.path.splitext(os.path.basename(package.package_file.name))[0]
     unique_dir = f"package_{package.id}_{package_name}"
     content_path = conf.WAGTAIL_LMS_SCORM_CONTENT_PATH.rstrip("/")
+    extraction_root = posixpath.join(content_path, unique_dir)
     manifest_content: bytes | None = None
+
+    logger.info(
+        "Starting SCORM package %s extraction from %s into %s",
+        package.pk,
+        package.package_file.name,
+        extraction_root,
+    )
+    _delete_storage_tree(extraction_root)
 
     try:
         with package.package_file.open("rb") as package_fh:
@@ -105,12 +108,9 @@ def _extract_scorm_package(
 
                 for member, normalized_name in members:
                     storage_path = posixpath.join(
-                        content_path,
-                        unique_dir,
+                        extraction_root,
                         normalized_name,
                     )
-                    if overwrite_existing:
-                        _delete_if_present(storage_path)
 
                     with zip_ref.open(member, "r") as member_fh:
                         if normalized_name == "imsmanifest.xml":
@@ -138,16 +138,21 @@ def _extract_scorm_package(
             "warning": "imsmanifest.xml was not found in the SCORM package.",
         }
 
-    django_models.Model.save(
-        package,
-        update_fields=[
-            "extracted_path",
-            "launch_url",
-            "manifest_data",
-            "title",
-            "version",
-            "updated_at",
-        ],
+    if not _save_extracted_package_metadata(package):
+        _delete_storage_tree(extraction_root)
+        logger.warning(
+            "SCORM package %s disappeared before extraction metadata could be saved; "
+            "removed extracted files from %s",
+            package.pk,
+            extraction_root,
+        )
+        return
+
+    logger.info(
+        "SCORM package %s extracted to %s with %s files",
+        package.pk,
+        unique_dir,
+        len(members),
     )
 
 
@@ -177,6 +182,33 @@ def _delete_if_present(path: str) -> None:
         default_storage.delete(path)
 
 
+def _delete_storage_tree(path: str) -> None:
+    try:
+        dirs, files = default_storage.listdir(path)
+    except FileNotFoundError:
+        return
+    except NotADirectoryError:
+        _delete_if_present(path)
+        return
+
+    for filename in files:
+        _delete_if_present(posixpath.join(path, filename))
+    for dirname in dirs:
+        _delete_storage_tree(posixpath.join(path, dirname))
+
+
+def _save_extracted_package_metadata(package: SCORMPackage) -> bool:
+    updated = SCORMPackage.objects.filter(pk=package.pk).update(
+        extracted_path=package.extracted_path,
+        launch_url=package.launch_url,
+        manifest_data=package.manifest_data,
+        title=package.title,
+        version=package.version,
+        updated_at=timezone.now(),
+    )
+    return updated > 0
+
+
 def _mark_scorm_extraction_failed(package: SCORMPackage, error: str) -> None:
     package.extracted_path = SCORM_EXTRACTION_FAILED_PATH
     package.launch_url = ""
@@ -184,7 +216,14 @@ def _mark_scorm_extraction_failed(package: SCORMPackage, error: str) -> None:
         SCORM_PROCESSING_STATUS_KEY: "failed",
         SCORM_PROCESSING_ERROR_KEY: error[:1000],
     }
-    django_models.Model.save(
-        package,
-        update_fields=["extracted_path", "launch_url", "manifest_data", "updated_at"],
+    updated = SCORMPackage.objects.filter(pk=package.pk).update(
+        extracted_path=package.extracted_path,
+        launch_url=package.launch_url,
+        manifest_data=package.manifest_data,
+        updated_at=timezone.now(),
     )
+    if not updated:
+        logger.warning(
+            "SCORM package %s missing while recording extraction failure",
+            package.pk,
+        )

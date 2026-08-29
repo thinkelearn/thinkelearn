@@ -9,6 +9,7 @@ from unittest.mock import Mock, patch
 from django.contrib.auth.models import User
 from django.core import mail
 from django.core.exceptions import ValidationError
+from django.core.files.base import ContentFile
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.management import call_command
 from django.db import IntegrityError
@@ -1951,6 +1952,107 @@ class PresignedUploadTest(TestCase):
         self.assertTrue(
             default_storage.exists(f"scorm_content/{package.extracted_path}/index.html")
         )
+
+    def test_extract_scorm_package_task_replaces_stale_partial_content(self):
+        """Pending package retries clear partial extracted files before writing."""
+        import io
+
+        from django.core.files.storage import default_storage
+
+        from lms.services import SCORM_EXTRACTION_PENDING_PATH
+        from lms.tasks import _delete_storage_tree, extract_scorm_package
+
+        manifest = """<?xml version="1.0"?>
+<manifest xmlns="http://www.imsproject.org/xsd/imscp_rootv1p1p2">
+  <organizations>
+    <organization>
+      <title>Retry Package</title>
+    </organization>
+  </organizations>
+  <resources>
+    <resource type="webcontent" href="index.html" />
+  </resources>
+</manifest>
+"""
+        zip_buffer = io.BytesIO()
+        with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+            zf.writestr("imsmanifest.xml", manifest)
+            zf.writestr("index.html", "<html>Fresh SCORM content</html>")
+
+        package = SCORMPackage.objects.create(
+            title="Retry Package",
+            package_file=SimpleUploadedFile(
+                "retry_package.zip",
+                zip_buffer.getvalue(),
+                content_type="application/zip",
+            ),
+            extracted_path=SCORM_EXTRACTION_PENDING_PATH,
+        )
+        package_stem = package.package_file.name.rsplit("/", 1)[-1].rsplit(".", 1)[0]
+        expected_dir = f"package_{package.pk}_{package_stem}"
+        expected_root = f"scorm_content/{expected_dir}"
+        index_path = f"{expected_root}/index.html"
+        _delete_storage_tree(expected_root)
+        default_storage.save(index_path, ContentFile(b"stale content"))
+
+        extract_scorm_package.run(package.pk)
+
+        package.refresh_from_db()
+        self.assertEqual(package.extracted_path, expected_dir)
+        with default_storage.open(index_path, "rb") as stored_index:
+            self.assertEqual(stored_index.read(), b"<html>Fresh SCORM content</html>")
+
+    def test_extract_scorm_package_task_cleans_up_if_metadata_row_disappears(self):
+        """A deleted package row is not retryable after extraction has completed."""
+        import io
+
+        from django.core.files.storage import default_storage
+
+        from lms.services import SCORM_EXTRACTION_PENDING_PATH
+        from lms.tasks import _delete_storage_tree, extract_scorm_package
+
+        manifest = """<?xml version="1.0"?>
+<manifest xmlns="http://www.imsproject.org/xsd/imscp_rootv1p1p2">
+  <organizations>
+    <organization>
+      <title>Vanishing Package</title>
+    </organization>
+  </organizations>
+  <resources>
+    <resource type="webcontent" href="index.html" />
+  </resources>
+</manifest>
+"""
+        zip_buffer = io.BytesIO()
+        with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+            zf.writestr("imsmanifest.xml", manifest)
+            zf.writestr("index.html", "<html>Vanishing SCORM content</html>")
+
+        package = SCORMPackage.objects.create(
+            title="Vanishing Package",
+            package_file=SimpleUploadedFile(
+                "vanishing_package.zip",
+                zip_buffer.getvalue(),
+                content_type="application/zip",
+            ),
+            extracted_path=SCORM_EXTRACTION_PENDING_PATH,
+        )
+        package_stem = package.package_file.name.rsplit("/", 1)[-1].rsplit(".", 1)[0]
+        expected_root = f"scorm_content/package_{package.pk}_{package_stem}"
+        _delete_storage_tree(expected_root)
+
+        with patch(
+            "lms.tasks._save_extracted_package_metadata",
+            return_value=False,
+        ):
+            with self.assertLogs("lms.tasks", level="WARNING") as captured_logs:
+                extract_scorm_package.run(package.pk)
+
+        self.assertIn(
+            "disappeared before extraction metadata could be saved",
+            "\n".join(captured_logs.output),
+        )
+        self.assertFalse(default_storage.exists(f"{expected_root}/index.html"))
 
     def test_extract_scorm_package_task_rejects_path_traversal(self):
         """Unsafe ZIP member paths are marked failed by the background task."""
