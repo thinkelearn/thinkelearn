@@ -91,11 +91,11 @@ thinkelearn/
 ### Production (`thinkelearn/settings/production.py`)
 
 ```python
-AWS_S3_CUSTOM_DOMAIN = None      # Required — presigned URLs need the S3 domain
-AWS_QUERYSTRING_AUTH = True      # Generate presigned URLs (not public URLs)
-AWS_QUERYSTRING_EXPIRE = 3600    # 1-hour URL lifetime
-AWS_DEFAULT_ACL = None           # No public ACLs
-AWS_S3_FILE_OVERWRITE = False    # Prevent accidental overwrites
+AWS_S3_CUSTOM_DOMAIN = None  # Required — presigned URLs need the S3 domain
+AWS_QUERYSTRING_AUTH = True  # Generate presigned URLs (not public URLs)
+AWS_QUERYSTRING_EXPIRE = 3600  # 1-hour URL lifetime
+AWS_DEFAULT_ACL = None  # No public ACLs
+AWS_S3_FILE_OVERWRITE = False  # Prevent accidental overwrites
 ```
 
 ### Railway Environment Variables

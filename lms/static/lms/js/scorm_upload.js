@@ -215,7 +215,9 @@
                     return;
                 }
 
-                statusText.textContent = "Done! Redirecting...";
+                statusText.textContent = data.processing
+                    ? "Queued for processing. Redirecting..."
+                    : "Done! Redirecting...";
                 // Suppress the Wagtail "unsaved changes" dialog before navigating away.
                 // w-unsaved dispatches a cancelable "w-unsaved:confirm" event before
                 // showing the browser dialog; preventDefault() skips it entirely.
