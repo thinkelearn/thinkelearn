@@ -2625,7 +2625,7 @@ requires-dist = [
     { name = "types-requests", marker = "extra == 'dev'", specifier = ">=2.32.0.20241211" },
     { name = "wagtail", specifier = ">=7.3" },
     { name = "wagtail-factories", marker = "extra == 'test'", specifier = ">=4.2.1" },
-    { name = "wagtail-lms", specifier = ">=0.11.0" },
+    { name = "wagtail-lms", specifier = ">=0.11.1" },
     { name = "whitenoise", specifier = ">=6.9.0" },
 ]
 provides-extras = ["dev", "test", "security"]
@@ -2839,15 +2839,15 @@ wheels = [
 
 [[package]]
 name = "wagtail-lms"
-version = "0.11.0"
+version = "0.11.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "django" },
     { name = "wagtail" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/fb/ff/06879ce33e2bf5ea6bcb96a60cf4c42076c3954539111e6d0daca6f01d38/wagtail_lms-0.11.0.tar.gz", hash = "sha256:1b2581b4892423c0173507dbee9014b4dc09659552bde3203aed215eb84f19e7", size = 621099 }
+sdist = { url = "https://files.pythonhosted.org/packages/8a/fc/9116c75719e7c4db9554f42bbd8dcae1ef50eeb4fdfd57e7e3e81e77306b/wagtail_lms-0.11.1.tar.gz", hash = "sha256:b1cb9b5e92451a65eda551efa3bb493b0ecabf1a08dd11f066bbb1eef07d9dcb", size = 622082 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/58/e4/378389a5f618819877431ef498816fedb32c9a22e695eede276ada9041f3/wagtail_lms-0.11.0-py3-none-any.whl", hash = "sha256:3979fa2bef632a872699525845fce35b68a073924194bd0bafcbec435e2c8c70", size = 659200 },
+    { url = "https://files.pythonhosted.org/packages/81/e1/48239d94ee436f85ad09129d851512265652fcea692a4764c7ec2cc04e19/wagtail_lms-0.11.1-py3-none-any.whl", hash = "sha256:8cee7f8c5f3677dde0554f30ceb6b18f4a3b0b27a0e1a66ceb60e0e0034f33e4", size = 659335 },
 ]
 
 [[package]]
