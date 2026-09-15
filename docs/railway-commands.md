@@ -209,6 +209,39 @@ Ensure the worker has access to the same required env vars as web, including
 `DATABASE_URL`, `REDIS_URL`, Django settings/secrets, and the S3 settings used by
 SCORM package extraction.
 
+#### Keep worker memory costs bounded
+
+Both `.railway/railway.ts` and `worker.railway.json` use this start command:
+
+```bash
+DJANGO_SETTINGS_MODULE=thinkelearn.settings.production celery -A thinkelearn worker --loglevel=info --concurrency=1 --prefetch-multiplier=1 --max-tasks-per-child=1
+```
+
+Keep one replica. Celery otherwise defaults to the detected CPU count, which
+can create dozens of idle Django processes. The application settings also
+default to one child, prefetch of one, and recycling after every task. Prefork
+is retained so recycling works. Tasks run one at a time; a long extraction
+can delay payment/email tasks on the shared queue.
+
+For an immediate production fix, update the worker's effective Railway start
+command to the command above and redeploy that service. Confirm that the startup
+log reports `concurrency: 1 (prefork)`. If using config-as-code, deploy the updated
+configuration; make sure the worker uses the intended config file and is not
+starting from an older command. No new environment variables or migrations are
+required. Deploying the application changes also limits S3 archive buffering to
+8 MiB before spilling to temporary disk; allow disk space for the full archive.
+
+Use **View Cost by Service** and the worker's **Metrics** tab to compare memory
+before and after deployment, including after a representative extraction.
+Check Redis and web separately if project RAM remains high. At Railway's current
+RAM rate, every continuously used GB costs approximately $10 per month. Savings
+apply to future usage; already accrued costs remain and the month's projection
+will still include earlier high usage.
+
+Do not remove Redis or enable eager execution to save worker costs: eager mode
+would put large extractions back into the web request. Choose any service memory
+limit only after measuring extraction peaks, since exceeding it can kill a task.
+
 ### Database Setup
 
 ```bash

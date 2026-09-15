@@ -157,6 +157,9 @@ if os.environ.get("AWS_STORAGE_BUCKET_NAME"):
     AWS_QUERYSTRING_EXPIRE = 3600  # URLs valid for 1 hour (adjust as needed)
     AWS_DEFAULT_ACL = None  # Don't set ACLs on objects
     AWS_S3_FILE_OVERWRITE = False
+    # Spill downloaded archives to temporary disk above 8 MiB instead of
+    # keeping the entire ZIP in memory (django-storages defaults to no limit).
+    AWS_S3_MAX_MEMORY_SIZE = 8 * 1024 * 1024
     AWS_S3_OBJECT_PARAMETERS = {
         "CacheControl": "max-age=86400",
     }

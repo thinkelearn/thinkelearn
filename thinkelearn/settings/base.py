@@ -200,6 +200,11 @@ CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+# Keep idle memory bounded even when the start command omits worker options.
+CELERY_WORKER_CONCURRENCY = 1
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1
+# Release memory retained by large extractions once a task finishes.
+CELERY_WORKER_MAX_TASKS_PER_CHILD = 1
 
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
