@@ -39,7 +39,7 @@ test = [
     "wagtail-factories>=4.2.1",
 ]
 security = [
-    "safety>=3.3.1",
+    "pip-audit>=2.10.0",
     "bandit[toml]>=1.8.0",
 ]
 

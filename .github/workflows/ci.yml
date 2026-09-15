@@ -159,21 +159,20 @@ jobs:
         key: ${{ runner.os }}-uv-${{ hashFiles('**/pyproject.toml') }}
 
     - name: Install dependencies
+      id: security-deps
       run: |
         uv venv
-        uv pip install -e .[security]
+        uv sync --locked --extra security
 
-    - name: Run safety scan
-      env:
-        SAFETY_API_KEY: ${{ secrets.SAFETY_API_KEY }}
+    - name: Audit locked dependencies
       run: |
-        mkdir -p "${RUNNER_TEMP}/safety-scan"
-        cp pyproject.toml uv.lock requirements.txt "${RUNNER_TEMP}/safety-scan/"
-        uv run safety --key "${SAFETY_API_KEY}" scan --target "${RUNNER_TEMP}/safety-scan"
+        uv export --locked --all-extras --no-hashes --no-emit-project -o "${RUNNER_TEMP}/audit-requirements.txt"
+        uv run --no-sync pip-audit --strict --no-deps --disable-pip -r "${RUNNER_TEMP}/audit-requirements.txt"
 
     - name: Run bandit security linter
+      if: ${{ !cancelled() && steps.security-deps.outcome == 'success' }}
       run: |
-        uv run bandit -c pyproject.toml -r . -f json
+        uv run --no-sync bandit -c pyproject.toml -r . -f json
 
   build-test:
     runs-on: ubuntu-latest

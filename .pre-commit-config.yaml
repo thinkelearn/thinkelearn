@@ -41,9 +41,9 @@ repos:
 
   - repo: local
     hooks:
-      - id: safety
-        name: safety
-        entry: uv run safety check --output=text
-        language: python
-        types: [python]
+      - id: pip-audit
+        name: pip-audit
+        entry: uv run --locked --extra security pip-audit --strict --no-deps --disable-pip -r requirements.txt
+        language: system
+        pass_filenames: false
         files: ^requirements.txt$

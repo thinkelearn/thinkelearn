@@ -54,8 +54,9 @@ cd thinkelearn
 # Install dependencies
 uv sync
 
-# Note: requirements.txt is generated via `uv export --all-extras --no-hashes`
-# and should not be edited by hand.
+# Production requirements (do not edit by hand):
+# uv export --locked --no-dev --no-hashes --no-emit-project -o requirements.txt
+# CI audits all extras as well, including development and security tools.
 npm install
 
 # Setup database
