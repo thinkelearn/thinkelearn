@@ -1,0 +1,105 @@
+{% load wagtailcore_tags %}
+
+{# Sidebar #}
+<div class="lg:col-span-1">
+    <div class="space-y-6 sticky top-28">
+        {# Checkout Component #}
+        {% if user.is_authenticated and not enrollment and can_enroll %}
+            {% include "lms/includes/checkout_enroll.html" %}
+        {% elif not user.is_authenticated %}
+            {# Sign in prompt for unauthenticated users #}
+            <div class="bg-white border border-neutral-200 rounded-lg shadow-sm">
+                <div class="bg-gradient-to-r from-primary-800 to-primary-700 text-white px-4 py-3 rounded-t-lg">
+                    <p class="text-xs uppercase tracking-wide text-primary-200">Enrollment</p>
+                    <p class="text-xl font-bold">Sign In Required</p>
+                </div>
+                <div class="px-4 py-4">
+                    <p class="text-sm text-neutral-600 mb-4">Please sign in to enroll in this course and track your progress.</p>
+                    {% with page.url as next_url %}
+                    <div class="space-y-2">
+                        <a href="{% url 'account_login' %}?next={{ next_url|urlencode }}"
+                           class="w-full inline-flex items-center justify-center px-4 py-2.5 rounded-md text-white bg-cyan-600 hover:bg-cyan-700 font-semibold text-sm shadow-sm transition-colors">
+                            Sign In
+                        </a>
+                        {% if ACCOUNT_ALLOW_REGISTRATION %}
+                        <a href="{% url 'account_signup' %}?next={{ next_url|urlencode }}"
+                           class="w-full inline-flex items-center justify-center px-4 py-2.5 rounded-md text-cyan-600 bg-white border-2 border-cyan-600 hover:bg-cyan-50 font-semibold text-sm transition-colors">
+                            Sign Up
+                        </a>
+                        {% endif %}
+                    </div>
+                    {% endwith %}
+                </div>
+            </div>
+        {% elif enrollment %}
+            {# Already enrolled #}
+            <div class="bg-white border border-neutral-200 rounded-lg shadow-sm">
+                <div class="bg-gradient-to-r from-green-600 to-green-500 text-white px-4 py-3 rounded-t-lg">
+                    <p class="text-xs uppercase tracking-wide text-green-100">Status</p>
+                    <p class="text-xl font-bold">Enrolled</p>
+                </div>
+                <div class="px-4 py-4 space-y-2">
+                    <p class="text-xs text-neutral-500">Enrolled: {{ enrollment.enrolled_at|date:"M d, Y" }}</p>
+                    {% with h5p_done=completed_lesson_ids|length scorm_done=completed_scorm_lesson_ids|length h5p_total=lesson_pages|length scorm_total=scorm_lesson_pages|length %}
+                        <p class="text-xs text-neutral-500">
+                            Lessons completed: <span class="font-semibold text-neutral-700">{{ h5p_done|add:scorm_done }} / {{ h5p_total|add:scorm_total }}</span>
+                        </p>
+                    {% endwith %}
+                    {% with h5p_done=completed_lesson_ids|length scorm_done=completed_scorm_lesson_ids|length h5p_total=lesson_pages|length scorm_total=scorm_lesson_pages|length %}
+                    {% with total_lessons=h5p_total|add:scorm_total done_lessons=h5p_done|add:scorm_done %}
+                    <a href="{{ next_lesson_url|default:page.url }}"
+                       class="w-full inline-flex items-center justify-center px-4 py-2.5 rounded-md text-white bg-secondary-500 hover:bg-secondary-600 font-semibold text-sm shadow-sm transition-colors">
+                        {% if not total_lessons %}View Course
+                        {% elif done_lessons == 0 %}Start Learning
+                        {% elif done_lessons == total_lessons %}Review Lessons
+                        {% else %}Continue Learning
+                        {% endif %}
+                    </a>
+                    {% if next_lesson %}
+                        <p class="text-xs text-neutral-500 text-center truncate">{{ next_lesson.page.title }}</p>
+                    {% endif %}
+                    {% endwith %}
+                    {% endwith %}
+                </div>
+            </div>
+        {% endif %}
+
+        {# Course Details (Metadata) #}
+        <div class="bg-white rounded-lg shadow-sm border border-neutral-200 p-4 space-y-4">
+            <h3 class="text-sm font-bold text-primary-800 uppercase tracking-wide">Course Details</h3>
+
+            <div>
+                <dt class="text-xs font-medium text-neutral-500 mb-1">Lessons</dt>
+                <dd class="text-sm text-neutral-900">{{ all_lessons|length }}</dd>
+            </div>
+
+            {% if page.tags.all %}
+                <div>
+                    <dt class="text-xs font-medium text-neutral-500 mb-1.5">Tags</dt>
+                    <dd class="flex flex-wrap gap-1.5">
+                        {% for tag in page.tags.all %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-neutral-100 text-neutral-700">
+                                {{ tag.name }}
+                            </span>
+                        {% endfor %}
+                    </dd>
+                </div>
+            {% endif %}
+
+            {# Related Courses #}
+            {% if related_courses %}
+                <div class="pt-4 border-t border-neutral-200">
+                    <h4 class="text-xs font-semibold text-neutral-800 mb-2 uppercase tracking-wide">Related Courses</h4>
+                    <div class="space-y-2">
+                        {% for related in related_courses %}
+                            <a href="{% pageurl related %}" class="block group">
+                                <h5 class="text-sm font-medium text-secondary-600 group-hover:text-secondary-700">{{ related.title }}</h5>
+                                <p class="text-xs text-neutral-500 mt-0.5">{{ related.difficulty|title }}</p>
+                            </a>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>

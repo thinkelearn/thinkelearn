@@ -1,0 +1,7 @@
+{% with page.url|add:'#course-feedback' as next_url %}
+    <div class="rounded-md bg-cyan-50 text-cyan-800 border border-cyan-200 px-4 py-3 text-sm">
+        Please
+        <a href="{% url 'account_login' %}?next={{ next_url|urlencode }}" class="font-semibold underline">sign in</a>
+        to share your feedback.
+    </div>
+{% endwith %}

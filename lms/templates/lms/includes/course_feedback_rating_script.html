@@ -1,0 +1,100 @@
+<script>
+(function() {
+    const container = document.getElementById('star-rating');
+    if (!container) return;
+
+    const form = container.closest('form');
+    const input = document.getElementById('{{ course_feedback_form.rating.id_for_label }}');
+    const buttons = Array.from(container.querySelectorAll('.star-btn'));
+    const label = document.getElementById('star-rating-label');
+    const labels = ['', 'Needs improvement', 'Fair', 'Good', 'Very good', 'Excellent'];
+    const promptText = 'Select a rating';
+
+    function setFocus(index) {
+        buttons.forEach(function(btn, i) {
+            btn.setAttribute('tabindex', i === index ? '0' : '-1');
+        });
+        buttons[index].focus();
+    }
+
+    function select(value) {
+        current = value;
+        input.value = current;
+        label.classList.remove('text-red-500');
+        label.classList.add('text-neutral-500');
+        update(current, false);
+    }
+
+    function update(value, hover) {
+        buttons.forEach(function(btn) {
+            const v = parseInt(btn.dataset.value);
+            const svg = btn.querySelector('svg');
+            const active = v <= value;
+            svg.classList.toggle('text-yellow-400', active);
+            svg.classList.toggle('text-neutral-300', !active);
+            if (!hover) {
+                btn.setAttribute('aria-checked', v === current ? 'true' : 'false');
+                btn.setAttribute('tabindex', v === (current || 1) ? '0' : '-1');
+            }
+        });
+        if (hover || value > 0) {
+            label.classList.remove('text-red-500');
+            label.classList.add('text-neutral-500');
+        }
+        label.textContent = value > 0 ? labels[value] : promptText;
+    }
+
+    // Initialize from existing value
+    var current = parseInt(input.value) || 0;
+    update(current, false);
+
+    buttons.forEach(function(btn, i) {
+        btn.addEventListener('click', function() {
+            select(parseInt(this.dataset.value));
+        });
+        btn.addEventListener('mouseenter', function() {
+            update(parseInt(this.dataset.value), true);
+        });
+        btn.addEventListener('mouseleave', function() {
+            update(current, false);
+        });
+        btn.addEventListener('keydown', function(e) {
+            var index = i;
+            if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+                e.preventDefault();
+                index = (i + 1) % buttons.length;
+                setFocus(index);
+            } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+                e.preventDefault();
+                index = (i - 1 + buttons.length) % buttons.length;
+                setFocus(index);
+            } else if (e.key === 'Home') {
+                e.preventDefault();
+                setFocus(0);
+            } else if (e.key === 'End') {
+                e.preventDefault();
+                setFocus(buttons.length - 1);
+            } else if (e.key === ' ' || e.key === 'Enter') {
+                e.preventDefault();
+                select(parseInt(this.dataset.value));
+            }
+        });
+        btn.addEventListener('focus', function() {
+            update(parseInt(this.dataset.value), true);
+        });
+        btn.addEventListener('blur', function() {
+            update(current, false);
+        });
+    });
+
+    // Prevent submit without a rating
+    form.addEventListener('submit', function(e) {
+        if (!input.value) {
+            e.preventDefault();
+            label.textContent = 'Please select a rating';
+            label.classList.remove('text-neutral-500');
+            label.classList.add('text-red-500');
+        }
+    });
+})();
+</script>
