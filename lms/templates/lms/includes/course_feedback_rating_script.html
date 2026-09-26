@@ -59,15 +59,12 @@
             update(current, false);
         });
         btn.addEventListener('keydown', function(e) {
-            var index = i;
             if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
                 e.preventDefault();
-                index = (i + 1) % buttons.length;
-                setFocus(index);
+                setFocus((i + 1) % buttons.length);
             } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
                 e.preventDefault();
-                index = (i - 1 + buttons.length) % buttons.length;
-                setFocus(index);
+                setFocus((i - 1 + buttons.length) % buttons.length);
             } else if (e.key === 'Home') {
                 e.preventDefault();
                 setFocus(0);
