@@ -291,6 +291,57 @@ class ExtendedCoursePageTest(TestCase):
         self.assertContains(response, "4 out of 5")
         self.assertContains(response, "Solid course with clear examples.")
 
+    def test_anonymous_course_page_renders_shared_components(self):
+        """Anonymous course rendering uses the extracted shared components."""
+        response = self.client.get(self.course.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "lms/extended_course_page.html")
+        self.assertTemplateUsed(response, "lms/includes/course_demo_banner.html")
+        self.assertTemplateUsed(response, "lms/includes/course_feedback.html")
+        self.assertTemplateUsed(response, "lms/includes/course_feedback_sign_in.html")
+        self.assertTemplateUsed(response, "lms/includes/course_sidebar.html")
+        self.assertTemplateUsed(
+            response, "lms/includes/course_feedback_rating_script.html"
+        )
+        self.assertContains(response, "Sign In Required")
+        self.assertContains(response, "to share your feedback")
+        self.assertContains(response, "Course Details")
+
+    def test_enrolled_course_page_preserves_feedback_and_status_controls(self):
+        """Enrolled rendering retains feedback form and enrollment status controls."""
+        CourseEnrollment.objects.create(user=self.user, course=self.course)
+        self.client.force_login(self.user)
+
+        response = self.client.get(self.course.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "lms/includes/course_feedback.html")
+        self.assertTemplateUsed(response, "lms/includes/course_sidebar.html")
+        self.assertContains(response, "Course rating")
+        self.assertContains(response, "Submit Feedback")
+        self.assertContains(response, "Status")
+        self.assertContains(response, "Enrolled")
+        self.assertNotContains(response, "Sign In Required")
+
+    def test_admin_course_page_preserves_non_enrolled_feedback_state(self):
+        """Administrators retain the full course view without learner enrollment."""
+        admin = User.objects.create_superuser(
+            username="course-admin",
+            email="admin@example.com",
+            password="testpass123",
+        )
+        self.client.force_login(admin)
+
+        response = self.client.get(self.course.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "lms/includes/course_feedback.html")
+        self.assertContains(
+            response, "You can leave feedback after enrolling in this course."
+        )
+        self.assertNotContains(response, "to share your feedback")
+
     @override_settings(ACCOUNT_ALLOW_REGISTRATION=True)
     def test_login_cta_next_points_to_course_page(self):
         """Ensure login CTA redirects back to the course page for paid courses."""
