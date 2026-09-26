@@ -1,6 +1,6 @@
-<div id="course-feedback" class="bg-white rounded-lg shadow-md p-8">
-    <h2 class="text-2xl font-bold text-primary-800 mb-2">Course Feedback</h2>
-    <p class="text-neutral-600 mb-6">
+<div id="course-feedback" class="bg-white {% if child_theme %}rounded-3xl p-6 shadow-[0_0_0_1px_rgba(5,91,130,0.06),0_12px_35px_-18px_rgba(5,91,130,0.28)] sm:p-8{% else %}rounded-lg shadow-md p-8{% endif %}">
+    <h2 class="{% if child_theme %}text-balance font-heading text-3xl text-blue-900{% else %}text-2xl text-primary-800{% endif %} font-bold mb-2">Course Feedback</h2>
+    <p class="{% if child_theme %}text-pretty text-blue-900/70{% else %}text-neutral-600{% endif %} mb-6">
         We'd love to hear from you! Share your experience.
     </p>
 
@@ -95,7 +95,7 @@
                     Feedback is moderated before it appears publicly.
                 </p>
                 <button type="submit"
-                        class="inline-flex items-center justify-center px-5 py-2.5 rounded-md text-white bg-cyan-600 hover:bg-cyan-700 font-semibold text-sm shadow-sm transition-colors">
+                        class="inline-flex items-center justify-center px-5 py-2.5 {% if child_theme %}min-h-11 rounded-2xl bg-secondary-500 hover:bg-secondary-600 transition-[transform,background-color,box-shadow] active:scale-[0.96] motion-reduce:transition-none{% else %}rounded-md bg-cyan-600 hover:bg-cyan-700 transition-colors{% endif %} text-white font-semibold text-sm shadow-sm">
                     {% if user_review %}Update Feedback{% else %}Submit Feedback{% endif %}
                 </button>
             </form>

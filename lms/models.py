@@ -695,6 +695,19 @@ class ExtendedCoursePage(CoursePage):
     categories = ParentalManyToManyField(CourseCategory, blank=True)
     tags = ParentalManyToManyField(CourseTag, blank=True)
 
+    class Audience(models.TextChoices):
+        """Audience-specific course page presentations."""
+
+        ADULTS = "adults", "Adults"
+        CHILDREN = "children", "Children"
+
+    target_audience = models.CharField(
+        max_length=20,
+        choices=Audience,
+        default=Audience.ADULTS,
+        help_text="Select the presentation best suited to this course's learners.",
+    )
+
     duration_minutes = models.PositiveIntegerField(
         null=True,
         blank=True,
@@ -796,6 +809,7 @@ class ExtendedCoursePage(CoursePage):
             [
                 FieldPanel("categories", widget=forms.CheckboxSelectMultiple),
                 FieldPanel("tags", widget=forms.CheckboxSelectMultiple),
+                FieldPanel("target_audience"),
                 FieldPanel("difficulty"),
                 FieldPanel("duration_minutes"),
             ],
@@ -832,6 +846,11 @@ class ExtendedCoursePage(CoursePage):
     class Meta:
         verbose_name = "Course"
         verbose_name_plural = "Courses"
+
+    def get_template(self, request, *args, **kwargs):
+        if self.target_audience == self.Audience.CHILDREN:
+            return "lms/extended_course_page_children.html"
+        return "lms/extended_course_page.html"
 
     def get_context(self, request):
         context = super().get_context(request)

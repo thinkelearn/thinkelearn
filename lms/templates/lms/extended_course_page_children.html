@@ -1,0 +1,326 @@
+{% extends "wagtail_lms/course_page.html" %}
+{% load wagtailcore_tags wagtailimages_tags %}
+
+{% block body_class %}course-audience-children antialiased{% endblock %}
+
+{% block extra_css %}
+<style>
+  body.topbar-hidden .private-course-banner { top: 4rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-cream-100">
+    {% include "lms/includes/course_demo_banner.html" %}
+
+    {# Friendly course hero #}
+    <section class="relative isolate overflow-hidden bg-gradient-to-br from-cyan-100 via-cream-50 to-secondary-100">
+        <div aria-hidden="true" class="absolute -left-16 -top-20 h-56 w-56 rounded-full bg-cyan-300/40 blur-3xl"></div>
+        <div aria-hidden="true" class="absolute -bottom-24 right-0 h-72 w-72 rounded-full bg-secondary-200/50 blur-3xl"></div>
+        <div aria-hidden="true" class="absolute left-1/2 top-10 h-24 w-24 rounded-full bg-yellow-200/50 blur-2xl"></div>
+
+        <div class="relative mx-auto grid max-w-7xl items-center gap-10 px-4 py-12 sm:px-6 sm:py-16 lg:grid-cols-[1.2fr_0.8fr] lg:px-8 lg:py-20">
+            <div>
+                <div class="mb-5 flex flex-wrap items-center gap-2">
+                    <span class="inline-flex min-h-10 items-center gap-2 rounded-full bg-white/90 px-4 py-2 text-sm font-bold text-blue-800 shadow-sm ring-1 ring-blue-900/5">
+                        <svg class="h-5 w-5 text-secondary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5s3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18s-3.332.477-4.5 1.253"/>
+                        </svg>
+                        Made for young learners
+                    </span>
+                    {% for category in page.categories.all|slice:":3" %}
+                        <span class="inline-flex min-h-10 items-center rounded-full bg-cyan-600 px-4 py-2 text-sm font-semibold text-white shadow-sm">
+                            {% if category.icon %}<i class="fas {{ category.icon }} mr-2" aria-hidden="true"></i>{% endif %}
+                            {{ category.name }}
+                        </span>
+                    {% endfor %}
+                </div>
+
+                <h1 class="max-w-4xl text-balance font-heading text-4xl font-bold leading-tight text-blue-900 sm:text-5xl lg:text-6xl">
+                    {{ page.title }}
+                </h1>
+
+                {% if page.description %}
+                    <div class="mt-5 max-w-3xl text-pretty text-lg leading-relaxed text-blue-900/80 prose prose-lg prose-blue">
+                        {{ page.description|richtext }}
+                    </div>
+                {% endif %}
+
+                <div class="mt-7 flex flex-wrap gap-3 text-sm font-semibold text-blue-900">
+                    <span class="inline-flex min-h-11 items-center gap-2 rounded-2xl bg-white/90 px-4 py-2 shadow-sm ring-1 ring-blue-900/5">
+                        <svg class="h-5 w-5 text-cyan-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6M5 4h14a2 2 0 012 2v14l-4-2-5 2-5-2-4 2V6a2 2 0 012-2z"/>
+                        </svg>
+                        <span class="tabular-nums">{{ all_lessons|length }}</span> lesson{{ all_lessons|length|pluralize }}
+                    </span>
+                    {% if page.duration_minutes %}
+                        <span class="inline-flex min-h-11 items-center gap-2 rounded-2xl bg-white/90 px-4 py-2 shadow-sm ring-1 ring-blue-900/5">
+                            <svg class="h-5 w-5 text-secondary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            {{ page.duration_display }}
+                        </span>
+                    {% endif %}
+                    <span class="inline-flex min-h-11 items-center gap-2 rounded-2xl bg-white/90 px-4 py-2 shadow-sm ring-1 ring-blue-900/5">
+                        <svg class="h-5 w-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                        </svg>
+                        {{ page.get_difficulty_display }}
+                    </span>
+                    {% if average_rating %}
+                        <span class="inline-flex min-h-11 items-center gap-2 rounded-2xl bg-white/90 px-4 py-2 shadow-sm ring-1 ring-blue-900/5">
+                            <svg class="h-5 w-5 text-yellow-500" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                            </svg>
+                            <span class="tabular-nums">{{ average_rating }}</span>
+                            <span class="font-medium text-blue-900/65">({{ total_reviews }})</span>
+                        </span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="mx-auto w-full max-w-lg lg:justify-self-end">
+                <div class="rounded-[2rem] bg-white/80 p-3 shadow-[0_20px_60px_-24px_rgba(5,91,130,0.35)] ring-1 ring-blue-900/5 backdrop-blur-sm">
+                    {% if page.thumbnail %}
+                        {% image page.thumbnail fill-720x540 as hero_image %}
+                        <img src="{{ hero_image.url }}"
+                             alt=""
+                             class="aspect-[4/3] w-full rounded-[1.25rem] object-cover outline outline-1 -outline-offset-1 outline-blue-900/10">
+                    {% else %}
+                        <div class="flex aspect-[4/3] flex-col items-center justify-center rounded-[1.25rem] bg-gradient-to-br from-cyan-300 via-cyan-100 to-secondary-200 px-8 text-center">
+                            <div class="flex h-24 w-24 items-center justify-center rounded-full bg-white/90 shadow-lg">
+                                <svg class="h-14 w-14 text-blue-800" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 3c-1.2 3.5-4 5.5-8 6 2.5 1.5 4 3.8 4.5 7 1.7-2.1 3.8-3.4 6.5-4-1.5-2.7-2.5-5.7-3-9zm5 7c-.6 1.8-2 2.8-4 3 1.3.8 2 1.9 2.3 3.5.8-1 1.9-1.7 3.2-2-.7-1.3-1.2-2.8-1.5-4.5z"/>
+                                </svg>
+                            </div>
+                            <p class="mt-6 text-balance font-heading text-2xl font-bold text-blue-900">Learn, notice, and grow</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </section>
+
+    {# Resume strip for enrolled learners #}
+    {% if enrollment and all_lessons %}
+        {% with h5p_done=completed_lesson_ids|length scorm_done=completed_scorm_lesson_ids|length h5p_total=lesson_pages|length scorm_total=scorm_lesson_pages|length %}
+        {% with total_lessons=h5p_total|add:scorm_total done_lessons=h5p_done|add:scorm_done %}
+        <div class="bg-blue-800 text-white shadow-lg">
+            <div class="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
+                <div class="flex min-w-0 items-center gap-3">
+                    <span class="flex h-11 w-11 flex-none items-center justify-center rounded-2xl bg-white/15">
+                        {% if total_lessons > 0 and done_lessons == total_lessons %}
+                            <svg class="h-6 w-6 text-green-300" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                            </svg>
+                        {% else %}
+                            <svg class="ml-0.5 h-6 w-6 text-cyan-200" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                                <path d="M6.3 3.8A1 1 0 005 4.7v10.6a1 1 0 001.5.86l8.5-5.3a1 1 0 000-1.72L6.3 3.8z"/>
+                            </svg>
+                        {% endif %}
+                    </span>
+                    <div class="min-w-0">
+                        <p class="text-sm font-semibold text-cyan-100">
+                            {% if total_lessons > 0 and done_lessons == total_lessons %}Adventure complete{% elif done_lessons == 0 %}Your adventure starts here{% else %}Keep going — you’re doing great{% endif %}
+                        </p>
+                        <p class="truncate font-heading text-lg font-bold">
+                            {% if total_lessons > 0 and done_lessons == total_lessons %}Review any lesson again{% else %}{{ next_lesson.page.title }}{% endif %}
+                        </p>
+                    </div>
+                </div>
+                {% if next_lesson_url %}
+                    <a href="{{ next_lesson_url }}"
+                       class="inline-flex min-h-11 flex-none items-center justify-center gap-2 rounded-2xl bg-secondary-500 pl-5 pr-[1.125rem] font-bold text-white shadow-md transition-[transform,background-color,box-shadow] duration-150 ease-out hover:bg-secondary-600 hover:shadow-lg active:scale-[0.96] motion-reduce:transition-none">
+                        {% if total_lessons > 0 and done_lessons == total_lessons %}Review lessons{% elif done_lessons == 0 %}Start learning{% else %}Continue learning{% endif %}
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                        </svg>
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+        {% endwith %}
+        {% endwith %}
+    {% endif %}
+
+    <div class="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-14 lg:px-8">
+        <div class="grid grid-cols-1 items-start gap-8 lg:grid-cols-3">
+            <main class="space-y-8 lg:col-span-2">
+                {# Lesson journey #}
+                <section class="rounded-3xl bg-white p-6 shadow-[0_0_0_1px_rgba(5,91,130,0.06),0_12px_35px_-18px_rgba(5,91,130,0.28)] sm:p-8">
+                    <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                        <div>
+                            <p class="text-sm font-bold uppercase tracking-wider text-cyan-700">Your learning path</p>
+                            <h2 class="mt-1 text-balance font-heading text-3xl font-bold text-blue-900">A little adventure, one lesson at a time</h2>
+                        </div>
+                        {% with h5p_done=completed_lesson_ids|length scorm_done=completed_scorm_lesson_ids|length %}
+                            <span class="text-sm font-semibold text-blue-900/60 tabular-nums">
+                                {{ h5p_done|add:scorm_done }} of {{ all_lessons|length }} complete
+                            </span>
+                        {% endwith %}
+                    </div>
+
+                    {% if all_lessons %}
+                        {% with completed_total=completed_lesson_ids|length|add:completed_scorm_lesson_ids|length %}
+                        <div class="mb-7 h-3 overflow-hidden rounded-full bg-cyan-100" aria-label="Course progress">
+                            <div class="h-full rounded-full bg-gradient-to-r from-cyan-500 to-green-500 transition-[width] duration-300 motion-reduce:transition-none"
+                                 style="width: {% widthratio completed_total all_lessons|length 100 %}%"></div>
+                        </div>
+                        {% endwith %}
+
+                        <div class="space-y-4">
+                            {% for lesson in all_lessons %}
+                                {% if enrollment or perms.wagtailadmin.access_admin %}
+                                    {% if lesson.is_scorm %}
+                                        <a href="{% url 'wagtail_lms:scorm_player' lesson.page.id %}"
+                                           class="group flex min-h-20 items-center gap-4 rounded-2xl bg-cream-50 p-4 shadow-[0_0_0_1px_rgba(5,91,130,0.08)] transition-[transform,box-shadow,background-color] duration-150 ease-out hover:-translate-y-0.5 hover:bg-white hover:shadow-[0_0_0_1px_rgba(5,91,130,0.12),0_10px_24px_-14px_rgba(5,91,130,0.4)] active:scale-[0.96] motion-reduce:transform-none motion-reduce:transition-none">
+                                    {% else %}
+                                        <a href="{% pageurl lesson.page %}"
+                                           class="group flex min-h-20 items-center gap-4 rounded-2xl bg-cream-50 p-4 shadow-[0_0_0_1px_rgba(5,91,130,0.08)] transition-[transform,box-shadow,background-color] duration-150 ease-out hover:-translate-y-0.5 hover:bg-white hover:shadow-[0_0_0_1px_rgba(5,91,130,0.12),0_10px_24px_-14px_rgba(5,91,130,0.4)] active:scale-[0.96] motion-reduce:transform-none motion-reduce:transition-none">
+                                    {% endif %}
+                                {% else %}
+                                    <div class="flex min-h-20 items-center gap-4 rounded-2xl bg-neutral-50 p-4 shadow-[0_0_0_1px_rgba(5,91,130,0.06)]">
+                                {% endif %}
+
+                                    <span class="flex h-12 w-12 flex-none items-center justify-center rounded-xl {% if lesson.is_completed %}bg-green-100 text-green-700{% elif enrollment or perms.wagtailadmin.access_admin %}bg-cyan-100 text-blue-800{% else %}bg-neutral-200 text-neutral-500{% endif %} font-heading text-lg font-bold tabular-nums">
+                                        {% if lesson.is_completed %}
+                                            <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                                            </svg>
+                                        {% else %}
+                                            {{ forloop.counter|stringformat:"02d" }}
+                                        {% endif %}
+                                    </span>
+                                    <span class="min-w-0 flex-1">
+                                        <span class="block text-xs font-bold uppercase tracking-wider {% if enrollment or perms.wagtailadmin.access_admin %}text-cyan-700{% else %}text-neutral-500{% endif %}">Lesson {{ forloop.counter }}</span>
+                                        <span class="mt-1 block text-pretty font-heading text-lg font-bold {% if enrollment or perms.wagtailadmin.access_admin %}text-blue-900 group-hover:text-cyan-800{% else %}text-neutral-600{% endif %}">{{ lesson.page.title }}</span>
+                                    </span>
+                                    {% if enrollment or perms.wagtailadmin.access_admin %}
+                                        {% if next_lesson and lesson.page.id == next_lesson.page.id %}
+                                            <span class="hidden rounded-full bg-secondary-100 px-3 py-1 text-xs font-bold uppercase tracking-wide text-secondary-700 sm:inline-flex">Up next</span>
+                                        {% endif %}
+                                        <svg class="h-5 w-5 flex-none text-cyan-700 transition-transform duration-150 group-hover:translate-x-1 motion-reduce:transition-none" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                        </svg>
+                                    {% else %}
+                                        <span class="inline-flex min-h-10 items-center rounded-full bg-neutral-200 px-3 text-xs font-bold uppercase tracking-wide text-neutral-600">Locked</span>
+                                    {% endif %}
+
+                                {% if enrollment or perms.wagtailadmin.access_admin %}</a>{% else %}</div>{% endif %}
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="rounded-2xl bg-yellow-50 p-5 text-sm font-medium text-yellow-900 shadow-[0_0_0_1px_rgba(161,98,7,0.15)]">
+                            New lessons are being prepared. Please check back soon.
+                        </div>
+                    {% endif %}
+                </section>
+
+                {% if page.learning_objectives %}
+                    <section class="rounded-3xl bg-white p-6 shadow-[0_0_0_1px_rgba(5,91,130,0.06),0_12px_35px_-18px_rgba(5,91,130,0.28)] sm:p-8">
+                        <div class="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-secondary-100 text-secondary-700">
+                            <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.031 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                            </svg>
+                        </div>
+                        <h2 class="text-balance font-heading text-3xl font-bold text-blue-900">What you’ll discover</h2>
+                        <div class="mt-5 text-pretty prose prose-lg prose-neutral max-w-none prose-headings:text-blue-900 prose-strong:text-blue-900 prose-a:text-secondary-700">
+                            {{ page.learning_objectives|richtext }}
+                        </div>
+                    </section>
+                {% endif %}
+
+                {% if page.prerequisites_description or page.prerequisite_courses.all %}
+                    <section class="rounded-3xl bg-white p-6 shadow-[0_0_0_1px_rgba(5,91,130,0.06),0_12px_35px_-18px_rgba(5,91,130,0.28)] sm:p-8">
+                        <h2 class="text-balance font-heading text-3xl font-bold text-blue-900">Before you begin</h2>
+                        {% if page.prerequisites_description %}
+                            <div class="mt-5 text-pretty prose prose-lg prose-neutral max-w-none prose-headings:text-blue-900">
+                                {{ page.prerequisites_description|richtext }}
+                            </div>
+                        {% endif %}
+                        {% if page.prerequisite_courses.all %}
+                            <div class="mt-5 space-y-3">
+                                {% for prereq in page.prerequisite_courses.all %}
+                                    <a href="{% pageurl prereq %}" class="group flex min-h-14 items-center gap-3 rounded-2xl bg-cyan-50 px-4 py-3 font-semibold text-blue-900 transition-[transform,background-color] duration-150 ease-out hover:-translate-y-0.5 hover:bg-cyan-100 active:scale-[0.96] motion-reduce:transform-none motion-reduce:transition-none">
+                                        <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-white text-cyan-700 shadow-sm">
+                                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                            </svg>
+                                        </span>
+                                        {{ prereq.title }}
+                                    </a>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </section>
+                {% endif %}
+
+                {% if page.course_instructors.all %}
+                    <section class="rounded-3xl bg-white p-6 shadow-[0_0_0_1px_rgba(5,91,130,0.06),0_12px_35px_-18px_rgba(5,91,130,0.28)] sm:p-8">
+                        <p class="text-sm font-bold uppercase tracking-wider text-cyan-700">Your guides</p>
+                        <h2 class="mt-1 text-balance font-heading text-3xl font-bold text-blue-900">Meet the people learning with you</h2>
+                        <div class="mt-6 grid gap-5 sm:grid-cols-2">
+                            {% for instructor in page.course_instructors.all %}
+                                <article class="rounded-2xl bg-cream-50 p-5 shadow-[0_0_0_1px_rgba(5,91,130,0.06)]">
+                                    <div class="flex items-center gap-4">
+                                        {% if instructor.photo %}
+                                            {% image instructor.photo fill-96x96 as instructor_photo %}
+                                            <img src="{{ instructor_photo.url }}" alt="{{ instructor.name }}" class="h-16 w-16 rounded-2xl object-cover outline outline-1 -outline-offset-1 outline-blue-900/10">
+                                        {% else %}
+                                            <span class="flex h-16 w-16 items-center justify-center rounded-2xl bg-cyan-100 font-heading text-2xl font-bold text-blue-800">{{ instructor.name|slice:":1" }}</span>
+                                        {% endif %}
+                                        <div class="min-w-0">
+                                            <h3 class="text-balance font-heading text-xl font-bold text-blue-900">{{ instructor.name }}</h3>
+                                            {% if instructor.title %}<p class="text-sm font-semibold text-cyan-700">{{ instructor.title }}</p>{% endif %}
+                                        </div>
+                                    </div>
+                                    {% if instructor.bio %}<p class="mt-4 text-pretty text-sm leading-relaxed text-neutral-700">{{ instructor.bio }}</p>{% endif %}
+                                </article>
+                            {% endfor %}
+                        </div>
+                    </section>
+                {% endif %}
+
+                {% if total_reviews > 0 %}
+                    <section class="rounded-3xl bg-white p-6 shadow-[0_0_0_1px_rgba(5,91,130,0.06),0_12px_35px_-18px_rgba(5,91,130,0.28)] sm:p-8">
+                        <h2 class="text-balance font-heading text-3xl font-bold text-blue-900">What learners are saying</h2>
+                        <div class="mt-6 space-y-5">
+                            {% for review in recent_reviews %}
+                                <article class="rounded-2xl bg-cream-50 p-5 shadow-[0_0_0_1px_rgba(5,91,130,0.06)]">
+                                    <div class="flex flex-wrap items-center justify-between gap-3">
+                                        <div>
+                                            <p class="font-bold text-blue-900">{{ review.user.get_full_name|default:review.user.username }}</p>
+                                            <div class="mt-1 flex text-yellow-500" aria-label="{{ review.rating }} out of 5 stars">
+                                                {% for i in "12345" %}
+                                                    <svg class="h-5 w-5 {% if forloop.counter > review.rating %}text-neutral-300{% endif %}" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                                                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                                                    </svg>
+                                                {% endfor %}
+                                            </div>
+                                        </div>
+                                        <time class="text-sm text-neutral-500" datetime="{{ review.created_at|date:'Y-m-d' }}">{{ review.created_at|date:"M d, Y" }}</time>
+                                    </div>
+                                    {% if review.review_text %}<p class="mt-4 text-pretty leading-relaxed text-neutral-700">{{ review.review_text }}</p>{% endif %}
+                                </article>
+                            {% endfor %}
+                        </div>
+                    </section>
+                {% endif %}
+
+                {% if enrollment or perms.wagtailadmin.access_admin %}
+                    {% include "lms/includes/course_feedback.html" with feedback_mode="full" child_theme=True %}
+                {% else %}
+                    {% include "lms/includes/course_feedback.html" with feedback_mode="sign_in" child_theme=True %}
+                {% endif %}
+            </main>
+
+            {% include "lms/includes/course_sidebar.html" with child_theme=True %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+{% include "lms/includes/course_feedback_rating_script.html" %}
+{% endblock %}
