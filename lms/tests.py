@@ -250,6 +250,8 @@ class ExtendedCoursePageTest(TestCase):
         self.assertContains(response, "Made for young learners")
         self.assertContains(response, "Your learning path")
         self.assertContains(response, "Sign In Required")
+        self.assertContains(response, "bg-secondary-700")
+        self.assertContains(response, "text-blue-900/75")
 
     def test_children_course_page_preserves_enrolled_controls(self):
         """Children presentation retains lesson, feedback, and progress controls."""

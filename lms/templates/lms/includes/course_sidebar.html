@@ -18,7 +18,7 @@
                     {% with page.url as next_url %}
                     <div class="space-y-2">
                         <a href="{% url 'account_login' %}?next={{ next_url|urlencode }}"
-                           class="w-full inline-flex items-center justify-center px-4 py-2.5 {% if child_theme %}min-h-11 rounded-2xl bg-secondary-500 hover:bg-secondary-600 transition-[transform,background-color,box-shadow] active:scale-[0.96] motion-reduce:transition-none{% else %}rounded-md bg-cyan-600 hover:bg-cyan-700 transition-colors{% endif %} text-white font-semibold text-sm shadow-sm">
+                           class="w-full inline-flex items-center justify-center px-4 py-2.5 {% if child_theme %}min-h-11 rounded-2xl bg-secondary-700 hover:bg-secondary-800 transition-[transform,background-color,box-shadow] active:scale-[0.96] motion-reduce:transition-none{% else %}rounded-md bg-cyan-600 hover:bg-cyan-700 transition-colors{% endif %} text-white font-semibold text-sm shadow-sm">
                             Sign In
                         </a>
                         {% if ACCOUNT_ALLOW_REGISTRATION %}
@@ -48,7 +48,7 @@
                     {% with h5p_done=completed_lesson_ids|length scorm_done=completed_scorm_lesson_ids|length h5p_total=lesson_pages|length scorm_total=scorm_lesson_pages|length %}
                     {% with total_lessons=h5p_total|add:scorm_total done_lessons=h5p_done|add:scorm_done %}
                     <a href="{{ next_lesson_url|default:page.url }}"
-                       class="w-full inline-flex items-center justify-center px-4 py-2.5 {% if child_theme %}min-h-11 rounded-2xl transition-[transform,background-color,box-shadow] active:scale-[0.96] motion-reduce:transition-none{% else %}rounded-md transition-colors{% endif %} text-white bg-secondary-500 hover:bg-secondary-600 font-semibold text-sm shadow-sm">
+                       class="w-full inline-flex items-center justify-center px-4 py-2.5 {% if child_theme %}min-h-11 rounded-2xl bg-secondary-700 hover:bg-secondary-800 transition-[transform,background-color,box-shadow] active:scale-[0.96] motion-reduce:transition-none{% else %}rounded-md bg-secondary-500 hover:bg-secondary-600 transition-colors{% endif %} text-white font-semibold text-sm shadow-sm">
                         {% if not total_lessons %}View Course
                         {% elif done_lessons == 0 %}Start Learning
                         {% elif done_lessons == total_lessons %}Review Lessons
