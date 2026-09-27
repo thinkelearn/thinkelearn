@@ -210,6 +210,68 @@ class ExtendedCoursePageTest(TestCase):
 
         self.factory = RequestFactory()
 
+    def test_target_audience_defaults_to_adults(self):
+        """Existing and newly-created courses retain the adult presentation."""
+        self.assertEqual(
+            self.course.target_audience, ExtendedCoursePage.Audience.ADULTS
+        )
+
+    def test_get_template_selects_template_for_target_audience(self):
+        """The page model selects its presentation from the stored audience."""
+        request = self.factory.get(self.course.url)
+
+        self.assertEqual(
+            self.course.get_template(request), "lms/extended_course_page.html"
+        )
+
+        self.course.target_audience = ExtendedCoursePage.Audience.CHILDREN
+
+        self.assertEqual(
+            self.course.get_template(request),
+            "lms/extended_course_page_children.html",
+        )
+        self.assertEqual(
+            self.course.get_preview_template(request, "default"),
+            "lms/extended_course_page_children.html",
+        )
+
+    def test_children_course_page_uses_children_template(self):
+        """Published children courses render the child-friendly presentation."""
+        self.course.target_audience = ExtendedCoursePage.Audience.CHILDREN
+        self.course.save_revision().publish()
+
+        response = self.client.get(self.course.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "lms/extended_course_page_children.html")
+        self.assertTemplateUsed(response, "lms/includes/course_demo_banner.html")
+        self.assertTemplateUsed(response, "lms/includes/course_feedback.html")
+        self.assertTemplateUsed(response, "lms/includes/course_sidebar.html")
+        self.assertContains(response, "Made for young learners")
+        self.assertContains(response, "Your learning path")
+        self.assertContains(response, "Sign In Required")
+        self.assertContains(response, "bg-secondary-700")
+        self.assertContains(response, "text-blue-900/75")
+
+    def test_children_course_page_preserves_enrolled_controls(self):
+        """Children presentation retains lesson, feedback, and progress controls."""
+        self.course.target_audience = ExtendedCoursePage.Audience.CHILDREN
+        self.course.save_revision().publish()
+        lesson = H5PLessonPage(title="Notice Your Breath", slug="notice-your-breath")
+        self.course.add_child(instance=lesson)
+        lesson.save_revision().publish()
+        CourseEnrollment.objects.create(user=self.user, course=self.course)
+        self.client.force_login(self.user)
+
+        response = self.client.get(self.course.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, f'href="{lesson.url}"')
+        self.assertContains(response, "Your adventure starts here")
+        self.assertContains(response, "Course rating")
+        self.assertContains(response, "Submit Feedback")
+        self.assertContains(response, "Enrolled")
+
     def test_get_average_rating_with_no_reviews(self):
         """Test average rating calculation when no reviews exist"""
         avg_rating = self.course.get_average_rating()

@@ -2,28 +2,28 @@
 
 {# Sidebar #}
 <div class="lg:col-span-1">
-    <div class="space-y-6 sticky top-28">
+    <div class="space-y-6 {% if child_theme %}lg:sticky lg:top-28{% else %}sticky top-28{% endif %}">
         {# Checkout Component #}
         {% if user.is_authenticated and not enrollment and can_enroll %}
             {% include "lms/includes/checkout_enroll.html" %}
         {% elif not user.is_authenticated %}
             {# Sign in prompt for unauthenticated users #}
-            <div class="bg-white border border-neutral-200 rounded-lg shadow-sm">
-                <div class="bg-gradient-to-r from-primary-800 to-primary-700 text-white px-4 py-3 rounded-t-lg">
-                    <p class="text-xs uppercase tracking-wide text-primary-200">Enrollment</p>
+            <div class="bg-white {% if child_theme %}rounded-3xl shadow-[0_0_0_1px_rgba(5,91,130,0.06),0_12px_35px_-18px_rgba(5,91,130,0.28)] overflow-hidden{% else %}border border-neutral-200 rounded-lg shadow-sm{% endif %}">
+                <div class="{% if child_theme %}bg-gradient-to-r from-blue-800 to-cyan-700 px-5 py-4{% else %}bg-gradient-to-r from-primary-800 to-primary-700 px-4 py-3 rounded-t-lg{% endif %} text-white">
+                    <p class="text-xs uppercase tracking-wide {% if child_theme %}text-cyan-100{% else %}text-primary-200{% endif %}">Enrollment</p>
                     <p class="text-xl font-bold">Sign In Required</p>
                 </div>
-                <div class="px-4 py-4">
+                <div class="{% if child_theme %}px-5 py-5{% else %}px-4 py-4{% endif %}">
                     <p class="text-sm text-neutral-600 mb-4">Please sign in to enroll in this course and track your progress.</p>
                     {% with page.url as next_url %}
                     <div class="space-y-2">
                         <a href="{% url 'account_login' %}?next={{ next_url|urlencode }}"
-                           class="w-full inline-flex items-center justify-center px-4 py-2.5 rounded-md text-white bg-cyan-600 hover:bg-cyan-700 font-semibold text-sm shadow-sm transition-colors">
+                           class="w-full inline-flex items-center justify-center px-4 py-2.5 {% if child_theme %}min-h-11 rounded-2xl bg-secondary-700 hover:bg-secondary-800 transition-[transform,background-color,box-shadow] active:scale-[0.96] motion-reduce:transition-none{% else %}rounded-md bg-cyan-600 hover:bg-cyan-700 transition-colors{% endif %} text-white font-semibold text-sm shadow-sm">
                             Sign In
                         </a>
                         {% if ACCOUNT_ALLOW_REGISTRATION %}
                         <a href="{% url 'account_signup' %}?next={{ next_url|urlencode }}"
-                           class="w-full inline-flex items-center justify-center px-4 py-2.5 rounded-md text-cyan-600 bg-white border-2 border-cyan-600 hover:bg-cyan-50 font-semibold text-sm transition-colors">
+                           class="w-full inline-flex items-center justify-center px-4 py-2.5 {% if child_theme %}min-h-11 rounded-2xl text-blue-800 bg-cyan-50 ring-2 ring-inset ring-cyan-600 hover:bg-cyan-100 transition-[transform,background-color] active:scale-[0.96] motion-reduce:transition-none{% else %}rounded-md text-cyan-600 bg-white border-2 border-cyan-600 hover:bg-cyan-50 transition-colors{% endif %} font-semibold text-sm">
                             Sign Up
                         </a>
                         {% endif %}
@@ -33,12 +33,12 @@
             </div>
         {% elif enrollment %}
             {# Already enrolled #}
-            <div class="bg-white border border-neutral-200 rounded-lg shadow-sm">
-                <div class="bg-gradient-to-r from-green-600 to-green-500 text-white px-4 py-3 rounded-t-lg">
+            <div class="bg-white {% if child_theme %}rounded-3xl shadow-[0_0_0_1px_rgba(5,91,130,0.06),0_12px_35px_-18px_rgba(5,91,130,0.28)] overflow-hidden{% else %}border border-neutral-200 rounded-lg shadow-sm{% endif %}">
+                <div class="bg-gradient-to-r from-green-600 to-green-500 text-white {% if child_theme %}px-5 py-4{% else %}px-4 py-3 rounded-t-lg{% endif %}">
                     <p class="text-xs uppercase tracking-wide text-green-100">Status</p>
                     <p class="text-xl font-bold">Enrolled</p>
                 </div>
-                <div class="px-4 py-4 space-y-2">
+                <div class="{% if child_theme %}px-5 py-5 space-y-3{% else %}px-4 py-4 space-y-2{% endif %}">
                     <p class="text-xs text-neutral-500">Enrolled: {{ enrollment.enrolled_at|date:"M d, Y" }}</p>
                     {% with h5p_done=completed_lesson_ids|length scorm_done=completed_scorm_lesson_ids|length h5p_total=lesson_pages|length scorm_total=scorm_lesson_pages|length %}
                         <p class="text-xs text-neutral-500">
@@ -48,7 +48,7 @@
                     {% with h5p_done=completed_lesson_ids|length scorm_done=completed_scorm_lesson_ids|length h5p_total=lesson_pages|length scorm_total=scorm_lesson_pages|length %}
                     {% with total_lessons=h5p_total|add:scorm_total done_lessons=h5p_done|add:scorm_done %}
                     <a href="{{ next_lesson_url|default:page.url }}"
-                       class="w-full inline-flex items-center justify-center px-4 py-2.5 rounded-md text-white bg-secondary-500 hover:bg-secondary-600 font-semibold text-sm shadow-sm transition-colors">
+                       class="w-full inline-flex items-center justify-center px-4 py-2.5 {% if child_theme %}min-h-11 rounded-2xl bg-secondary-700 hover:bg-secondary-800 transition-[transform,background-color,box-shadow] active:scale-[0.96] motion-reduce:transition-none{% else %}rounded-md bg-secondary-500 hover:bg-secondary-600 transition-colors{% endif %} text-white font-semibold text-sm shadow-sm">
                         {% if not total_lessons %}View Course
                         {% elif done_lessons == 0 %}Start Learning
                         {% elif done_lessons == total_lessons %}Review Lessons
@@ -65,8 +65,8 @@
         {% endif %}
 
         {# Course Details (Metadata) #}
-        <div class="bg-white rounded-lg shadow-sm border border-neutral-200 p-4 space-y-4">
-            <h3 class="text-sm font-bold text-primary-800 uppercase tracking-wide">Course Details</h3>
+        <div class="bg-white {% if child_theme %}rounded-3xl p-5 shadow-[0_0_0_1px_rgba(5,91,130,0.06),0_12px_35px_-18px_rgba(5,91,130,0.28)]{% else %}rounded-lg shadow-sm border border-neutral-200 p-4{% endif %} space-y-4">
+            <h3 class="text-sm font-bold {% if child_theme %}text-blue-900{% else %}text-primary-800{% endif %} uppercase tracking-wide">Course Details</h3>
 
             <div>
                 <dt class="text-xs font-medium text-neutral-500 mb-1">Lessons</dt>
@@ -78,7 +78,7 @@
                     <dt class="text-xs font-medium text-neutral-500 mb-1.5">Tags</dt>
                     <dd class="flex flex-wrap gap-1.5">
                         {% for tag in page.tags.all %}
-                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-neutral-100 text-neutral-700">
+                            <span class="inline-flex items-center px-2 py-0.5 {% if child_theme %}min-h-8 rounded-xl bg-cyan-50 text-blue-800{% else %}rounded-full bg-neutral-100 text-neutral-700{% endif %} text-xs font-medium">
                                 {{ tag.name }}
                             </span>
                         {% endfor %}
@@ -92,7 +92,7 @@
                     <h4 class="text-xs font-semibold text-neutral-800 mb-2 uppercase tracking-wide">Related Courses</h4>
                     <div class="space-y-2">
                         {% for related in related_courses %}
-                            <a href="{% pageurl related %}" class="block group">
+                            <a href="{% pageurl related %}" class="block group {% if child_theme %}rounded-xl px-2 py-1.5 transition-colors duration-150 hover:bg-cyan-50{% endif %}">
                                 <h5 class="text-sm font-medium text-secondary-600 group-hover:text-secondary-700">{{ related.title }}</h5>
                                 <p class="text-xs text-neutral-500 mt-0.5">{{ related.difficulty|title }}</p>
                             </a>

@@ -1,7 +1,7 @@
 {% with page.url|add:'#course-feedback' as next_url %}
-    <div class="rounded-md bg-cyan-50 text-cyan-800 border border-cyan-200 px-4 py-3 text-sm">
+    <div class="{% if child_theme %}rounded-2xl bg-cyan-50 px-5 py-4 text-blue-900 shadow-[0_0_0_1px_rgba(5,91,130,0.1)]{% else %}rounded-md bg-cyan-50 text-cyan-800 border border-cyan-200 px-4 py-3{% endif %} text-sm">
         Please
-        <a href="{% url 'account_login' %}?next={{ next_url|urlencode }}" class="font-semibold underline">sign in</a>
+        <a href="{% url 'account_login' %}?next={{ next_url|urlencode }}" class="font-semibold underline {% if child_theme %}text-secondary-700{% endif %}">sign in</a>
         to share your feedback.
     </div>
 {% endwith %}

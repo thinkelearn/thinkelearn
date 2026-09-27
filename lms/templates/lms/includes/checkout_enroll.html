@@ -1,5 +1,5 @@
 {% if product and product.is_active %}
-    <div class="bg-white border border-neutral-200 rounded-lg shadow-sm" data-checkout-form
+    <div class="bg-white {% if child_theme %}rounded-3xl shadow-[0_0_0_1px_rgba(5,91,130,0.06),0_12px_35px_-18px_rgba(5,91,130,0.28)] overflow-hidden{% else %}border border-neutral-200 rounded-lg shadow-sm{% endif %}" data-checkout-form
          data-checkout-url="{% url 'payments:checkout_session' %}"
          data-product-id="{{ product.id }}"
          data-success-url="{{ checkout_success_url }}"
@@ -10,23 +10,23 @@
          data-max-price="{{ product.max_price }}">
 
         {# Header #}
-        <div class="bg-gradient-to-r from-primary-800 to-primary-700 text-white px-4 py-3 rounded-t-lg">
+        <div class="{% if child_theme %}bg-gradient-to-r from-blue-800 to-cyan-700 px-5 py-4{% else %}bg-gradient-to-r from-primary-800 to-primary-700 px-4 py-3 rounded-t-lg{% endif %} text-white">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-xs uppercase tracking-wide text-primary-200">Price</p>
+                    <p class="text-xs uppercase tracking-wide {% if child_theme %}text-cyan-100{% else %}text-primary-200{% endif %}">Price</p>
                     <p class="text-xl font-bold">{{ product.format_price }}</p>
                 </div>
-                <svg class="w-5 h-5 text-primary-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-5 h-5 {% if child_theme %}text-cyan-100{% else %}text-primary-200{% endif %}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
                 </svg>
             </div>
         </div>
 
-        <div class="px-4 py-4 space-y-3">
+        <div class="{% if child_theme %}px-5 py-5 space-y-4{% else %}px-4 py-4 space-y-3{% endif %}">
 
             {# Pending Payment Notice #}
             {% if pending_enrollment %}
-                <div class="bg-yellow-50 border border-yellow-200 rounded-md p-3 mb-3">
+                <div class="bg-yellow-50 border border-yellow-200 {% if child_theme %}rounded-2xl p-4{% else %}rounded-md p-3{% endif %} mb-3">
                     <div class="flex items-start">
                         <svg class="w-5 h-5 text-yellow-600 mr-2 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
@@ -48,7 +48,7 @@
                         {% for amount in product.get_quick_amounts %}
                             <button type="button"
                                     data-quick-amount="{{ amount }}"
-                                    class="px-3 py-2 rounded-md border-2 border-neutral-200 bg-white text-neutral-900 font-bold text-sm hover:border-cyan-500 hover:bg-cyan-50 transition-colors duration-150 focus:outline-none focus:ring-1 focus:ring-cyan-500"
+                                    class="px-3 py-2 {% if child_theme %}min-h-11 rounded-xl{% else %}rounded-md{% endif %} border-2 border-neutral-200 bg-white text-neutral-900 font-bold text-sm hover:border-cyan-500 hover:bg-cyan-50 transition-colors duration-150 focus:outline-none focus:ring-1 focus:ring-cyan-500"
                                     aria-pressed="false"
                                     {% if amount == product.suggested_price|floatformat:0 %}data-suggested="true"{% endif %}>
                                 ${{ amount }}
@@ -60,7 +60,7 @@
                     <div class="mt-2">
                         <button type="button"
                                 data-custom-toggle
-                                class="text-xs text-cyan-600 hover:text-cyan-700 font-medium"
+                                class="{% if child_theme %}inline-flex min-h-10 items-center{% endif %} text-xs text-cyan-600 hover:text-cyan-700 font-medium"
                                 aria-expanded="false"
                                 aria-controls="custom-amount-container">
                             Show custom amount
@@ -81,7 +81,7 @@
                             </div>
                             <button type="button"
                                     data-custom-cancel
-                                    class="mt-1 text-xs text-neutral-500 hover:text-neutral-700"
+                                    class="mt-1 {% if child_theme %}inline-flex min-h-10 items-center{% endif %} text-xs text-neutral-500 hover:text-neutral-700"
                                     aria-label="Cancel custom amount">
                                 Cancel
                             </button>
@@ -96,7 +96,7 @@
 
             <button type="button"
                     data-checkout-submit
-                    class="w-full inline-flex items-center justify-center px-4 py-2.5 rounded-md text-white bg-cyan-600 hover:bg-cyan-700 font-semibold text-sm shadow-sm transition-colors duration-200">
+                    class="w-full inline-flex items-center justify-center px-4 py-2.5 {% if child_theme %}min-h-11 rounded-2xl bg-secondary-700 hover:bg-secondary-800 transition-[transform,background-color,box-shadow] active:scale-[0.96] motion-reduce:transition-none{% else %}rounded-md bg-cyan-600 hover:bg-cyan-700 transition-colors{% endif %} text-white font-semibold text-sm shadow-sm duration-200">
                 <span data-checkout-button-text>
                     {% if pending_enrollment %}
                         Complete Payment
@@ -121,7 +121,7 @@
         </div>
     </div>
 {% else %}
-    <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
+    <div class="bg-yellow-50 border border-yellow-200 {% if child_theme %}rounded-3xl shadow-sm{% else %}rounded-lg{% endif %} p-6">
         <p class="text-yellow-800">
             Enrollment is currently unavailable for this course. Please check back later.
         </p>
